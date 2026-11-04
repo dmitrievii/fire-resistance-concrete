@@ -37,3 +37,27 @@ class StreamlitAppTests(unittest.TestCase):
             self.assertEqual(len(variant['bars']),8)
             self.assertAlmostEqual(max(bar['x_m'] for bar in variant['bars']),.35)
             self.assertEqual(variant['reinforcement']['spacing_x_mm'],150)
+
+    def test_cloud_legacy_entrypoint_imports_current_root_backend(self):
+        """Exercises the exact file path used by the deployed Streamlit Cloud app."""
+        entrypoint = (Path(__file__).resolve().parents[1] /
+                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+        app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
+        self.assertFalse(app.exception, f'Cloud compatibility path crashed: {list(app.exception)}')
+        self.assertFalse(app.error, f'Cloud compatibility path reported an error: {list(app.error)}')
+        self.assertTrue(any('Calculated results' in x.value for x in app.subheader))
+
+    def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
+        """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
+        import app_core
+        previous = app_core.default_template_bytes
+        delattr(app_core, 'default_template_bytes')
+        try:
+            entrypoint = (Path(__file__).resolve().parents[1] /
+                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+            app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
+            self.assertFalse(app.exception, f'Stale import recovery failed: {list(app.exception)}')
+            self.assertTrue(callable(app_core.default_template_bytes))
+        finally:
+            if not hasattr(app_core, 'default_template_bytes'):
+                app_core.default_template_bytes = previous
