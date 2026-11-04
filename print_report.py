@@ -7,6 +7,7 @@ from __future__ import annotations
 from html import escape
 from datetime import date
 from section_drawing import section_svg, steel_legend, bar_schedule
+from reinforcement_layout import definition_rows
 
 
 def _fmt(value:float,digits:int=3)->str:
@@ -27,6 +28,8 @@ def make_printable_html(data:dict, result:dict)->bytes:
         results=result['variants'][v['id']]
         schedule=bar_schedule(data,i,result)
         axes=results['axes']
+        reinforcement_rows=''.join('<tr><td>'+escape(name)+'</td><td>'+escape(value)+'</td></tr>'
+            for name,value in definition_rows(data,i))
         axis_rows=''.join('<tr>'+''.join(f'<td>{escape(val)}</td>' for val in row)+'</tr>'
                 for row in [
                     (name.upper(),_fmt(v['N_kN'],2),_fmt(a['M_Ed_kNm'],3),
@@ -40,6 +43,8 @@ def make_printable_html(data:dict, result:dict)->bytes:
 <h2>Reinforcement variant {escape(v['id'])}</h2>
 <p class="detail">{escape(steel_legend(data,i))}; N = {_fmt(v['N_kN'],2)} kN,
 Mx = {_fmt(v['M_x_kNm'],2)} kN·m, My = {_fmt(v['M_y_kNm'],2)} kN·m.</p>
+<h3>Reinforcement definition</h3>
+<table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>{reinforcement_rows}</tbody></table>
 {section_svg(data,i)}
 <h3>Cross-section capacity — separate axes</h3>
 <table><thead><tr><th>Axis</th><th>N [kN]</th><th>MEd [kN·m]</th><th>MRd [kN·m]</th><th>η</th><th>MEd/MRd</th></tr></thead><tbody>{axis_rows}</tbody></table>

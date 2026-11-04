@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from html import escape
 import math
+from reinforcement_layout import infer_perimeter
 
 
 def _geometry(data: dict, variant_index: int):
@@ -151,6 +152,27 @@ def section_svg(data:dict,index:int=0,show_labels=True) -> str:
         if show_labels and len(bars)<=16:
             out.append(f'<text x="{xx:g}" y="{yy-rad-8:g}" text-anchor="middle" '
                        f'font-size="13" fill="#17253b">{escape(bar["id"])} Ø{bar["diameter"]:g}</text>')
+    # Printable engineering dimension chains: face-to-centre, regular spacing,
+    # face-to-centre, separately from the overall b/h dimensions.
+    perimeter=infer_perimeter(b,h,v['bars'])
+    if perimeter and len(bars)<=20:
+        xx=sorted(set([0,b]+[bar['x'] for bar in bars]))
+        yy=sorted(set([0,h]+[h-bar['y'] for bar in bars]))
+        chain_y=h+38
+        out.append(f'<line x1="0" y1="{chain_y:g}" x2="{b:g}" y2="{chain_y:g}" stroke="#64748b" stroke-width="1.2"/>')
+        for x0 in xx:
+            out.append(f'<line x1="{x0-4:g}" y1="{chain_y-5:g}" x2="{x0+4:g}" y2="{chain_y+5:g}" stroke="#64748b"/>')
+        for x0,x1 in zip(xx,xx[1:]):
+            if x1-x0>=32:
+                out.append(f'<text x="{(x0+x1)/2:g}" y="{chain_y-8:g}" text-anchor="middle" font-size="12">{x1-x0:g}</text>')
+        out.append(f'<line x1="-38" y1="0" x2="-38" y2="{h:g}" stroke="#64748b" stroke-width="1.2"/>')
+        for y0 in yy:
+            out.append(f'<line x1="-43" y1="{y0-4:g}" x2="-33" y2="{y0+4:g}" stroke="#64748b"/>')
+        for y0,y1 in zip(yy,yy[1:]):
+            if y1-y0>=32:
+                mid=(y0+y1)/2
+                out.append(f'<text x="-45" y="{mid:g}" transform="rotate(-90 -45 {mid:g})" text-anchor="middle" font-size="12">{y1-y0:g}</text>')
+        out.append(f'<text x="{b/2:g}" y="-72" text-anchor="middle" font-size="15">nx={perimeter["nx"]}, ny={perimeter["ny"]}, Ø{perimeter["diameter_mm"]:g}</text>')
     out.append(f'<line x1="0" x2="{b:g}" y1="{h+66:g}" y2="{h+66:g}" stroke="#475569" stroke-width="2"/>')
     for xx in [0,b]:out.append(f'<line x1="{xx-5:g}" y1="{h+58:g}" x2="{xx+5:g}" y2="{h+74:g}" stroke="#475569" stroke-width="2"/>')
     out.append(f'<text x="{b/2:g}" y="{h+100:g}" text-anchor="middle" font-size="17">b = {b:g} mm</text>')

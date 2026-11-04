@@ -18,6 +18,7 @@ from parametric_engine import GeneralInput, compute_general
 from parametric_report import create_report
 from report_adapter import build_payload
 from word_patch import insert_values
+from reinforcement_layout import infer_perimeter, active_definition
 
 ROOT = Path(__file__).resolve().parent
 SCHEMA_LEGACY = 'k18-independent-engine-v1'
@@ -58,7 +59,12 @@ def legacy_to_parametric(old: dict) -> dict:
       'variants':[{ 'id':v['id'],'N_kN':v['N_kN'],'M_x_kNm':v['M_x_kNm'],
         'M_y_kNm':v['M_y_kNm'],
         'bars':[{'id':str(i+1),'x_m':x,'y_m':y,
-                 'diameter_mm':v['bar_diameter_mm']} for i,(x,y) in enumerate(coords)]}
+                 'diameter_mm':v['bar_diameter_mm']} for i,(x,y) in enumerate(coords)],
+        'reinforcement':{'mode':'perimeter','basis':'edges','symmetric':True,
+           'nx':3,'ny':3,'diameter_mm':float(v['bar_diameter_mm']),
+           'left_mm':cx*1000,'right_mm':cx*1000,
+           'bottom_mm':cy*1000,'top_mm':cy*1000,
+           'spacing_x_mm':(b-2*cx)*500,'spacing_y_mm':(h-2*cy)*500}}
         for v in old['variants']]
     }
 

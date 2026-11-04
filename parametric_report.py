@@ -23,6 +23,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle
+from reinforcement_layout import definition_rows
 import numpy as np
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -212,6 +213,9 @@ def create_report(template, input_data, results, target, verbose=False):
         p.add_run(f'Рисунок 3.1.{v.id} — расположение арматуры, вариант {v.id}').bold=True
         pic=doc.add_paragraph();pic.alignment=WD_ALIGN_PARAGRAPH.CENTER
         pic.add_run().add_picture(_figure(s,v),width=Cm(12.4))
+        add_text(doc,'Определение продольного армирования: расстояния до осей стержней и шаг между осями, мм; защитный слой вычисляется до поверхности стержня.',bold=True)
+        add_table(doc,['Параметр','Значение'], definition_rows(input_data,
+            next(i for i,w in enumerate(input_data['variants']) if w['id']==v.id)))
         add_table(doc,['№','x, мм','y, мм','Ø, мм','As, мм²'],[
             (b.id,number(b.x_m*1000,1),number(b.y_m*1000,1),number(b.diameter_mm,1),number(math.pi*b.diameter_mm**2/4,2)) for b in v.bars
         ])

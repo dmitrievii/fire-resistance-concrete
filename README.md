@@ -42,3 +42,15 @@ The CI suite checks K18 numerical continuity, automatic solver switching, dimens
 ## Security and limits
 
 The client’s `Пример.docx`, Mathcad `.xmcd`, licensed standards and sensitive data **must not** be committed to the public repository. Uploaded Word templates are retained only in temporary session/processing memory and deleted after report generation; public Community Cloud is not a confidential file vault. The general model remains experimental; there is no verified full biaxial N–Mx–My interaction, spalling or normative certification.
+
+
+## R0.7 — engineering reinforcement definition
+
+Under **3 · Reinforcement layout**, every reinforcement variant can use:
+
+- **Perimeter layout** (default for K18): bar diameter Ø [mm], counts along both horizontal faces `nx` and vertical faces `ny`, and either *edge-to-bar-centre offsets* or *centre-to-centre spacing*. Corner bars are counted once: `n = 2nx + 2ny − 4` (up to 64 bars).
+- **Symmetric edge distances**: one horizontal and one vertical offset automatically apply to opposite edges. Disable this to specify left/right/bottom/top independently.
+- **Spacing-driven definition**: choose `sx` and `sy`. For symmetric layouts, edge distances are calculated; for asymmetric layouts, specify the first bar's left and bottom offsets and the far-side distances are calculated.
+- **Custom coordinates**: advanced per-bar ID, x, y, Ø editor for nonuniform and irregular reinforcement.
+
+All distances are in millimetres. **Edge-to-bar-centre is not concrete clear cover**: clear cover = edge-to-centre − Ø/2. The UI shows both, as well as total steel area and true-scale dimensions. Changing the section size regenerates valid perimeter bars immediately. Invalid cover, overlap, spacing or bar counts are blocked rather than silently clamped. Both the printable HTML and the experimental DOCX diagnostic now include the engineering reinforcement definition. The unchanged K18 case still exports the identical 32-page reference DOCX when the approved master is uploaded.

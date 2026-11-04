@@ -19,6 +19,8 @@ from app_core import (SCHEMA_PARAMETRIC, SCHEMA_LEGACY, load_example,
                       execute, summary_rows, bars_table, parse_bars_table,
                       with_variant_count, generate_docx, compact_json_bytes, input_fingerprint)
 from section_drawing import dimensioned_figure, bar_schedule, steel_legend
+from reinforcement_layout import definition_rows
+from reinforcement_panel import render_reinforcement
 from print_report import make_printable_html
 
 st.set_page_config(page_title='RC Fire · Rectangular Section',page_icon='📐',layout='wide')
@@ -124,22 +126,7 @@ with left:
             with b:v['M_x_kNm']=num('Mx [kN·m]',v['M_x_kNm'],f'Mx_{rev}_{i}',None,None,1.)
             with c:v['M_y_kNm']=num('My [kN·m]',v['M_y_kNm'],f'My_{rev}_{i}',None,None,1.)
 
-    st.subheader('3 · Reinforcement layout')
-    st.caption('Edit, add or delete individual bars. Diameters and centre coordinates change the geometry in the drawing.')
-    for i,v in enumerate(edited['variants']):
-        with st.expander(f"{v['id']} · {len(base['variants'][i]['bars'])} bars · {steel_legend(base,i)}",expanded=i==1 or len(edited['variants'])==1):
-            df=pd.DataFrame(bars_table(base,i))
-            table=st.data_editor(df,num_rows='dynamic',hide_index=True,
-                   use_container_width=True,key=f'rebars_{rev}_{i}',
-                   column_config={
-                      'ID':st.column_config.TextColumn('Bar',required=True),
-                      'X [mm]':st.column_config.NumberColumn('X [mm]',required=True,format='%.1f'),
-                      'Y [mm]':st.column_config.NumberColumn('Y [mm]',required=True,format='%.1f'),
-                      'Diameter [mm]':st.column_config.NumberColumn('Ø [mm]',required=True,format='%.1f')})
-            try:v['bars']=parse_bars_table(table.to_dict('records'))
-            except ModelError as exc:
-                v['bars']=[]
-                st.error(str(exc))
+    layout_errors=render_reinforcement(edited,base,rev,num)
 
 with right:
     st.subheader('Live cross-section drawing')
@@ -160,6 +147,9 @@ with right:
         st.caption(f"{steel_legend(edited,selected_index)} · hover over each bar for coordinates, actual diameter, clear cover and computed temperature. Zoom and pan are enabled.")
         schedule=bar_schedule(edited,selected_index,preview_run['result'] if same else None)
         st.dataframe(pd.DataFrame(schedule),hide_index=True,use_container_width=True,height=330)
+        with st.expander('Engineering reinforcement summary',expanded=True):
+            st.dataframe(pd.DataFrame(definition_rows(edited,selected_index),
+                       columns=['Definition','Value']),hide_index=True,use_container_width=True)
         if schedule:
             mincover=min(row[key] for row in schedule for key in
                     ('Cover left [mm]','Cover right [mm]','Cover bottom [mm]','Cover top [mm]'))
@@ -176,7 +166,7 @@ up_to_date=bool(record and record['fingerprint']==current_fp)
 st.divider()
 actions_col,download_col=st.columns([1,2])
 with actions_col:
-    if st.button('Calculate section',type='primary',use_container_width=True):
+    if st.button('Calculate section',type='primary',use_container_width=True,disabled=bool(layout_errors)):
         try:
             result=execute(edited)
             st.session_state['last_run']={'inputs':deepcopy(edited),'result':result,'fingerprint':current_fp}
@@ -192,7 +182,9 @@ with download_col:
 
 record=st.session_state.get('last_run')
 up_to_date=bool(record and record['fingerprint']==current_fp)
-if not up_to_date:
+if layout_errors:
+    st.error('Calculation disabled: correct the reinforcement definition(s) above.')
+elif not up_to_date:
     st.info('The section drawing is live. Press **Calculate section** to refresh results and printable reports after editing inputs.')
 else:
     data=record['inputs']; result=record['result']
