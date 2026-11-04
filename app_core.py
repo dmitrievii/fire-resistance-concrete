@@ -1,7 +1,7 @@
 """Pure backend for a session-isolated Streamlit front end.
 
-No global mutable state. The reference Word template is supplied by the user per
-request and is never written to the source repository or shared cache.
+No global mutable state. A sanitized reference master is bundled with the app.
+User templates are accepted only when their hashes match approved masters.
 """
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ from reinforcement_layout import infer_perimeter, active_definition
 ROOT = Path(__file__).resolve().parent
 SCHEMA_LEGACY = 'k18-independent-engine-v1'
 SCHEMA_PARAMETRIC = 'k18-parametric-r04'
+CLEAN_MASTER_SHA256 = '12b2a9b290ea8ef6652a048c3aab09f6685b44fb955ad2985a8538fad15bcb5a'
+CLEAN_MASTER_PATH = ROOT / 'templates' / 'RC_Fire_Report_Master.docx'
 
 
 def load_example(mode: str = 'k18') -> dict:
@@ -160,20 +162,31 @@ def summary_rows(result: dict) -> list[dict]:
     return rows
 
 
+def default_template_bytes() -> bytes:
+    """Load the published sanitized reference master, fail-closed on mutation."""
+    try:
+        content = CLEAN_MASTER_PATH.read_bytes()
+    except OSError as exc:
+        raise ModelError('Default Word master is missing from the deployment') from exc
+    if sha256(content).hexdigest() != CLEAN_MASTER_SHA256:
+        raise ModelError('Default Word master failed SHA-256 integrity verification')
+    return content
+
+
 def _assert_reference_template(template_bytes: bytes) -> None:
     if len(template_bytes) > 12 * 1024 * 1024:
         raise ModelError('Template is too large (12 MB limit)')
     baseline = json.loads((ROOT / 'data_baseline.json').read_text(encoding='utf-8'))
-    if sha256(template_bytes).hexdigest() != baseline['template_sha256']:
-        raise ModelError('This is not the original approved K18 template. Upload the exact Пример.docx from the R0.4 package.')
+    digest = sha256(template_bytes).hexdigest()
+    if digest not in (CLEAN_MASTER_SHA256, baseline['template_sha256']):
+        raise ModelError('Only the bundled sanitized K18 master or exact original K18 master are supported.')
 
 
-def generate_docx(payload: dict, results: dict, template_bytes: bytes) -> tuple[bytes, dict]:
-    """Generate a report using only temporary per-call files.
-
-    Caller must provide the original exact template; both paths never persist.
-    """
+def generate_docx(payload: dict, results: dict, template_bytes: bytes | None = None) -> tuple[bytes, dict]:
+    """Generate report with a verified master, using isolated temporary files."""
     validate_json_payload(payload)
+    if template_bytes is None:
+        template_bytes = default_template_bytes()
     _assert_reference_template(template_bytes)
     with tempfile.TemporaryDirectory(prefix='k18_report_') as td:
         folder = Path(td)
@@ -191,8 +204,13 @@ def generate_docx(payload: dict, results: dict, template_bytes: bytes) -> tuple[
                     else Inputs.from_dict(_legacy_from_parametric(payload)))
             base = json.loads((ROOT / 'data_baseline.json').read_text(encoding='utf-8'))
             report_payload, audit = build_payload(spec, results, base)
+            # Binding locations unchanged; client details have been sanitized.
+            report_payload['template_sha256'] = sha256(template_bytes).hexdigest()
             insert_values(template, report_payload, target)
             audit['mode'] = 'reference-K18'
+        audit['template_source'] = ('bundled-sanitized-master'
+            if sha256(template_bytes).hexdigest()==CLEAN_MASTER_SHA256
+            else 'explicit-original-master')
         result_bytes = target.read_bytes()
     return result_bytes, audit
 

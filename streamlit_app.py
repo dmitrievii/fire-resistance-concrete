@@ -2,7 +2,7 @@
 
 Always presents editable parametric inputs, starting from the original K18
 example. Solver provenance is selected automatically; it is never a user mode.
-The original client Word master is session-uploaded, not published on GitHub.
+A sanitized Word master is bundled; a user may optionally override it with an approved master.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from calculation_engine import ModelError
 from app_core import (SCHEMA_PARAMETRIC, SCHEMA_LEGACY, load_example,
                       legacy_to_parametric, validate_json_payload,
                       execute, summary_rows, bars_table, parse_bars_table,
-                      with_variant_count, generate_docx, compact_json_bytes, input_fingerprint)
+                      with_variant_count, generate_docx, default_template_bytes, compact_json_bytes, input_fingerprint)
 from section_drawing import dimensioned_figure, bar_schedule, steel_legend
 from reinforcement_layout import definition_rows
 from reinforcement_panel import render_reinforcement
@@ -87,7 +87,7 @@ with st.sidebar:
         try:replace_input(with_variant_count(base,int(count)))
         except ModelError as exc:st.error(str(exc))
     st.divider()
-    st.caption('The reference report template is not stored in this public repository. Upload it only when generating Word.')
+    st.caption('The sanitized Word master is bundled. No upload is needed for DOCX reports.')
 
 if st.session_state.get('startup_error'):
     st.warning(st.session_state.pop('startup_error'))
@@ -205,29 +205,29 @@ else:
                   help='Open the HTML in a browser and use its Print / Save as PDF command.')
     st.caption('The printable HTML includes actual section dimensions, reinforcement layout, bar schedule and computed values. No Word template is required.')
 
-    st.subheader('5 · Original-layout Word report')
-    st.caption('To retain the engineering frame and stamp, upload the original `Пример.docx` for this session. It is not stored in GitHub.')
-    template=st.file_uploader('Original Word master',type=['docx'],key='template_upload')
-    if template is not None:
-        content=template.getvalue()
-        signature=sha256(compact_json_bytes(data)+content).hexdigest()
-        if st.button('Generate Word report',type='primary'):
-            try:
-                docx,audit=generate_docx(data,result,content)
-                st.session_state['docx']={'signature':signature,'content':docx,
-                    'audit':audit,'name':'K18_Reference_Report.docx' if reference else 'RC_Parametric_Diagnostic.docx'}
-            except (ModelError,ValueError,KeyError,TypeError,AssertionError,RuntimeError) as exc:
-                st.session_state['docx']=None
-                st.error(f'Report generation rejected: {exc}')
-        docx_record=st.session_state.get('docx')
-        if docx_record and docx_record['signature']==signature:
-            st.download_button('Download DOCX',data=docx_record['content'],
-                    file_name=docx_record['name'],
-                    mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-            with st.expander('Report audit'):
-                st.json(docx_record['audit'])
-        if not reference:
-            st.caption('The report for altered layouts is a separate diagnostic document. The initial 32-page normative prose is not suitable for all geometries.')
+    st.subheader('5 · Word report with engineering frame and stamp')
+    st.caption('The sanitized master template is loaded automatically. Uploading a Word file is optional and accepts only verified K18 masters.')
+    with st.expander('Advanced · Optional original Word master'):
+        template=st.file_uploader('Override master (optional)',type=['docx'],key='template_upload')
+    content = template.getvalue() if template is not None else None
+    signature = sha256(compact_json_bytes(data)+(content or default_template_bytes())).hexdigest()
+    if st.button('Generate Word report',type='primary'):
+        try:
+            docx,audit=generate_docx(data,result,content)
+            st.session_state['docx']={'signature':signature,'content':docx,
+                'audit':audit,'name':'K18_Reference_Report.docx' if reference else 'RC_Parametric_Diagnostic.docx'}
+        except (ModelError,ValueError,KeyError,TypeError,AssertionError,RuntimeError) as exc:
+            st.session_state['docx']=None
+            st.error(f'Report generation rejected: {exc}')
+    docx_record=st.session_state.get('docx')
+    if docx_record and docx_record['signature']==signature:
+        st.download_button('Download DOCX',data=docx_record['content'],
+                file_name=docx_record['name'],
+                mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        with st.expander('Report audit'):
+            st.json(docx_record['audit'])
+    if not reference:
+        st.caption('Modified layouts generate an experimental diagnostic document; the original R90 prose is not applicable to arbitrary geometry.')
 
 st.divider()
 st.caption('One parameterized interface. Exact K18 data are displayed by default; modified physical models are labelled experimental. No normative R90 certification is implied.')

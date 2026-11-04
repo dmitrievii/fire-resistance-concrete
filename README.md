@@ -54,3 +54,12 @@ Under **3 · Reinforcement layout**, every reinforcement variant can use:
 - **Custom coordinates**: advanced per-bar ID, x, y, Ø editor for nonuniform and irregular reinforcement.
 
 All distances are in millimetres. **Edge-to-bar-centre is not concrete clear cover**: clear cover = edge-to-centre − Ø/2. The UI shows both, as well as total steel area and true-scale dimensions. Changing the section size regenerates valid perimeter bars immediately. Invalid cover, overlap, spacing or bar counts are blocked rather than silently clamped. Both the printable HTML and the experimental DOCX diagnostic now include the engineering reinforcement definition. The unchanged K18 case still exports the identical 32-page reference DOCX when the approved master is uploaded.
+
+
+## R0.8 — Default sanitized engineering report
+
+The public repository includes `templates/RC_Fire_Report_Master.docx` (sanitized copy of `Пример.docx`). Its engineering frame, stamp structure, tables, equation objects, reinforcement drawings, and 32-page format are preserved. Client/contract identifiers, project-specific drawing reference and author metadata have been removed, with neutral `RC-DEMO` stamp code. This demo master is intended as a template, **not** an issued client-certified engineering report. The specific K18 engineering example remains visible in the body.
+
+Under **5 · Word report**, select **Generate Word report** without uploading anything; the app loads the bundled master. The advanced override accepts only the SHA-256-verified sanitized or original K18 document. Missing or modified templates fail closed. K18 calculation reproduction and experimental parametric report generation remain separate calculation provenance internally.
+
+The sanitized master SHA-256 is `12b2a9b290ea8ef6652a048c3aab09f6685b44fb955ad2985a8538fad15bcb5a`.
