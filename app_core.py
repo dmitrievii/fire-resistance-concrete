@@ -24,9 +24,84 @@ SCHEMA_LEGACY = 'k18-independent-engine-v1'
 SCHEMA_PARAMETRIC = 'k18-parametric-r04'
 
 
-def load_example(mode: str) -> dict:
+def load_example(mode: str = 'k18') -> dict:
+    """One parametric input schema. K18 is the default, not a separate UI mode.
+
+    Kept `legacy`/`parametric` aliases for existing regression tests and imports.
+    """
+    if mode in ('k18', 'default'):
+        return legacy_to_parametric(json.loads((ROOT / 'examples' / 'sample_input.json').read_text(encoding='utf-8')))
     file_name = 'sample_input.json' if mode == 'legacy' else 'parametric_720x500.json'
     return json.loads((ROOT / 'examples' / file_name).read_text(encoding='utf-8'))
+
+
+def legacy_to_parametric(old: dict) -> dict:
+    """Convert an original K18 input into editable bars, without changing loads.
+
+    Only the reference K18 geometry/cover can be assumed; these bars are the
+    eight distinct perimeter positions in drawing 9–9 (3 per exterior face).
+    """
+    Inputs.from_dict(old)
+    g=old['geometry'];b=float(g['b_m']);h=float(g['h_m'])
+    cx=float(g['c_x_m']);cy=float(g['c_y_m'])
+    coords=[(cx,cy),(b/2,cy),(b-cx,cy),(cx,h/2),(b-cx,h/2),
+            (cx,h-cy),(b/2,h-cy),(b-cx,h-cy)]
+    return {
+      'schema':SCHEMA_PARAMETRIC,
+      'geometry':{'b_m':b,'h_m':h,'length_m':float(g['length_m'])},
+      'material':{key:float(old['material'][key]) for key in ('f_ck_MPa','E_cm_GPa','f_y_MPa','E_s_GPa')},
+      'fire':{'minutes':old['fire']['minutes'], 'exposed_faces':['left','right','bottom','top'],
+              'a_red_m2_h':old['fire']['a_red_m2_h'],'phi_1':old['fire']['phi_1'],
+              'phi_2':old['fire']['phi_2'],
+              'critical_concrete_C':old['fire']['concrete_critical_C']},
+      'mechanics':{'mu_x':old['mechanics']['mu_x'],'mu_y':old['mechanics']['mu_y']},
+      'variants':[{ 'id':v['id'],'N_kN':v['N_kN'],'M_x_kNm':v['M_x_kNm'],
+        'M_y_kNm':v['M_y_kNm'],
+        'bars':[{'id':str(i+1),'x_m':x,'y_m':y,
+                 'diameter_mm':v['bar_diameter_mm']} for i,(x,y) in enumerate(coords)]}
+        for v in old['variants']]
+    }
+
+
+def reference_compatible(payload: dict) -> bool:
+    """Exact geometric/method applicability gate; loads may vary within bounds.
+
+    A modified input must never inherit static Mathcad numerical results.
+    """
+    if payload.get('schema')!=SCHEMA_PARAMETRIC:
+        return False
+    ref=load_example('k18')
+    def near(a,b):
+        return math.isfinite(float(a)) and abs(float(a)-float(b)) <= 1e-9
+    for group in ('geometry','material','mechanics'):
+        if any(not near(payload[group].get(k,float('nan')),v) for k,v in ref[group].items()):
+            return False
+    for k,v in ref['fire'].items():
+        if k=='exposed_faces':
+            if payload['fire'].get(k)!=v:return False
+        elif not near(payload['fire'].get(k,float('nan')),v):return False
+    if len(payload.get('variants',[]))!=2:return False
+    for current,baseline in zip(payload['variants'],ref['variants']):
+        if current.get('id')!=baseline['id']:return False
+        if not near(current.get('M_y_kNm',float('nan')),0) or current.get('M_x_kNm',-1)<0:return False
+        if len(current.get('bars',[]))!=len(baseline['bars']):return False
+        actual=sorted((round(float(b['x_m']),9),round(float(b['y_m']),9),
+                       round(float(b['diameter_mm']),9)) for b in current['bars'])
+        expected=sorted((round(float(b['x_m']),9),round(float(b['y_m']),9),
+                         round(float(b['diameter_mm']),9)) for b in baseline['bars'])
+        if actual!=expected:return False
+    return True
+
+
+def _legacy_from_parametric(payload: dict) -> dict:
+    if not reference_compatible(payload):
+        raise ModelError('K18 reference calculations require the exact K18 section and steel pattern')
+    old=load_example('legacy')
+    for v in old['variants']:
+        p=next(x for x in payload['variants'] if x['id']==v['id'])
+        for key in ('N_kN','M_x_kNm','M_y_kNm'):
+            v[key]=float(p[key])
+    return old
 
 
 def validate_json_payload(payload: Any) -> dict:
@@ -46,8 +121,15 @@ def execute(payload: dict) -> dict:
     validate_json_payload(payload)
     if payload['schema'] == SCHEMA_LEGACY:
         result = compute(Inputs.from_dict(payload))
+    elif reference_compatible(payload):
+        # An internal solver choice, never a second user-facing mode.
+        result = compute(Inputs.from_dict(_legacy_from_parametric(payload)))
+        result['method_label']='K18 Mathcad-reproducing calculation'
+        result['source_note']='K18 v2 compared against XMCD; v1 compared against the original report.'
     else:
         result = compute_general(GeneralInput.from_dict(payload))
+        result['method_label']='Experimental parametric fiber-section calculation'
+        result['source_note']='Not a Mathcad result; no normative biaxial fire verification.'
     try:
         json.dumps(result, allow_nan=False)
     except (ValueError, TypeError) as exc:
@@ -92,14 +174,15 @@ def generate_docx(payload: dict, results: dict, template_bytes: bytes) -> tuple[
         template = folder / 'reference.docx'
         target = folder / 'report.docx'
         template.write_bytes(template_bytes)
-        if payload['schema'] == SCHEMA_PARAMETRIC:
+        if results.get('engine') == 'k18-parametric-experimental':
             audit = create_report(template, payload, results, target)
             if not audit['footer_parts_unchanged']:
                 raise ModelError('Template footer integrity check failed')
             audit['mode'] = 'experimental-parametric'
             audit['certifies_fire_resistance'] = False
         else:
-            spec = Inputs.from_dict(payload)
+            spec = (Inputs.from_dict(payload) if payload['schema']==SCHEMA_LEGACY
+                    else Inputs.from_dict(_legacy_from_parametric(payload)))
             base = json.loads((ROOT / 'data_baseline.json').read_text(encoding='utf-8'))
             report_payload, audit = build_payload(spec, results, base)
             insert_values(template, report_payload, target)
@@ -149,3 +232,20 @@ def with_variant_count(payload: dict, count: int) -> dict:
         out['variants'].append(v)
     out['variants'] = out['variants'][:count]
     return out
+
+
+def input_fingerprint(payload:dict)->str:
+    """Stable session fingerprint: numerically equal 90 and 90.0 are identical.
+
+    Streamlit number_input returns floats even when the example uses JSON ints.
+    Without normalization the initial K18 results would incorrectly appear stale.
+    """
+    def norm(x):
+        if isinstance(x,bool):return x
+        if isinstance(x,(int,float)):
+            return round(float(x),12)
+        if isinstance(x,dict):return {k:norm(v) for k,v in x.items()}
+        if isinstance(x,list):return [norm(v) for v in x]
+        return x
+    return sha256(json.dumps(norm(payload),ensure_ascii=False,sort_keys=True,
+                          separators=(',',':'),allow_nan=False).encode('utf-8')).hexdigest()

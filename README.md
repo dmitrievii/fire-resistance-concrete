@@ -1,45 +1,44 @@
-# RC fire calculator — K18 R0.4 Streamlit prototype
+# Fire Resistance Concrete — Unified Rectangular Section R0.6
 
-A **web UI for the already implemented Python K18 calculation engines**. This is not a new fire design standard.
+**One Streamlit workspace; one parametric input schema.** The app starts immediately with the original K18 (600 × 600 mm, 13.7 m, two reinforcement variants Ø20 / Ø25, four-sided R90) and **shows calculated reference results without pressing Calculate**.
 
-## Modes
+[Live Streamlit app](https://fire-resistance-concrete.streamlit.app/) · [GitHub](https://github.com/dmitrievii/fire-resistance-concrete)
 
-- **Reference K18:** reproduces the known two-variant calculations from the supplied Mathcad worksheet; provides the **original 32-page K18 Word report** only for compatible inputs. Reference geometry and wording are intentionally fixed.
-- **Parametric RC:** supports rectangular cross sections, 4–64 bars per variant, 1–12 variants, fire exposure on all four sides, temperature and approximate one-axis mechanical diagnostics. It outputs a **separate experimental DOCX** with the original frame and stamp. It does **not** certify R90, does not verify biaxial N–Mx–My interaction, and has not undergone normative model validation.
+## What the engineer sees
 
-## Quick start
+- Editable dimensions, length, materials, fire duration, effective-length factors, `N`, `Mx`, `My` and individual reinforcement bars.
+- **Live interactive Plotly section** with true-scale bar circles, overall dimensions, optional spacing chains, per-bar `x / y / Ø` labels, clear face cover and temperature on hover (after calculation).
+- Immediate **K18 numerical baseline**, with both variants displayed in the same results table. On changes, an explicit Calculate action updates the result and exported reports; the drawing updates live even before recalculation.
+- A printable, self-contained HTML report with section diagrams, loads, reinforcement schedule and computed results: open the file in a browser and select **Print / Save as PDF**.
+- Downloadable calculation JSON and editable input JSON.
+- Optional original-layout Word report, when the exact original `Пример.docx` is uploaded in the session. K18 geometry + supported actions produce the 32-page original layout; changed reinforcement/geometry produces a clearly marked *diagnostic* report with the original frame and stamp.
+
+## Why calculations may differ from the old K18 report
+
+There is **one interface**, but an internal applicability gate protects the original report:
+
+1. **Exact K18 pattern** (geometry, 8 bar locations per variant, Ø20/Ø25, material, 90-minute fire and original effective lengths) uses the independent Mathcad-reproducing Python solver. Its v2 is compared with the provided `.xmcd`, and v1 follows the supplied reference report. Load changes are recalculated with the same method if the fixed report can represent them.
+2. **Modified dimensions, bar positions/diameters or material/fire conditions** trigger an **experimental numerical fiber-section solver**. Results are not the original Mathcad calculation, and the single-axis checks **do not certify** biaxial fire-resistance or R90.
+
+Never substitute experimental results into the original 32-page normative prose without explicitly updating that prose. The original client template and Mathcad file are not committed to the public repository.
+
+## Run locally
 
 ```bash
 python -m pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-Enter geometry and materials in the first tab, axial force and bending moments in the second, and individual bar coordinates and diameters in the third. Press **Calculate**. JSON can be downloaded immediately. For DOCX upload the exact original `Пример.docx` from the R0.4 package; this file is never part of this clean source distribution.
+On Streamlit Community Cloud use repository `dmitrievii/fire-resistance-concrete`, branch `main`, main file `streamlit_app.py`.
 
-## Deploy on Streamlit Community Cloud
-
-1. Create **a separate repository** (suggested: `rc-fire-report-generator`, preferably private during development). Do not use the existing steel `fire-resistance-calculator` repository.
-2. Upload the **contents of this folder**. Do not commit `master.docx`, `source_k18.xmcd`, reports, client/project records, or licensed standards.
-3. Open [share.streamlit.io](https://share.streamlit.io) and connect GitHub, permitting private-repository access if needed.
-4. Choose the new repository, branch `main`, entrypoint **`streamlit_app.py`**, Python 3.12.
-5. Deploy. Community Cloud installs Python dependencies from `requirements.txt`. The app exports DOCX and JSON; PDF can be converted locally in a trusted Word installation.
-
-## Verification
+## Tests
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Runtime generation requires an exact SHA-256 match to the original reference template, checked at runtime. Generated DOCX files are held only in temporary directories, returned as bytes, and destroyed when generation finishes. Streamlit may retain results in per-session memory until the user disconnects. No backend upload, file persistence or user authentication is implemented in this MVP; **do not treat Streamlit Community Cloud as a confidential engineering file vault**.
+The CI suite checks K18 numerical continuity, automatic solver switching, dimension/diameter drawing data, printed summaries, runtime input normalization, and the Streamlit first-run session. With the approved template present locally, it also checks byte-exact reproduction of the reference Word master.
 
-## Structure
+## Security and limits
 
-- `streamlit_app.py` — presentation and user input
-- `app_core.py` — pure input validation, calculation routing, report generation
-- `calculation_engine.py` — original Mathcad K18 reproduction
-- `parametric_engine.py` — experimental rectangular fiber solver
-- `report_adapter.py`, `word_patch.py`, `parametric_report.py` — Word report internals
-- `examples/` — technical input examples in JSON only
-- `tests/` — smoke/regression tests
-
-Original formulas, field applicability, and compliance limitations are the same as the source R0.4 package.
+The client’s `Пример.docx`, Mathcad `.xmcd`, licensed standards and sensitive data **must not** be committed to the public repository. Uploaded Word templates are retained only in temporary session/processing memory and deleted after report generation; public Community Cloud is not a confidential file vault. The general model remains experimental; there is no verified full biaxial N–Mx–My interaction, spalling or normative certification.
