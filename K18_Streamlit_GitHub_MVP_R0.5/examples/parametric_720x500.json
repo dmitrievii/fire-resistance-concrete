@@ -1,0 +1,145 @@
+{
+  "schema": "k18-parametric-r04",
+  "geometry": {
+    "b_m": 0.72,
+    "h_m": 0.5,
+    "length_m": 9.5
+  },
+  "material": {
+    "f_ck_MPa": 30,
+    "E_cm_GPa": 29,
+    "f_y_MPa": 500,
+    "E_s_GPa": 200
+  },
+  "fire": {
+    "minutes": 90,
+    "exposed_faces": [
+      "left",
+      "right",
+      "bottom",
+      "top"
+    ],
+    "a_red_m2_h": 0.00133,
+    "phi_1": 0.63,
+    "phi_2": 0.5,
+    "critical_concrete_C": 500
+  },
+  "mechanics": {
+    "mu_x": 0.8,
+    "mu_y": 1.2
+  },
+  "variants": [
+    {
+      "id": "v1",
+      "N_kN": 460,
+      "M_x_kNm": 7.2,
+      "M_y_kNm": 1.8,
+      "bars": [
+        {
+          "id": "1",
+          "x_m": 0.06,
+          "y_m": 0.041667,
+          "diameter_mm": 25
+        },
+        {
+          "id": "2",
+          "x_m": 0.36,
+          "y_m": 0.041667,
+          "diameter_mm": 20
+        },
+        {
+          "id": "3",
+          "x_m": 0.66,
+          "y_m": 0.041667,
+          "diameter_mm": 25
+        },
+        {
+          "id": "4",
+          "x_m": 0.06,
+          "y_m": 0.25,
+          "diameter_mm": 25
+        },
+        {
+          "id": "5",
+          "x_m": 0.66,
+          "y_m": 0.25,
+          "diameter_mm": 20
+        },
+        {
+          "id": "6",
+          "x_m": 0.06,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        },
+        {
+          "id": "7",
+          "x_m": 0.36,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        },
+        {
+          "id": "8",
+          "x_m": 0.66,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "N_kN": 515,
+      "M_x_kNm": 9.4,
+      "M_y_kNm": 3.5,
+      "bars": [
+        {
+          "id": "1",
+          "x_m": 0.06,
+          "y_m": 0.041667,
+          "diameter_mm": 25
+        },
+        {
+          "id": "2",
+          "x_m": 0.36,
+          "y_m": 0.041667,
+          "diameter_mm": 20
+        },
+        {
+          "id": "3",
+          "x_m": 0.66,
+          "y_m": 0.041667,
+          "diameter_mm": 25
+        },
+        {
+          "id": "4",
+          "x_m": 0.06,
+          "y_m": 0.25,
+          "diameter_mm": 25
+        },
+        {
+          "id": "5",
+          "x_m": 0.66,
+          "y_m": 0.25,
+          "diameter_mm": 20
+        },
+        {
+          "id": "6",
+          "x_m": 0.06,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        },
+        {
+          "id": "7",
+          "x_m": 0.36,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        },
+        {
+          "id": "8",
+          "x_m": 0.66,
+          "y_m": 0.458333,
+          "diameter_mm": 25
+        }
+      ]
+    }
+  ]
+}
