@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.docx
+*.pdf
+*.xmcd
+*.xlsm
+*.zip
+*.log
+outputs/
+generated/
+.streamlit/secrets.toml
+!examples/*.json

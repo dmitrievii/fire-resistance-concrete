@@ -1,0 +1,21 @@
+name: Python calculation and report contract
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile web entrypoint
+        run: python -m compileall -q streamlit_app.py app_core.py
+      - name: Run independent core and validator tests
+        run: python -m unittest discover -s tests -v
