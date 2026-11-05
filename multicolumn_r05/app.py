@@ -16,6 +16,7 @@ from multicolumn_r05.project_model import (new_project,set_count,update_column,u
     export_json,load_json,load_state,CONCRETE)
 from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
+from multicolumn_r05.section_preview import make_section_figure
 
 st.set_page_config(page_title='Огнестойкость ЖБ колонн',page_icon='🏗️',layout='wide')
 
@@ -205,6 +206,20 @@ def column_page(cid):
         st.text_input('Марка арматуры (фиксирована для R0.5)',value=c['steel_grade'],disabled=True)
         st.caption('Температурные коэффициенты ядра относятся к S500.')
     st.subheader('Схема арматуры')
+    drawing_left,drawing_right=st.columns(2)
+    with drawing_left:
+        show_dimensions=st.checkbox('Показывать размерные цепочки',
+            value=True,key=f'{cid}_drawing_dimensions')
+    with drawing_right:
+        show_labels=st.checkbox('Номера и диаметры стержней',
+            value=True,key=f'{cid}_drawing_labels')
+    section_figure=make_section_figure(c,calculations.get(cid),
+        show_dimensions=show_dimensions,show_ids=show_labels)
+    st.plotly_chart(section_figure,use_container_width=True,
+        key=f'{cid}_interactive_section')
+    st.caption('Масштабная интерактивная схема: окружности соответствуют реальным диаметрам; '
+               'при наведении показаны координаты, расстояния до граней и температуры '
+               '(если расчёт выполнен). Изменения в таблице или обзоре сразу обновляют схему.')
     st.caption('В автоматическом режиме 8 стержней располагаются по периметру. При ручном вводе координаты индивидуальны и сохраняются при изменении размеров сечения.')
     st.write('Режим:', 'автоматическое расположение' if c['bar_mode']=='perimeter8' else 'ручные координаты')
     bars=pd.DataFrame(c['bars'])
