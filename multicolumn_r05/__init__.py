@@ -1,0 +1,1 @@
+"""R0.5 multicolumn RC fire diagnostic application. Not fire certification."""
