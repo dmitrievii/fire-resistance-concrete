@@ -31,6 +31,7 @@ def new_column(idx):
        'sections':[{'id':'bottom','name':'Низ','z_m':0.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
                    {'id':'top','name':'Верх','z_m':3.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
+    c['spalling']={}  # No assumed porosity/humidity/toughness defaults
     return c
 
 
@@ -91,6 +92,25 @@ def update_section(project,cid,sid,fields):
     project['revision']+=1
 
 
+def update_spalling(project,cid,fields):
+    """Edit Annex-K index coefficients. Missing data must stay missing."""
+    from multicolumn_r05.r056_engine import SPALLING_FIELDS
+    col=get_column(project,cid)
+    current=dict(col.get('spalling') or {})
+    for k,v in fields.items():
+        if k not in SPALLING_FIELDS:
+            raise ValueError('Неизвестный параметр F: '+str(k))
+        if v is None or (isinstance(v,str) and not v.strip()):
+            current.pop(k,None)
+        else:
+            x=float(v)
+            if not math.isfinite(x) or x<=0:
+                raise ValueError(k+': требуется положительное конечное число')
+            current[k]=x
+    col['spalling']=current
+    project['revision']+=1
+
+
 def replace_bars(project,cid,rows):
     col=get_column(project,cid)
     bars=[]
@@ -146,6 +166,20 @@ def validate_column(c):
     if not 1<=c['length_m']<=40:issues.append('Длина: 1–40 м')
     if not (0<c['mu_x']<=2.5 and 0<c['mu_y']<=2.5):issues.append('Коэффициенты μ: (0; 2,5]')
     if c['concrete'] not in CONCRETE:issues.append('Неизвестный класс бетона')
+    if c.get('spalling') is not None:
+        from multicolumn_r05.r056_engine import SPALLING_FIELDS
+        if not isinstance(c['spalling'],dict):
+            issues.append('Параметры F должны быть словарём')
+        else:
+            for key,value in c['spalling'].items():
+                if key not in SPALLING_FIELDS:
+                    issues.append('Неизвестный параметр оценки F: '+str(key))
+                elif value is not None:
+                    try:
+                        f=float(value)
+                        if not math.isfinite(f) or f<=0:raise ValueError()
+                    except (TypeError,ValueError):issues.append('Неправильный параметр F: '+key)
+
     if c.get('steel_grade')!='S500' or float(c.get('f_y_MPa',0))!=500.0:
         issues.append('R0.5 допускает только сталь S500 с f_y=500 МПа; для иных марок требуется калибровка температурных характеристик')
     if not(0<c['fire_minutes']<=240):issues.append('Продолжительность пожара: (0;240] мин')

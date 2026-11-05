@@ -21,6 +21,7 @@ from multicolumn_r05.parametric_report import (_prune_document,add_heading,add_t
     omml_subscript,_figure,restore_exact_original_footer,verify_footer_unchanged,create_report,number)
 from multicolumn_r05.clean_unused import prune_unused_template_assets
 from multicolumn_r05.project_model import CONCRETE,to_engine_input,load_state
+from multicolumn_r05.r056_reporting import add_r056_diagnostics
 from multicolumn_r05.parametric_engine import GeneralInput
 
 HERE=Path(__file__).resolve().parent
@@ -98,6 +99,7 @@ def add_column(doc,c,calc):
         for note in calc['issues']:add_text(doc,'Диагностика: '+str(note))
     if not calc['results']:
         add_text(doc,'РАСЧЁТ НЕ ВЫПОЛНЕН: отсутствуют полные усилия по расчётным сечениям либо исходные данные некорректны. Заключение об огнестойкости не формируется.',bold=True)
+        add_r056_diagnostics(doc,c,calc)
         return
     add_heading(doc,'Температурные и расчётные результаты',2)
     add_equation(doc,'', [omml_subscript('M','Ed'), ' / ',omml_subscript('M','Rd'),
@@ -121,6 +123,7 @@ def add_column(doc,c,calc):
             add_table(doc,['Ст.','T, °C','k(T)','β(T)'],[
                 (b['id'],number(b['temperature_C'],1),number(b['k'],3),number(b['beta'],3))
                 for b in v['bars']])
+    add_r056_diagnostics(doc,c,calc)
     if calc['worst']:
         x=calc['worst']
         add_text(doc,f"Максимальный диагностический u = {number(x['u'],3)}, "
@@ -136,7 +139,12 @@ def single_report(c,calc,target,template=MASTER):
         if result is None:
             from multicolumn_r05.parametric_engine import compute_general
             result=compute_general(GeneralInput.from_dict(inp))
-        return create_report(template,inp,result,target)
+        legacy_audit=create_report(template,inp,result,target)
+        doc=Document(target)
+        doc.add_page_break()
+        add_r056_diagnostics(doc,c,calc)
+        finish(doc,target,template)
+        return legacy_audit
     doc=init_master(template)
     add_heading(doc,'РАСЧЁТНЫЙ ОТЧЁТ — ЧЕРНОВИК',1)
     add_column(doc,c,calc)
