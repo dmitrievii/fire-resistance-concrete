@@ -54,6 +54,26 @@ class StreamlitAppTests(unittest.TestCase):
         self.assertFalse(app.error, f'Cloud compatibility path reported an error: {list(app.error)}')
         self.assertTrue(any('Обзор проекта' in x.value for x in app.title))
 
+    def test_cloud_legacy_entrypoint_refreshes_stale_r056_project_model(self):
+        """A hot-reloaded Cloud process must not use pre-R0.5.6 model code."""
+        import sys
+        import multicolumn_r05.project_model as model
+        original = model.update_spalling
+        delattr(model, "update_spalling")
+        try:
+            entrypoint = (Path(__file__).resolve().parents[1] /
+                          "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_app.py")
+            app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
+            self.assertFalse(app.exception, f"Stale R0.5.6 import: {list(app.exception)}")
+            self.assertFalse(app.error, f"Stale R0.5.6 UI: {list(app.error)}")
+            restored = sys.modules.get("multicolumn_r05.project_model")
+            self.assertIsNotNone(restored)
+            self.assertTrue(callable(getattr(restored, "update_spalling", None)))
+            self.assertTrue(any("Обзор проекта" in x.value for x in app.title))
+        finally:
+            if not hasattr(model, "update_spalling"):
+                model.update_spalling = original
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core
