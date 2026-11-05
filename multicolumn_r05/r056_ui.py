@@ -1,5 +1,7 @@
 """Streamlit R0.5.6 panels: user-input spalling, member and biaxial diagnostics."""
 from __future__ import annotations
+
+R056_SP468_RELEASE = "r056-sp468-20261105-hotfix1"
 import pandas as pd
 from multicolumn_r05.r056_engine import SPALLING_FIELDS, SPALLING_UNITS
 from multicolumn_r05.project_model import update_spalling

@@ -264,7 +264,7 @@ with st.sidebar:
     choices=['Обзор проекта']+[c['id'] for c in project['columns']]
     selected=st.radio('Разделы',choices,format_func=lambda x:'Обзор проекта' if x=='Обзор проекта' else get_column(project,x)['name'])
     st.divider()
-    st.caption('R0.5 · диагностика по исходной тепловой модели К18')
+    st.caption('R0.5.6 · СП 468 (таблицы 9.1–9.6) · сборка 2026-11-05')
 
 with st.spinner('Расчёт введённых усилий'):
     calculations=evaluate_project(project,grid=48)

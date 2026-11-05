@@ -10,20 +10,35 @@ import runpy
 import sys
 
 _ROOT = Path(__file__).resolve().parent
-_MODEL_NAME = "multicolumn_r05.project_model"
-_CACHED_MODEL = sys.modules.get(_MODEL_NAME)
-if _CACHED_MODEL is not None:
-    _actual = getattr(_CACHED_MODEL, "__file__", None)
-    _expected = (_ROOT / "multicolumn_r05" / "project_model.py").resolve()
-    _missing_r056 = not callable(getattr(_CACHED_MODEL, "update_spalling", None))
-    _wrong_path = not _actual or Path(_actual).resolve() != _expected
-    if _missing_r056 or _wrong_path:
-        # Reload the *whole* internal package: its modules share references
-        # to model types/functions and must not be mixed across releases.
-        for _name in list(sys.modules):
-            if _name == "multicolumn_r05" or _name.startswith("multicolumn_r05."):
-                sys.modules.pop(_name, None)
-        importlib.invalidate_caches()
+# Release stamp guarantees dependent modules are from the same deployed
+# source. This also detects old r056_ui.py after Streamlit Cloud hot reload.
+_SP468_RELEASE = "r056-sp468-20261105-hotfix1"
+_PACKAGE = "multicolumn_r05"
+_EXPECTED_MODULES = ("r056_ui", "r056_engine", "sp468")
+_stale = False
+
+_cached_model = sys.modules.get(_PACKAGE + ".project_model")
+if _cached_model is not None:
+    _actual = getattr(_cached_model, "__file__", None)
+    _expected = (_ROOT / _PACKAGE / "project_model.py").resolve()
+    _stale |= not callable(getattr(_cached_model, "update_spalling", None))
+    _stale |= not _actual or Path(_actual).resolve() != _expected
+
+for _suffix in _EXPECTED_MODULES:
+    _loaded = sys.modules.get(_PACKAGE + "." + _suffix)
+    if _loaded is None:
+        continue
+    _actual = getattr(_loaded, "__file__", None)
+    _expected = (_ROOT / _PACKAGE / (_suffix + ".py")).resolve()
+    _stale |= not _actual or Path(_actual).resolve() != _expected
+    _stale |= getattr(_loaded, "R056_SP468_RELEASE", None) != _SP468_RELEASE
+
+if _stale:
+    # Never mix a cached old UI/calculation facade with new material tables.
+    for _name in tuple(sys.modules):
+        if _name == _PACKAGE or _name.startswith(_PACKAGE + "."):
+            sys.modules.pop(_name, None)
+    importlib.invalidate_caches()
 
 # run_module, not import_module: rerun the UI on every Streamlit interaction.
 runpy.run_module("multicolumn_r05.app", run_name="__main__")

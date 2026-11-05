@@ -74,6 +74,41 @@ class StreamlitAppTests(unittest.TestCase):
             if not hasattr(model, "update_spalling"):
                 model.update_spalling = original
 
+    def test_cloud_sp468_form_replaces_old_manual_only_fields(self):
+        """Historical Streamlit Cloud entrypoint opens the new SP468 UI."""
+        entrypoint = (Path(__file__).resolve().parents[1] /
+                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+        app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
+        self.assertFalse(app.exception, f'Cloud entrypoint crashed: {list(app.exception)}')
+        page = next(r for r in app.radio if r.label == 'Разделы')
+        page.set_value('c1').run()
+        self.assertFalse(app.exception, f'Column page crashed: {list(app.exception)}')
+        self.assertIn('Метод проверки', [r.label for r in app.radio])
+        method = next(r for r in app.radio if r.label == 'Метод проверки')
+        self.assertEqual(method.value, 'sp468')
+
+    def test_cloud_hot_reload_replaces_old_pre_sp468_ui(self):
+        """A cached pre-SP468 r056_ui must never survive Cloud hot reload."""
+        import sys
+        import multicolumn_r05.r056_ui as old_ui
+        saved = old_ui.R056_SP468_RELEASE
+        delattr(old_ui, 'R056_SP468_RELEASE')
+        try:
+            entrypoint = (Path(__file__).resolve().parents[1] /
+                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+            app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
+            self.assertFalse(app.exception, f'Stale SP468 module: {list(app.exception)}')
+            loaded = sys.modules.get('multicolumn_r05.r056_ui')
+            self.assertIsNotNone(loaded)
+            self.assertEqual(getattr(loaded, 'R056_SP468_RELEASE', None),
+                             'r056-sp468-20261105-hotfix1')
+            page = next(r for r in app.radio if r.label == 'Разделы')
+            page.set_value('c1').run()
+            self.assertFalse(app.exception)
+            self.assertIn('Метод проверки', [r.label for r in app.radio])
+        finally:
+            old_ui.R056_SP468_RELEASE = saved
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core

@@ -9,6 +9,8 @@ All concentrations, porosity and moisture in the equation are volume fractions.
 """
 from __future__ import annotations
 
+R056_SP468_RELEASE = "r056-sp468-20261105-hotfix1"
+
 import math
 from typing import Any
 

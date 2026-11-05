@@ -12,6 +12,8 @@ must state NOT EVALUATED, not PASS.
 """
 from __future__ import annotations
 
+R056_SP468_RELEASE = "r056-sp468-20261105-hotfix1"
+
 import math
 from typing import Any
 import numpy as np
