@@ -52,7 +52,7 @@ class StreamlitAppTests(unittest.TestCase):
         app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
         self.assertFalse(app.exception, f'Cloud compatibility path crashed: {list(app.exception)}')
         self.assertFalse(app.error, f'Cloud compatibility path reported an error: {list(app.error)}')
-        self.assertTrue(any('Calculated results' in x.value for x in app.subheader))
+        self.assertTrue(any('Обзор проекта' in x.value for x in app.title))
 
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
