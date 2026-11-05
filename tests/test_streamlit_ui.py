@@ -10,8 +10,15 @@ except ImportError:
 
 @unittest.skipUnless(AppTest is not None,'Streamlit testing framework unavailable in offline build')
 class StreamlitAppTests(unittest.TestCase):
-    def test_default_session_presents_reference_without_mode_selector(self):
+    def test_r05_multi_column_main_starts_with_overview(self):
         app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'streamlit_app.py'),default_timeout=60).run()
+        self.assertFalse(app.exception, f'R0.5 entrypoint crashed: {list(app.exception)}')
+        self.assertFalse(app.error, f'R0.5 entrypoint error: {list(app.error)}')
+        self.assertEqual(len(app.session_state['project']['columns']), 1)
+        self.assertTrue(any('Обзор проекта' in x.value for x in app.title))
+
+    def test_default_session_presents_reference_without_mode_selector(self):
+        app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'legacy_single_column.py'),default_timeout=60).run()
         self.assertFalse(app.exception, f'Streamlit crashed: {list(app.exception)}')
         self.assertFalse(app.error, f'Streamlit error: {list(app.error)}')
         # The original two-mode radio must not reappear.
@@ -20,7 +27,7 @@ class StreamlitAppTests(unittest.TestCase):
         self.assertTrue(any('Calculated results' in x.value for x in app.subheader))
 
     def test_perimeter_ui_resizes_bars_with_section(self):
-        app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'streamlit_app.py'),default_timeout=60).run()
+        app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'legacy_single_column.py'),default_timeout=60).run()
         self.assertFalse(app.exception, f'Streamlit crashed: {list(app.exception)}')
         labels=[item.label for item in app.number_input]
         self.assertIn('Bars along x (nx)',labels)
