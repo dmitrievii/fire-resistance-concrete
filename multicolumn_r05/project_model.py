@@ -31,7 +31,7 @@ def new_column(idx):
        'sections':[{'id':'bottom','name':'Низ','z_m':0.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
                    {'id':'top','name':'Верх','z_m':3.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
-    c['spalling']={}  # No assumed porosity/humidity/toughness defaults
+    c['spalling']={'method':'sp468'}  # no assumed mix data
     return c
 
 
@@ -93,20 +93,38 @@ def update_section(project,cid,sid,fields):
 
 
 def update_spalling(project,cid,fields):
-    """Edit Annex-K index coefficients. Missing data must stay missing."""
+    """Switch SP468/manual methods; validate source and units without false defaults."""
     from multicolumn_r05.r056_engine import SPALLING_FIELDS
+    from multicolumn_r05.sp468 import INPUT_FIELDS, ENUMS, NUMERIC_RANGES
     col=get_column(project,cid)
     current=dict(col.get('spalling') or {})
+    if 'method' in fields:
+        method=fields['method']
+        if method not in ('sp468','manual_k18'):
+            raise ValueError('Неизвестный метод оценки F')
+        if method != current.get('method'):
+            current={'method':method}  # never mix two methods' coefficients
+    permitted=set(SPALLING_FIELDS)|set(INPUT_FIELDS)|{'method'}
     for k,v in fields.items():
-        if k not in SPALLING_FIELDS:
-            raise ValueError('Неизвестный параметр F: '+str(k))
-        if v is None or (isinstance(v,str) and not v.strip()):
+        if k not in permitted:raise ValueError(f'Неизвестный параметр F: {k}')
+        if k=='method':
+            current[k]=v
+        elif v is None or (isinstance(v,str) and not v.strip()):
             current.pop(k,None)
+        elif k in ENUMS:
+            if v not in ENUMS[k]:raise ValueError(f'{k}: нет в нормативной таблице')
+            current[k]=v
         else:
-            x=float(v)
-            if not math.isfinite(x) or x<=0:
-                raise ValueError(k+': требуется положительное конечное число')
-            current[k]=x
+            try:
+                value=float(v)
+                if not math.isfinite(value) or value<=0:raise ValueError()
+                if k in NUMERIC_RANGES:
+                    a,b=NUMERIC_RANGES[k]
+                    if not a<=value<=b:raise ValueError(f'диапазон {a:g}–{b:g}')
+                if k=='n_p_percent' and not 0<value<=100:raise ValueError('доля пор, %')
+            except (TypeError,ValueError) as ex:
+                raise ValueError(f'{k}: недопустимое значение {v} ({ex})') from ex
+            current[k]=value
     col['spalling']=current
     project['revision']+=1
 
@@ -166,19 +184,25 @@ def validate_column(c):
     if not 1<=c['length_m']<=40:issues.append('Длина: 1–40 м')
     if not (0<c['mu_x']<=2.5 and 0<c['mu_y']<=2.5):issues.append('Коэффициенты μ: (0; 2,5]')
     if c['concrete'] not in CONCRETE:issues.append('Неизвестный класс бетона')
-    if c.get('spalling') is not None:
-        from multicolumn_r05.r056_engine import SPALLING_FIELDS
-        if not isinstance(c['spalling'],dict):
-            issues.append('Параметры F должны быть словарём')
-        else:
-            for key,value in c['spalling'].items():
-                if key not in SPALLING_FIELDS:
-                    issues.append('Неизвестный параметр оценки F: '+str(key))
-                elif value is not None:
-                    try:
-                        f=float(value)
-                        if not math.isfinite(f) or f<=0:raise ValueError()
-                    except (TypeError,ValueError):issues.append('Неправильный параметр F: '+key)
+    from multicolumn_r05.r056_engine import SPALLING_FIELDS
+    from multicolumn_r05.sp468 import INPUT_FIELDS, ENUMS, NUMERIC_RANGES
+    sp=c.get('spalling') or {}
+    if not isinstance(sp,dict):issues.append('Параметры F должны быть объектом')
+    else:
+        permitted=set(SPALLING_FIELDS)|set(INPUT_FIELDS)|{'method'}
+        for key,value in sp.items():
+            if key not in permitted:issues.append('Неизвестный параметр F: '+key)
+            elif key=='method' and value not in ('sp468','manual_k18'):issues.append('Неизвестный метод F')
+            elif value is not None and key in ENUMS and value not in ENUMS[key]:issues.append('Нет нормативной таблицы для '+key)
+            elif key not in ENUMS and key!='method' and value is not None:
+                try:
+                    x=float(value)
+                    if not math.isfinite(x) or x<=0:raise ValueError()
+                    if key in NUMERIC_RANGES:
+                        lower,upper=NUMERIC_RANGES[key]
+                        if not lower<=x<=upper:raise ValueError()
+                    if key=='n_p_percent' and not 0<x<=100:raise ValueError()
+                except (ValueError,TypeError):issues.append('Некорректный параметр F: '+key)
 
     if c.get('steel_grade')!='S500' or float(c.get('f_y_MPa',0))!=500.0:
         issues.append('R0.5 допускает только сталь S500 с f_y=500 МПа; для иных марок требуется калибровка температурных характеристик')
@@ -194,7 +218,7 @@ def validate_column(c):
             xx=float(x['x_mm']);yy=float(x['y_mm']); d=float(x['diameter_mm'])
             off=c['cover_mm']+c['stirrup_mm']+d/2
             if d<6 or d>50:issues.append(f'{bid}: Ø вне 6–50 мм')
-            if not (off<=xx<=b-off and off<=yy<=h-off):
+            if not (off-1e-6<=xx<=b-off+1e-6 and off-1e-6<=yy<=h-off+1e-6):
                 issues.append(f'{bid}: нарушен защитный слой до наружной грани хомута')
         except (KeyError,TypeError,ValueError):issues.append(f'{bid}: некорректные координаты/диаметр')
     for i,a in enumerate(c['bars']):

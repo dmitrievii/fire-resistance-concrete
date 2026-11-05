@@ -4,7 +4,7 @@ The EXACT K18 Mathcad replay remains in calculation_engine.py.
 This module extends the four-face thermal model to bar-coordinate meshes and
 performs (a) shared member slenderness/demand envelope, (b) a *numerical*
 3-variable strain-plane equilibrium for simultaneous N, Mx, My, and (c) the
-spalling-index expression transcribed from section 3.4.1 of supplied report.
+the SP468 tabular F method plus the separately labelled manual K18 index.
 
 These are DIFFERENT method/provenance classes. They are not normative approval
 and must never be displayed as certified R90. When inputs are missing, reports
@@ -33,25 +33,31 @@ SPALLING_UNITS = {
     'E_c_MPa': 'МПа',
     'rho_kg_m3': 'кг/м³',
     'W_e_volume_fraction': 'м³/м³',
-    'K_1C': 'МН·м^(3/2) (как в исходном отчёте)',
+    'K_1C': 'МН·м^(-3/2)',
     'lambda_250_W_mK': 'Вт/(м·°C)',
     'n_p_percent': '% (значение 10 означает 10%)',
 }
 
 
 def spalling_assessment(data: dict | None) -> dict:
-    """Formula (3.4.1) from the supplied example report, without inferred defaults.
+    """SP468 table-based F or the manually parameterized K18 analogue.
 
-    F = alpha_F*alpha_bt*beta*Ec*rho*We /(K1C*lambda^2*np).
-    All values are explicitly user supplied in units stated in the report.
-    No automatic normative compliance claim is made from this index alone.
+    For manual K18, lambda has first power and n_p_percent is divided by
+    100 in the denominator. Previously saved values are not silently certified.
+    SP468 uses own source, B class and material-mix data with no placeholders.
     """
     data = data or {}
+    from multicolumn_r05.sp468 import assessment as sp468_assessment
+    if data.get('method') == 'sp468' or (not data.get('method') and not any(k in data for k in SPALLING_FIELDS)):
+        return sp468_assessment(data)
+    if data.get('method') not in (None, 'manual_k18'):
+        return {'status':'invalid', 'F':None, 'error':'Неизвестный метод оценки хрупкого разрушения', 'source_type':'unknown'}
     missing = [name for name in SPALLING_FIELDS
                if data.get(name) is None or data.get(name) == '']
     result = {
         'method': 'K18 report §3.4 equation (3.4.1), Annex K citation; user-entered coefficients',
-        'formula': 'F=(alpha_F*alpha_bt*beta_E*E_c*rho*W_e)/(K_1C*lambda_250**2*n_p)',
+        'formula': 'F=(alpha_F*alpha_bt*beta_E*E_c*rho*W_e)/(K_1C*lambda_250*(n_p_percent/100))',
+        'source_type':'K18_manual_provisional',
         'threshold': 4.0, 'units': SPALLING_UNITS,
         'status': 'not_evaluated', 'F': None, 'missing': missing,
         'claim_of_fire_resistance': False,
@@ -70,7 +76,7 @@ def spalling_assessment(data: dict | None) -> dict:
             return result
         vals[key] = value
     numer = vals['alpha_F']*vals['alpha_bt_per_C']*vals['beta_E']*vals['E_c_MPa']*vals['rho_kg_m3']*vals['W_e_volume_fraction']
-    den = vals['K_1C']*vals['lambda_250_W_mK']**2*vals['n_p_percent']
+    den = vals['K_1C']*vals['lambda_250_W_mK']*(vals['n_p_percent']/100.0)
     F = numer/den
     if not math.isfinite(F):
         return {**result, 'status': 'invalid', 'error': 'F: переполнение численного диапазона'}
@@ -257,6 +263,6 @@ def check_provenance() -> dict:
         'generalized_thermal': 'four-sided K18 thermal expression per-bar + discretized 500 C concrete, experimental extrapolation',
         'member': 'eta=1/(1-N/Ncr) from K18, Nmax/Ncrmin member envelope (new conservative extension)',
         'biaxial': 'new 2D strain-plane force equilibrium with R0.4 material assumptions; NOT the original XMCD',
-        'spalling': 'equation (3.4.1) copied from supplied DOCX, F>4 action threshold; coefficients NOT supplied',
+        'spalling': 'Russian SP468 §9.7 tables 9.1-9.6 and F limits 4/6; K18 manual formula separately retained with corrected lambda power and porosity units',
         'certification': False,
     }

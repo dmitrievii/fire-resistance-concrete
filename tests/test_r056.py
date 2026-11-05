@@ -48,8 +48,10 @@ class R056Tests(unittest.TestCase):
         vals['E_c_MPa']=20.0;vals['rho_kg_m3']=2.0
         F=spalling_assessment(vals)
         self.assertEqual(F['status'],'protection_required')
-        self.assertAlmostEqual(F['F'],40.0)
+        self.assertAlmostEqual(F['F'],4000.0)
         vals['n_p_percent']=20.0
+        self.assertEqual(spalling_assessment(vals)['status'],'protection_required')
+        vals['alpha_F']=.001
         self.assertEqual(spalling_assessment(vals)['status'],'index_at_or_below_threshold')
         vals['alpha_F']=0
         self.assertEqual(spalling_assessment(vals)['status'],'invalid')
@@ -58,6 +60,7 @@ class R056Tests(unittest.TestCase):
         p=fully_loaded()
         data=dict.fromkeys(SPALLING_FIELDS,1.0)
         data['E_c_MPa']=20
+        data['method']='manual_k18'
         update_spalling(p,'c1',data)
         self.assertEqual(evaluate_project(p)['c1']['spalling']['status'],'protection_required')
         self.assertEqual(evaluate_project(p)['c2']['spalling']['status'],'not_evaluated')
