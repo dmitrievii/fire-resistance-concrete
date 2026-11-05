@@ -31,4 +31,4 @@ if loaded is not None:
     elif not callable(getattr(loaded, "default_template_bytes", None)):
         importlib.reload(loaded)
 
-runpy.run_path(str(ROOT / "streamlit_app.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "legacy_single_column.py"), run_name="__main__")
