@@ -1,5 +1,7 @@
-"""R0.5 Multi-Column RC Fire Resistance Calculator — production entrypoint.
+"""R0.5 Multi-Column RC Fire Resistance Calculator — Streamlit Cloud entrypoint.
 
-The original single-column application is retained as a separate Streamlit page.
+Run the UI script on *every* Streamlit rerun, not just the first Python import.
+The historic single-column version remains in legacy_single_column.py.
 """
-from multicolumn_r05 import app  # noqa: F401 — executes the Streamlit UI
+import runpy
+runpy.run_module('multicolumn_r05.app', run_name='__main__')
