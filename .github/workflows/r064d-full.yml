@@ -1,0 +1,90 @@
+name: R0.6.4D full integration verification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-integrated-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project requirements
+        run: python -m pip install -r requirements.txt
+      - name: Verify candidate and integrate into a disposable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '15faa58541a1a1a63b2eb33ff411ead0cddfd2a4700a49e91c4976cfc0f1de45  qa/r064d_candidate.zip' | sha256sum -c -
+          mkdir -p /tmp/r064d_stage
+          unzip -q qa/r064d_candidate.zip -d /tmp/r064d_stage
+          git switch -c ci/r064d-temporary
+          python /tmp/r064d_stage/R064D/tools/integrate_r064d.py . --apply --allow-unpinned | tee /tmp/r064d-overlay.log
+          python -m compileall -q streamlit_app.py multicolumn_r05 rc_fire
+      - name: Full Python suite after overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -v 2>&1 | tee /tmp/r064d-full-tests.log
+      - name: Constitutive independent benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/validate_constitutive_r064d.py 2>&1 | tee /tmp/r064d-constitutive.log
+      - name: Streamlit real first-run smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at=AppTest.from_file("streamlit_app.py")
+          at.run(timeout=120)
+          if len(at.exception):
+              raise AssertionError("Streamlit raised errors: " + str([e.message for e in at.exception]))
+          print("STREAMLIT_FIRST_RUN_OK")
+          PY
+      - name: Word report and no false R90 smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from docx import Document
+          from multicolumn_r05.project_model import new_project
+          from multicolumn_r05.project_calculator import evaluate_project
+          from multicolumn_r05.project_reports import combined_report
+          project=new_project(2)
+          results=evaluate_project(project,grid=16)
+          for item in results.values():
+              assert item.get("normative_claim") is False
+              assert item.get("fire_resistance_status") == "not_demonstrated"
+              assert item["member_r064d"]["normative_claim"] is False
+          with TemporaryDirectory() as d:
+              out=Path(d)/"R064D_smoke_report.docx"
+              combined_report(project,results,out)
+              assert out.exists() and out.stat().st_size > 10000
+              doc=Document(out)
+              content=" ".join(p.text for p in doc.paragraphs)
+              assert "НЕ" in content
+              print("DOCX_SMOKE_OK",out.stat().st_size,len(doc.paragraphs))
+          print("FAIL_CLOSED_R90_OK")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r064d-full-run-logs
+          if-no-files-found: ignore
+          path: |
+            /tmp/r064d-overlay.log
+            /tmp/r064d-full-tests.log
+            /tmp/r064d-constitutive.log
