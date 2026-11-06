@@ -155,6 +155,37 @@ class StreamlitAppTests(unittest.TestCase):
         result=evaluate_column(col,grid=20)
         self.assertFalse(result['mechanics_r063']['normative_claim'])
 
+    def test_r063_stress_and_capacity_visualizations_after_loads(self):
+        """R0.6.3 interactively executes both new chart branches."""
+        from multicolumn_r05.project_model import (update_material_spec,
+            update_thermal_spec,update_column,update_section)
+        root=Path(__file__).resolve().parents[1]/'streamlit_app.py'
+        app=AppTest.from_file(str(root),default_timeout=60).run()
+        self.assertFalse(app.exception)
+        proj=app.session_state['project']
+        update_material_spec(proj,'c1',{'concrete':{
+            'aggregate_family':'siliceous','consistency':'S3_S5',
+            'curing':'natural','modulus_aggregate':'gravel_granite_upto40',
+            'fine_grained':False},'steel':{'product_type':'weldable_bar'}})
+        update_thermal_spec(proj,'c1',{'concrete_family':'siliceous',
+            'dry_density_kg_m3':2400.,
+            'exposed_faces':['left','right','bottom','top']})
+        update_column(proj,'c1',{'fire_minutes':30.})
+        update_section(proj,'c1','bottom',
+            {'N_kN':500.,'Mx_kNm':25.,'My_kNm':-20.})
+        update_section(proj,'c1','top',
+            {'N_kN':400.,'Mx_kNm':10.,'My_kNm':10.})
+        page=next(r for r in app.radio if r.label=='Разделы')
+        page.set_value('c1').run()
+        self.assertFalse(app.exception,f'Loaded R0.6.3: {list(app.exception)}')
+        stress=next(r for r in app.checkbox if r.key=='r063_stress_c1')
+        stress.set_value(True).run()
+        self.assertFalse(app.exception,f'Stress map: {list(app.exception)}')
+        capacity=next(r for r in app.checkbox if r.key=='r063_capacity_c1')
+        capacity.set_value(True).run()
+        self.assertFalse(app.exception,f'Capacity envelope: {list(app.exception)}')
+        self.assertTrue(any('r063_envelopeplot_c1'==x.key for x in app.get('plotly_chart')))
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core
