@@ -60,7 +60,7 @@ K.24: `r3 = 1−sqrt((1220w−1220+θcr)/(1200w))` (for `w=1, θcr=500`: `r3 ≈
 
 ## Required R0.6.3 qualification
 
-1. Compare Annex K predictions against multiple independent Annex Ж reference matrices at R30/R60/R90/R120 and grid points on their stated geometry, not just K18.
+1. Treat Annex Ж reference matrices as a **separate normative temperature route**, not as equality targets for Annex K. For example, table Ж.6 lists 933 °C at the surface corner (0,0) of a 400×400 mm column at 60 min, while the Annex K approximation for siliceous concrete with ρ0=2400 kg/m³ gives ~1088.8 °C. Document method-specific assumptions and compare without forcing parity. Build explicit Annex Ж lookup/interpolation with its own scope before selecting that route.
 2. Resolve K.5 bar-distance interpretation with the standard and admissible test example(s).
 3. Integrate theta_i into k_s(theta), beta_s(theta), k_c(theta), beta_c(theta) and ultimate strain limits. Do not extrapolate the table beyond its stated range.
 4. Connect field and actual residual geometry to a normative N–Mx–My section-ULS solver; qualify R(t) and member stability before issuing R90.
