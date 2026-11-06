@@ -29,6 +29,7 @@ jobs:
           unzip -q qa/r064d_candidate.zip -d /tmp/r064d_stage
           git switch -c ci/r064d-temporary
           python /tmp/r064d_stage/R064D/tools/integrate_r064d.py . --apply --allow-unpinned | tee /tmp/r064d-overlay.log
+          python qa/r064d_adapt_legacy_tests.py
           python -m compileall -q streamlit_app.py multicolumn_r05 rc_fire
       - name: Full Python suite after overlay
         shell: bash
