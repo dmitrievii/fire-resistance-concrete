@@ -6,6 +6,26 @@ def add_r056_diagnostics(doc,c,calc):
     add_heading(doc,'R0.5.6 — совместные и дополнительные диагностические проверки',2)
     add_text(doc,'Воспроизведение Mathcad K18 и параметрическая волоконная модель имеют разный методический статус. '
              'Ниже приведён вычислительный контроль, а не нормативное подтверждение предела R90.')
+    material=calc.get('material_preflight')
+    if material:
+        add_heading(doc,'R0.6.1 — нормативные свойства бетона и арматуры',2)
+        add_text(doc,'Каталог: '+material['status']+
+                 '. Таблицы 6.1/6.3 СП 5.03.01-2020 и 9–12 СП 2.02.05-2026.')
+        if material.get('concrete'):
+            mc=material['concrete']
+            add_text(doc,'Бетон '+str(mc['strength_class'])+
+                ': fck='+str(mc['f_ck_MPa'])+' МПа; Ecm='+
+                ('НЕ ОПРЕДЕЛЁН' if mc['E_cm_GPa'] is None else str(mc['E_cm_GPa'])+' ГПа')+
+                '; происхождение Ecm: '+mc['modulus_source'])
+        if material.get('steel'):
+            stl=material['steel']
+            add_text(doc,'Арматура '+str(stl['group'])+
+                     '; Es='+str(stl['E_s_GPa'])+' ГПа.')
+        if material.get('issues'):
+            add_text(doc,'Недостаточные данные: '+', '.join(material['issues']))
+        add_text(doc,'Параметрический решатель остаётся диагностическим. При отсутствии данных '
+                 'он использует прежние значения Ecm для сравнения с К18, '
+                 'а не как нормативное назначение материала.')
     contract=calc.get('normative_preflight')
     if contract:
         add_heading(doc,'R0.6.0 — нормативный контракт и происхождение результата',2)

@@ -32,6 +32,7 @@ def new_column(idx):
                    {'id':'top','name':'Верх','z_m':3.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
     c['spalling']={'method':'sp468'}  # no assumed mix data
+    c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
     return c
 
 
@@ -89,6 +90,56 @@ def update_section(project,cid,sid,fields):
             val=float(v)
             if not math.isfinite(val):raise ValueError('Неограниченная величина усилия/координаты')
             sec[k]=val
+    project['revision']+=1
+
+
+def update_material_spec(project,cid,fields):
+    """Set canonical R0.6.1 concrete/rebar properties without silent defaults.
+
+    Unknown values remain absent. Missing data is allowed; it blocks normative
+    lookup, not the historic diagnostic calculator.
+    """
+    from rc_fire.materials.normative import (
+        CONSISTENCY, ConcreteMix, Reinforcement, MaterialError,
+    )
+    col=get_column(project,cid)
+    out=copy.deepcopy(col.get('material_spec') or {'concrete':{},'steel':{}})
+    valid={
+        'concrete':{'aggregate_family','consistency','curing','modulus_aggregate',
+                    'fine_grained','saturated_freeze_C','independently_measured_Ecm_GPa'},
+        'steel':{'product_type','fyk_MPa','E_s_GPa'},
+    }
+    for family,pairs in fields.items():
+        if family not in valid or not isinstance(pairs,dict):
+            raise ValueError('Недопустимая группа свойств материала')
+        dest=out.setdefault(family,{})
+        for key,value in pairs.items():
+            if key not in valid[family]:
+                raise ValueError('Неизвестное свойство: '+key)
+            if value is None or (isinstance(value,str) and not value.strip()):
+                dest.pop(key,None)
+                continue
+            if key=='fine_grained':
+                if not isinstance(value,bool):raise ValueError('fine_grained: требуется bool')
+            elif key in ('saturated_freeze_C','independently_measured_Ecm_GPa','fyk_MPa','E_s_GPa'):
+                value=float(value)
+                if not math.isfinite(value) or (key!='saturated_freeze_C' and value<=0):
+                    raise ValueError(key+': недопустимое число')
+            elif key=='aggregate_family' and value not in ('siliceous','calcareous'):
+                raise ValueError('Неизвестный заполнитель')
+            elif key=='consistency' and value not in CONSISTENCY:
+                raise ValueError('Неизвестная консистенция')
+            elif key=='curing' and value not in ('natural','heat'):
+                raise ValueError('Неизвестный способ твердения')
+            elif key=='modulus_aggregate' and value not in ('gravel_granite_upto40','other'):
+                raise ValueError('Неизвестный заполнитель для Ecm')
+            elif key=='product_type' and value not in ('weldable_bar','corrosion_resistant_bar','wire_or_heat_treated'):
+                raise ValueError('Неизвестный вид арматуры')
+            dest[key]=value
+    # Enforce schema; combination admissibility is reported in material preflight.
+    ConcreteMix(strength_class=col['concrete'],**out.get('concrete',{}))
+    Reinforcement(grade=col['steel_grade'],**out.get('steel',{}))
+    col['material_spec']=out
     project['revision']+=1
 
 
@@ -257,9 +308,19 @@ def to_engine_input(c,sections=None,grid=48):
     ss=list(sections if sections is not None else c['sections'])
     if not ss or any(load_state(s)!='ready' for s in ss):
         raise ModelError('Нагрузка по каждому выбранному сечению должна быть полной (N>0, Mx, My)')
-    fck,ecm=CONCRETE[c['concrete']]
+    from rc_fire.materials import resolve_materials
+    catalog=resolve_materials(c)
+    fck,legacy_ecm=CONCRETE[c['concrete']]
+    if catalog['concrete'] is not None:
+        fck=catalog['concrete']['f_ck_MPa']
+    ecm=legacy_ecm
+    ecm_source='legacy_K18_diagnostic_fallback'
+    if catalog['concrete'] is not None and catalog['concrete']['E_cm_GPa'] is not None:
+        ecm=catalog['concrete']['E_cm_GPa']
+        ecm_source=catalog['concrete']['modulus_source']
     return {'schema':'k18-parametric-r04','geometry':{'b_m':c['b_mm']/1000,'h_m':c['h_mm']/1000,'length_m':c['length_m']},
       'material':{'f_ck_MPa':fck,'E_cm_GPa':ecm,'f_y_MPa':c['f_y_MPa'],'E_s_GPa':c['E_s_GPa']},
+      'material_resolution':{'E_cm_source':ecm_source,'normative_engine_qualified':False},
       'fire':{'minutes':c['fire_minutes'],'exposed_faces':['left','right','bottom','top'],
              'a_red_m2_h':0.00133,'phi_1':0.63,'phi_2':0.5,'critical_concrete_C':500},
       'mechanics':{'mu_x':c['mu_x'],'mu_y':c['mu_y']},'grid':int(grid),

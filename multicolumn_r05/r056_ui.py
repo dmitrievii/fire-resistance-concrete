@@ -116,6 +116,18 @@ def render_r056_results(st,calc):
                 'Код':x['code'],'Приоритет':x['severity'],
                 'Ограничение':x['message'],'Источник':x['clause']
             } for x in contract['issues']]),hide_index=True,use_container_width=True)
+    material=calc.get('material_preflight',{})
+    if material:
+        st.subheader('R0.6.1 — нормативные характеристики материала')
+        st.write('Каталог: **'+material['status']+'**; численный расчёт R90: не квалифицирован')
+        if material.get('concrete'):
+            con=material['concrete']
+            st.write('Бетон: fck='+str(con['f_ck_MPa'])+' МПа, Ecm='+
+                     ('не определён' if con['E_cm_GPa'] is None else str(con['E_cm_GPa'])+' ГПа'))
+        if material.get('steel'):
+            steel=material['steel']
+            st.write('Арматура: '+steel['group']+', Es='+str(steel['E_s_GPa'])+' ГПа')
+        if material['issues']:st.info('Недостающие свойства: '+ '; '.join(material['issues']))
     st.subheader('R0.5.6 — дополнительные расчётные проверки')
     st.caption('Общий конверт η и совместное N–Mx–My — диагностические. '
                'Индекс F может вычисляться по справочным таблицам СП 468 '
@@ -175,5 +187,6 @@ def render_r056_overview(st,project,calculations):
                      'Совместное N–Mx–My':(', '.join(sorted(set(states))) if states else 'Не рассчитано'),
                      'Критерий F':_ru_spall(x),
                      'Нормативный контракт':x.get('normative_preflight',{}).get('status','НЕ ПРОВЕРЕНО'),
+                     'Материалы R0.6.1':x.get('material_preflight',{}).get('status','не определено'),
                      'Итоговое R90':'Не подтверждено'})
     st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)

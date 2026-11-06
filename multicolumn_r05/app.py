@@ -13,11 +13,12 @@ import streamlit as st
 from multicolumn_r05.project_model import (new_project,set_count,update_column,update_section,
     add_section,remove_section,replace_bars,reset_auto_bars,get_column,
     overview_rows,section_overview_rows,update_from_overview,update_from_section_overview,
-    export_json,load_json,load_state,CONCRETE)
+    export_json,load_json,load_state,CONCRETE,update_material_spec)
 from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
 from multicolumn_r05.r056_ui import render_spalling_inputs, render_r056_results, render_r056_overview
 from multicolumn_r05.section_preview import make_section_figure
+from rc_fire.materials.ui import render_material_inputs
 
 st.set_page_config(page_title='Огнестойкость ЖБ колонн',page_icon='🏗️',layout='wide')
 
@@ -207,6 +208,7 @@ def column_page(cid):
     with mat[1]:
         st.text_input('Марка арматуры (фиксирована для R0.5)',value=c['steel_grade'],disabled=True)
         st.caption('Температурные коэффициенты ядра относятся к S500.')
+    render_material_inputs(st,project,c,safe_change,update_material_spec)
     render_spalling_inputs(st,project,c,safe_change)
     st.subheader('Схема арматуры')
     drawing_left,drawing_right=st.columns(2)
