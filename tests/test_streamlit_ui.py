@@ -170,10 +170,7 @@ class StreamlitAppTests(unittest.TestCase):
         update_thermal_spec(proj,'c1',{'concrete_family':'siliceous',
             'dry_density_kg_m3':2400.,
             'exposed_faces':['left','right','bottom','top']})
-        # Keep all heated-boundary temperatures inside the declared table
-        # range for a positive visualization test. Thirty minutes is
-        # separately tested as fail-closed above 800 C.
-        update_column(proj,'c1',{'fire_minutes':10.})
+        update_column(proj,'c1',{'fire_minutes':30.})
         update_section(proj,'c1','bottom',
             {'N_kN':500.,'Mx_kNm':25.,'My_kNm':-20.})
         update_section(proj,'c1','top',
