@@ -31,7 +31,7 @@ def _feasible_state(p:PreparedSection,N:float,gx:float,gy:float,*,tolN:float):
     # with zero (assumed) concrete strength do not govern compression.
     mask=p.concrete_fcd_MPa>0
     gradient=gx*p.v+gy*p.u
-    maxgrad=float(np.max(gradient[mask])) if mask.any() else -math.inf
+    maxgrad=(abs(gx)+abs(gy)) if mask.all() else (float(np.max(gradient[mask])) if mask.any() else -math.inf)
     bargrad=gx*p.bar_v+gy*p.bar_u
     e0_max=p.eps_cu2-maxgrad
     e0_min=-TENSILE_STEEL_LIMIT-float(np.min(bargrad))

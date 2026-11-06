@@ -55,6 +55,10 @@ def finish(doc,out,template=MASTER):
 def add_column(doc,c,calc):
     add_heading(doc,f'{c["name"]} — характеристики и расчётные сечения',1)
     add_text(doc,'Параметрический диагностический расчёт. Не является нормативным подтверждением R90.',bold=True)
+    # R064D_REPOSITORY_HOOK: no extra pages for an unrequested member diagnostic.
+    if calc.get("member_r064d",{}).get("status") not in (None, "NOT_EVALUATED"):
+        from rc_fire.integration.report import add_member_evidence_note
+        add_member_evidence_note(doc,calc)
     add_table(doc,['Характеристика','Значение'],[
         ('Сечение, мм',f'{c["b_mm"]:g} × {c["h_mm"]:g}'),
         ('Длина, м',number(c['length_m'],2)),
@@ -143,6 +147,9 @@ def single_report(c,calc,target,template=MASTER):
         doc=Document(target)
         doc.add_page_break()
         add_r056_diagnostics(doc,c,calc)
+        if calc.get('member_r064d',{}).get('status') not in (None, 'NOT_EVALUATED'):
+            from rc_fire.integration.report import add_member_evidence_note
+            add_member_evidence_note(doc,calc)
         finish(doc,target,template)
         return legacy_audit
     doc=init_master(template)

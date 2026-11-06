@@ -264,6 +264,9 @@ def column_page(cid):
         if w:st.caption(f"Наибольший диагностический u = {w['u']:.3f}; сечение {w['section_id']}, ось {w['axis'].upper()}.")
     render_thermal_results(st,c,calculation)
     render_mechanics_results(st,c,calculation)
+    # R064D_REPOSITORY_HOOK: diagnostic-only opt-in, no default solve.
+    from rc_fire.integration.ui import render_member_evidence
+    render_member_evidence(st,c,calculation)
     render_r056_results(st,calculation)
     st.caption('Численное совместное равновесие N–Mx–My и критерий F (при наличии данных) '
                'рассчитываются в R0.5.6. Это ещё не независимое нормативное подтверждение R90.')
@@ -277,5 +280,14 @@ with st.sidebar:
 
 with st.spinner('Расчёт введённых усилий'):
     calculations=evaluate_project(project,grid=48)
+# Restore only diagnostics associated with unchanged source column data.
+from rc_fire.integration.r064d import _signature as _r064d_signature
+for _column in project['columns']:
+    _key='r064d_result_'+str(_column['id'])
+    _saved=st.session_state.get(_key)
+    if _saved is not None and _saved.get('signature')==_r064d_signature(_column):
+        calculations[_column['id']]['member_r064d']=_saved['result']
+    elif _saved is not None:
+        st.session_state.pop(_key,None)
 if selected=='Обзор проекта':show_overview()
 else:column_page(selected)

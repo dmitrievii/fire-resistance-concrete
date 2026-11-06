@@ -1,4 +1,4 @@
-name: R0.6.4D full integration verification
+name: R0.6.4D permanent source integration acceptance
 
 on:
   pull_request:
@@ -16,22 +16,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
           cache: pip
       - name: Install project requirements
         run: python -m pip install -r requirements.txt
-      - name: Verify candidate and integrate into a disposable checkout
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo '15faa58541a1a1a63b2eb33ff411ead0cddfd2a4700a49e91c4976cfc0f1de45  qa/r064d_candidate.zip' | sha256sum -c -
-          mkdir -p /tmp/r064d_stage
-          unzip -q qa/r064d_candidate.zip -d /tmp/r064d_stage
-          git switch -c ci/r064d-temporary
-          python /tmp/r064d_stage/R064D/tools/integrate_r064d.py . --apply --allow-unpinned | tee /tmp/r064d-overlay.log
-          python qa/r064d_adapt_legacy_tests.py
-          python -m compileall -q streamlit_app.py multicolumn_r05 rc_fire
-      - name: Full Python suite after overlay
+      - name: Compile integrated source tree
+        run: python -m compileall -q streamlit_app.py multicolumn_r05 rc_fire tools
+      - name: Full Python suite from committed source
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +66,7 @@ jobs:
               combined_report(project,results,out)
               assert out.exists() and out.stat().st_size > 10000
               doc=Document(out)
-              content=" ".join(p.text for p in doc.paragraphs)
+              content=" ".join(x.text for x in doc.paragraphs)
               assert "НЕ" in content
               print("DOCX_SMOKE_OK",out.stat().st_size,len(doc.paragraphs))
           print("FAIL_CLOSED_R90_OK")
@@ -83,9 +74,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: r064d-full-run-logs
+          name: r064d-permanent-source-test-logs
           if-no-files-found: ignore
           path: |
-            /tmp/r064d-overlay.log
             /tmp/r064d-full-tests.log
             /tmp/r064d-constitutive.log

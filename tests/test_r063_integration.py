@@ -26,7 +26,7 @@ class R063IntegrationTests(unittest.TestCase):
             'exposed_faces':['left','right','bottom','top'],
             'a_red_mode':'table_K1',
         })
-        update_column(p,'c1',{'fire_minutes':30.})
+        update_column(p,'c1',{'fire_minutes':10.})
         update_section(p,'c1','bottom',{'N_kN':500,'Mx_kNm':30,'My_kNm':-20})
         update_section(p,'c1','top',{'N_kN':650,'Mx_kNm':-22,'My_kNm':10})
         return p

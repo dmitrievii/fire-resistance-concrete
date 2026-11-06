@@ -45,12 +45,21 @@ if _cached_thermal is not None:
 _MECHANICS_NAME = "rc_fire.mechanics.normative"
 _cached_mechanics = sys.modules.get(_MECHANICS_NAME)
 if _cached_mechanics is not None:
-    _stale |= getattr(_cached_mechanics, "VERSION", None) != "R0.6.3-section-mechanics-v1"
+    _stale |= getattr(_cached_mechanics, "VERSION", None) != "R0.6.3C-source-adjudication-candidate"
+
+# R064D_HOT_RELOAD_GUARD: prevent mixing old member/bridge modules.
+for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-diagnostic-v1"),
+                        ("rc_fire.integration.r064d", "R0.6.4D-repository-integration-v1")):
+    _existing = sys.modules.get(_name)
+    if _existing is not None:
+        _stale |= getattr(_existing, "VERSION", None) != _version
 
 if _stale:
     for _name in tuple(sys.modules):
         if (_name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
-             or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")):
+             or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")
+             or _name == "rc_fire.member" or _name.startswith("rc_fire.member.")
+             or _name == "rc_fire.integration" or _name.startswith("rc_fire.integration.")):
             sys.modules.pop(_name,None)
     importlib.invalidate_caches()
     # Never mix a cached old UI/calculation facade with new material tables.
