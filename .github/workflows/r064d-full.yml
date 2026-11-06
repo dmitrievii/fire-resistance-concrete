@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python tools/validate_constitutive_r064d.py 2>&1 | tee /tmp/r064d-constitutive.log
+          python -m tools.validate_constitutive_r064d 2>&1 | tee /tmp/r064d-constitutive.log
       - name: Streamlit real first-run smoke
         shell: bash
         run: |
