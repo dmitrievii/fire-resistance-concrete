@@ -1,0 +1,623 @@
+{
+  "contract_version": "BY-RC-FIRE-R0.6.0",
+  "normative_routes": [
+    "general_member",
+    "table_3_column"
+  ],
+  "sources": [
+    {
+      "id": "BY_SP_FIRE_2026",
+      "title": "СП 2.02.05-2026 — Пожарная безопасность зданий и сооружений",
+      "edition": "2026",
+      "role": "primary_fire",
+      "effective_from": "2026-11-01",
+      "file_sha256": "bbcbf459b89586d742db96a703f6e1b4af94030fef03ac18e4179eaf4621147e",
+      "supplied": true,
+      "superseded_by": null
+    },
+    {
+      "id": "BY_SP_RC_2020",
+      "title": "СП 5.03.01-2020 — Бетонные и железобетонные конструкции",
+      "edition": "2020 (предоставленное издание)",
+      "role": "complementary_rc",
+      "effective_from": "2020-11-16",
+      "file_sha256": "bd7dc2fce046490614d208688c461fa36d73b2c44ede50a63c8237b177790678",
+      "supplied": true,
+      "superseded_by": null
+    },
+    {
+      "id": "BY_SN_LOADS_2019",
+      "title": "СН 2.01.03-2019 — Пожарные воздействия и сочетания",
+      "edition": "2019",
+      "role": "external_dependency",
+      "effective_from": null,
+      "file_sha256": null,
+      "supplied": false,
+      "superseded_by": null
+    },
+    {
+      "id": "BY_TKP_FIRE_2008",
+      "title": "ТКП 45-2.02-110-2008 — историческая методика К18",
+      "edition": "2008",
+      "role": "historical_replay",
+      "effective_from": null,
+      "file_sha256": "60fd9d7bac689d3a0d8bf1a25778d6963b47ddcc1d9f78acf572a2bbdd389bab",
+      "supplied": true,
+      "superseded_by": "BY_SP_FIRE_2026"
+    },
+    {
+      "id": "RU_SP468",
+      "title": "СП 468.1325800.2019 (изм. 2023)",
+      "edition": "2019+2023",
+      "role": "comparison_only",
+      "effective_from": null,
+      "file_sha256": null,
+      "supplied": false,
+      "superseded_by": null
+    },
+    {
+      "id": "XMCD_K18",
+      "title": "Mathcad XMCD К18 — архивный вычислительный эталон",
+      "edition": "исходный файл пользователя",
+      "role": "historical_replay",
+      "effective_from": null,
+      "file_sha256": "032bafbd7633a73286a8f64b19133abd6a6e9dd25182763ffddf019a66d8d0c6",
+      "supplied": true,
+      "superseded_by": null
+    }
+  ],
+  "methods": [
+    {
+      "id": "FIRE_ACTIONS",
+      "title": "Пожарное сочетание и происхождение N, M, V",
+      "owner": "actions",
+      "primary_source": "BY_SN_LOADS_2019",
+      "clauses": [
+        "4.3"
+      ],
+      "required_inputs": [
+        "actions.fire_design_case",
+        "actions.N_M_V_T",
+        "actions.provenance"
+      ],
+      "produces": [
+        "actions.fire_effects"
+      ],
+      "depends_on": [],
+      "route": "both",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "REBAR_GEOMETRY",
+      "title": "Реальная геометрия сечения и армирования",
+      "owner": "geometry",
+      "primary_source": "BY_SP_RC_2020",
+      "clauses": [
+        "11.2",
+        "11.4"
+      ],
+      "required_inputs": [
+        "geometry",
+        "reinforcement.bars",
+        "reinforcement.stirrups",
+        "reinforcement.cover"
+      ],
+      "produces": [
+        "section.geometry",
+        "reinforcement.coordinates",
+        "section.centroid",
+        "section.inertias"
+      ],
+      "depends_on": [],
+      "route": "both",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "NORMAL_MATERIALS",
+      "title": "Характеристики бетона и стали при нормальной температуре",
+      "owner": "materials",
+      "primary_source": "BY_SP_RC_2020",
+      "clauses": [
+        "6.1.2",
+        "6.1.3",
+        "6.1.5",
+        "6.2.2"
+      ],
+      "required_inputs": [
+        "concrete.class",
+        "concrete.consistency_or_tested_Ecm",
+        "concrete.curing",
+        "steel.grade",
+        "concrete.material_provenance"
+      ],
+      "produces": [
+        "concrete.normal_diagram",
+        "steel.normal_diagram"
+      ],
+      "depends_on": [],
+      "route": "both",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "FIRE_EXPOSURE",
+      "title": "Нормативное огневое воздействие",
+      "owner": "fire_exposure",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.1"
+      ],
+      "required_inputs": [
+        "fire.exposure_curve",
+        "fire.exposed_faces",
+        "fire.duration"
+      ],
+      "produces": [
+        "fire.boundary_temperature"
+      ],
+      "depends_on": [],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "THERMAL_MATERIALS",
+      "title": "Теплотехнические параметры бетона",
+      "owner": "thermal_materials",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "Приложение К",
+        "К.1",
+        "К.2"
+      ],
+      "required_inputs": [
+        "concrete.aggregate",
+        "concrete.dry_density",
+        "concrete.moisture",
+        "fire.temperature"
+      ],
+      "produces": [
+        "concrete.lambda_temperature",
+        "concrete.heat_capacity",
+        "concrete.a_red",
+        "thermal.phi"
+      ],
+      "depends_on": [
+        "NORMAL_MATERIALS"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "THERMAL_FIELD",
+      "title": "Температуры бетона и каждого действительного стержня",
+      "owner": "thermal",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.2.19",
+        "Приложение Ж",
+        "Приложение К"
+      ],
+      "required_inputs": [
+        "section.geometry",
+        "reinforcement.coordinates",
+        "fire.exposed_faces",
+        "thermal.phi"
+      ],
+      "produces": [
+        "thermal.theta_concrete",
+        "thermal.theta_bar"
+      ],
+      "depends_on": [
+        "REBAR_GEOMETRY",
+        "THERMAL_MATERIALS",
+        "FIRE_EXPOSURE"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "FIRE_MATERIALS",
+      "title": "Температурные характеристики бетона и арматуры",
+      "owner": "temperature_factors",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.2.18",
+        "8.2.19",
+        "Таблица 9",
+        "Таблица 10",
+        "Таблица 11",
+        "Таблица 12"
+      ],
+      "required_inputs": [
+        "concrete.class",
+        "steel.grade",
+        "thermal.theta_concrete",
+        "thermal.theta_bar"
+      ],
+      "produces": [
+        "concrete.fire_diagram",
+        "steel.fire_diagram",
+        "materials.thermal_strains"
+      ],
+      "depends_on": [
+        "NORMAL_MATERIALS",
+        "THERMAL_FIELD"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "SECTION_ULS",
+      "title": "Нормативная прочность сечения при N–Mx–My",
+      "owner": "section_uls",
+      "primary_source": "BY_SP_RC_2020",
+      "clauses": [
+        "8.1.2"
+      ],
+      "required_inputs": [
+        "actions.fire_effects",
+        "section.geometry",
+        "reinforcement.coordinates",
+        "materials.fire_diagrams"
+      ],
+      "produces": [
+        "section.ultimate_surface",
+        "section.uls_result"
+      ],
+      "depends_on": [
+        "FIRE_ACTIONS",
+        "REBAR_GEOMETRY",
+        "FIRE_MATERIALS"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "MEMBER_SECOND_ORDER",
+      "title": "Расчёт элемента, несовершенства и эффекты II порядка",
+      "owner": "stability",
+      "primary_source": "BY_SP_RC_2020",
+      "clauses": [
+        "5.3",
+        "5.4",
+        "8.1.6"
+      ],
+      "required_inputs": [
+        "member.supports",
+        "member.length",
+        "member.imperfections",
+        "actions.fire_effects",
+        "section.stiffness",
+        "actions.section_envelope"
+      ],
+      "produces": [
+        "member.second_order_effects",
+        "member.stability_result"
+      ],
+      "depends_on": [
+        "SECTION_ULS"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "CRITICAL_ISOTHERM",
+      "title": "Упрощённый метод критической изотермы с областью действия",
+      "owner": "reduced_section",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.2.21"
+      ],
+      "required_inputs": [
+        "concrete.class",
+        "concrete.aggregate",
+        "section.symmetry",
+        "actions.in_symmetry_plane",
+        "reinforcement.near_extreme_faces"
+      ],
+      "produces": [
+        "thermal.critical_temperature",
+        "section.reduced_geometry"
+      ],
+      "depends_on": [
+        "THERMAL_FIELD"
+      ],
+      "route": "optional",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "COLUMN_TABLE_3",
+      "title": "Табличная огнестойкость колонн с областью действия",
+      "owner": "tabular_column",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.2.11",
+        "Таблица 3"
+      ],
+      "required_inputs": [
+        "actions.fire_design_case",
+        "member.eccentricity",
+        "member.effective_length",
+        "reinforcement.percentage",
+        "section.width",
+        "reinforcement.axis_distance"
+      ],
+      "produces": [
+        "column.tabulated_fire_resistance"
+      ],
+      "depends_on": [
+        "FIRE_ACTIONS",
+        "NORMAL_MATERIALS",
+        "REBAR_GEOMETRY"
+      ],
+      "route": "table_3_column",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "SPALLING_ANNEX_L",
+      "title": "Оценка и защитные меры от хрупкого разрушения",
+      "owner": "spalling",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "Приложение Л",
+        "Л.1",
+        "Л.2",
+        "Л.6"
+      ],
+      "required_inputs": [
+        "concrete.aggregate",
+        "concrete.dry_density",
+        "concrete.moisture",
+        "concrete.porosity",
+        "concrete.lambda_200_300",
+        "concrete.Ecm",
+        "concrete.mix"
+      ],
+      "produces": [
+        "spalling.F",
+        "spalling.risk",
+        "spalling.protection_required"
+      ],
+      "depends_on": [
+        "NORMAL_MATERIALS"
+      ],
+      "route": "both",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "FIRE_RESISTANCE",
+      "title": "Определение предела R(t) и обязательных проверок",
+      "owner": "fire_resistance",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.1",
+        "8.2",
+        "8.2.17",
+        "8.2.22"
+      ],
+      "required_inputs": [
+        "fire.design_duration",
+        "all_applicable_checks",
+        "materials.provenance"
+      ],
+      "produces": [
+        "result.R_duration",
+        "result.compliance_evidence"
+      ],
+      "depends_on": [
+        "MEMBER_SECOND_ORDER",
+        "SPALLING_ANNEX_L"
+      ],
+      "route": "general_member",
+      "implementation": "contract_only"
+    },
+    {
+      "id": "TABULAR_COMPLIANCE",
+      "title": "Итог для разрешённого табличного пути",
+      "owner": "fire_resistance",
+      "primary_source": "BY_SP_FIRE_2026",
+      "clauses": [
+        "8.2.11",
+        "Таблица 3",
+        "Приложение Л"
+      ],
+      "required_inputs": [
+        "column.tabulated_fire_resistance",
+        "spalling.protection_required",
+        "table.scope_provenance"
+      ],
+      "produces": [
+        "result.compliance_evidence"
+      ],
+      "depends_on": [
+        "COLUMN_TABLE_3",
+        "SPALLING_ANNEX_L"
+      ],
+      "route": "table_3_column",
+      "implementation": "contract_only"
+    }
+  ],
+  "legacy_mathcad_inventory": [
+    {
+      "id": "XMCD-01",
+      "name": "Входные усилия и варианты сечений",
+      "target_method": "FIRE_ACTIONS",
+      "current_status": "PARTIAL",
+      "evidence": "Верхнее сечение не завершает итоговую цепочку"
+    },
+    {
+      "id": "XMCD-02",
+      "name": "Единицы и размерности",
+      "target_method": "NORMAL_MATERIALS",
+      "current_status": "PARTIAL",
+      "evidence": "Ручные множители и π=3.14 в replay"
+    },
+    {
+      "id": "XMCD-03",
+      "name": "Таблицы ks(T), beta_s(T)",
+      "target_method": "FIRE_MATERIALS",
+      "current_status": "LEGACY_ONLY",
+      "evidence": "Перепроверка табл. 10 СП 2026 обязательна"
+    },
+    {
+      "id": "XMCD-04",
+      "name": "Температура при нагреве с четырёх сторон",
+      "target_method": "THERMAL_FIELD",
+      "current_status": "PARTIAL",
+      "evidence": "Фиксированные коэффициенты и ссылки на Ø25"
+    },
+    {
+      "id": "XMCD-05",
+      "name": "Температуры отдельных групп арматуры",
+      "target_method": "THERMAL_FIELD",
+      "current_status": "PARTIAL",
+      "evidence": "Ручные 597/355 и группировки"
+    },
+    {
+      "id": "XMCD-06",
+      "name": "Температурные эксцентриситеты",
+      "target_method": "MEMBER_SECOND_ORDER",
+      "current_status": "UNQUALIFIED",
+      "evidence": "Включены выключенные 0×e_t"
+    },
+    {
+      "id": "XMCD-07",
+      "name": "Свойства материалов при пожаре",
+      "target_method": "FIRE_MATERIALS",
+      "current_status": "PARTIAL",
+      "evidence": "Ecm=29 ГПа и неполное kc(theta)"
+    },
+    {
+      "id": "XMCD-08",
+      "name": "Сечение после исключения перегретого бетона",
+      "target_method": "CRITICAL_ISOTHERM",
+      "current_status": "PARTIAL",
+      "evidence": "Применимость 8.2.21 не проверяется"
+    },
+    {
+      "id": "XMCD-09",
+      "name": "Сжатая зона и MRd",
+      "target_method": "SECTION_ULS",
+      "current_status": "LEGACY_ONLY",
+      "evidence": "Ограничено конкретным К18"
+    },
+    {
+      "id": "XMCD-10",
+      "name": "Инерция реальной арматуры",
+      "target_method": "REBAR_GEOMETRY",
+      "current_status": "PARTIAL",
+      "evidence": "Встречаются фиктивные Ø0.001 и Ø0.01"
+    },
+    {
+      "id": "XMCD-11",
+      "name": "Номинальная жёсткость kc/phi_eff",
+      "target_method": "MEMBER_SECOND_ORDER",
+      "current_status": "PARTIAL",
+      "evidence": "Единый kc для разных осей"
+    },
+    {
+      "id": "XMCD-12",
+      "name": "Ncr и eta по двум осям",
+      "target_method": "MEMBER_SECOND_ORDER",
+      "current_status": "PARTIAL",
+      "evidence": "Нет общего квалифицированного расчёта элемента"
+    },
+    {
+      "id": "XMCD-13",
+      "name": "Совместное N–Mx–My",
+      "target_method": "SECTION_ULS",
+      "current_status": "MISSING_IN_XMCD",
+      "evidence": "Только раздельные проверки"
+    },
+    {
+      "id": "XMCD-14",
+      "name": "Несколько сечений по длине",
+      "target_method": "MEMBER_SECOND_ORDER",
+      "current_status": "PARTIAL",
+      "evidence": "Не выполнена полная цепочка верх-низ"
+    },
+    {
+      "id": "XMCD-15",
+      "name": "Индекс F, защитные меры",
+      "target_method": "SPALLING_ANNEX_L",
+      "current_status": "LEGACY_ONLY",
+      "evidence": "Старый текст отчёта; актуальное приложение Л"
+    },
+    {
+      "id": "XMCD-16",
+      "name": "Подстановка в динамический инженерный отчёт",
+      "target_method": "FIRE_RESISTANCE",
+      "current_status": "PARTIAL",
+      "evidence": "Нормативное происхождение формул не разделено"
+    },
+    {
+      "id": "XMCD-17",
+      "name": "Фактическая огнестойкость R(t)",
+      "target_method": "FIRE_RESISTANCE",
+      "current_status": "NOT_PRESENT",
+      "evidence": "Нет поиска первого отказа по времени"
+    }
+  ],
+  "structure_capabilities": [
+    {
+      "id": "column_rectangular",
+      "description": "ЖБ колонна прямоугольного сечения",
+      "stage": "DIAGNOSTIC_ONLY",
+      "route": "general_member",
+      "prerequisite": "R0.6.1–R0.6.8 normative qualification"
+    },
+    {
+      "id": "column_circular",
+      "description": "ЖБ колонна круглого сечения",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "Heat field and axial/cross-section geometry"
+    },
+    {
+      "id": "column_annular",
+      "description": "Полая и центрифугированная колонна",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "Annex K special thermal solutions"
+    },
+    {
+      "id": "beam_rect_t_i",
+      "description": "ЖБ балка прямоугольная, тавровая, двутавровая",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "Bending/shear, exposed faces, section-ULS"
+    },
+    {
+      "id": "bearing_wall",
+      "description": "Несущая железобетонная стена",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "Combined R/E/I, slenderness, 1/2 sided heating"
+    },
+    {
+      "id": "slab_solid_ribbed_hollow",
+      "description": "ЖБ монолитная, ребристая и пустотная плита",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "R/E/I, flexure, 1 sided heating, voids"
+    },
+    {
+      "id": "prestressed_rc",
+      "description": "Предварительно напряжённые элементы",
+      "stage": "PLANNED",
+      "route": "general_member",
+      "prerequisite": "Prestressing thermal properties and bond"
+    }
+  ],
+  "result_provenance_fields": [
+    "source_id",
+    "source_clause",
+    "method_id",
+    "backend_version",
+    "input_sha256",
+    "applicability",
+    "qualification",
+    "units"
+  ],
+  "qualification": "NOT_QUALIFIED_CONTRACTS_ONLY",
+  "source_policy": "BY_SP_FIRE_2026 + BY_SP_RC_2020; no implicit alternative engines"
+}

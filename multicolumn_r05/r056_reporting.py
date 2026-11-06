@@ -6,6 +6,16 @@ def add_r056_diagnostics(doc,c,calc):
     add_heading(doc,'R0.5.6 — совместные и дополнительные диагностические проверки',2)
     add_text(doc,'Воспроизведение Mathcad K18 и параметрическая волоконная модель имеют разный методический статус. '
              'Ниже приведён вычислительный контроль, а не нормативное подтверждение предела R90.')
+    contract=calc.get('normative_preflight')
+    if contract:
+        add_heading(doc,'R0.6.0 — нормативный контракт и происхождение результата',2)
+        add_text(doc,'СП 2.02.05-2026 + СП 5.03.01-2020; статус '+contract['status']+
+                 '; версия '+contract['contract_version']+
+                 '; SHA-256 '+contract['contract_sha256']+'.')
+        add_text(doc,'Mathcad К18 воспроизводится исторически, СП 468 — только сравнение. '
+                 'Ни один нормативный метод R0.6.0 ещё не прошёл численную квалификацию.')
+        add_table(doc,['Код блокировки','Нормативный источник','Причина'],[
+            (x['code'],x['clause'],x['message']) for x in contract['issues']])
     member=calc.get('member',{})
     if member.get('status')=='evaluated':
         add_heading(doc,'Устойчивость колонны: общий расчётный конверт',2)

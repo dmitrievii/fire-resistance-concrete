@@ -9,6 +9,7 @@ import hashlib
 import json
 from multicolumn_r05.project_model import validate_column,load_state,to_engine_input
 from multicolumn_r05.parametric_engine import GeneralInput,compute_general
+from rc_fire.normative import audit_column
 from multicolumn_r05.r056_engine import (
     member_envelope, enrich_with_biaxial, spalling_assessment, check_provenance,
 )
@@ -21,12 +22,14 @@ def evaluate_column(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
     spalling=spalling_assessment(c.get('spalling'))
+    normative_preflight=audit_column(c)  # R0.6.0: immutable, never a PASS
     base={
         'id':c['id'],'name':c['name'],'status':'pending',
         'issues':issues,'section_statuses':states,'results':{},'worst':None,
         'engine_inputs':None,'normative_claim':False,
         'model':'K18-derived temperature + R0.4 fiber / R0.5.6 diagnostics',
-        'grid':grid,'spalling':spalling,'member':{'status':'not_evaluated'},
+        'grid':grid,'spalling':spalling,'normative_preflight':normative_preflight,
+        'member':{'status':'not_evaluated'},
         'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
         'fire_resistance_status':'not_demonstrated',
     }

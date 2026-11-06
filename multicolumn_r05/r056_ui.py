@@ -102,6 +102,20 @@ def _ru_spall(calc):
 
 
 def render_r056_results(st,calc):
+    contract=calc.get('normative_preflight')
+    if contract:
+        st.caption('R0.6.0: ' + contract['status'] +
+                   ' · нормативные контракты без квалифицированного ядра · ' +
+                   contract['contract_sha256'][:12])
+        with st.expander('Нормативный протокол R0.6.0 — ограничения и источники',expanded=False):
+            st.write('СП 2.02.05-2026 + СП 5.03.01-2020; маршрут: '+
+                     contract['route'])
+            st.write('Это не нормативное подтверждение R90. Исторический Mathcad и '
+                     'СП 468 остаются диагностическими источниками.')
+            st.dataframe(pd.DataFrame([{
+                'Код':x['code'],'Приоритет':x['severity'],
+                'Ограничение':x['message'],'Источник':x['clause']
+            } for x in contract['issues']]),hide_index=True,use_container_width=True)
     st.subheader('R0.5.6 — дополнительные расчётные проверки')
     st.caption('Общий конверт η и совместное N–Mx–My — диагностические. '
                'Индекс F может вычисляться по справочным таблицам СП 468 '
@@ -160,5 +174,6 @@ def render_r056_overview(st,project,calculations):
                      'Общий конверт η':x.get('member',{}).get('status','—'),
                      'Совместное N–Mx–My':(', '.join(sorted(set(states))) if states else 'Не рассчитано'),
                      'Критерий F':_ru_spall(x),
+                     'Нормативный контракт':x.get('normative_preflight',{}).get('status','НЕ ПРОВЕРЕНО'),
                      'Итоговое R90':'Не подтверждено'})
     st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)

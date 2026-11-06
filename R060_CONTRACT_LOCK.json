@@ -1,0 +1,11 @@
+{
+  "contract_version": "BY-RC-FIRE-R0.6.0",
+  "contract_sha256": "e0a9befe6cf14c91cdff6fce23edf4b8aecd2496ab62fa68fcf7aa7b400f4ba4",
+  "source_sha256": {
+    "BY_SP_FIRE_2026": "bbcbf459b89586d742db96a703f6e1b4af94030fef03ac18e4179eaf4621147e",
+    "BY_SP_RC_2020": "bd7dc2fce046490614d208688c461fa36d73b2c44ede50a63c8237b177790678",
+    "BY_TKP_FIRE_2008": "60fd9d7bac689d3a0d8bf1a25778d6963b47ddcc1d9f78acf572a2bbdd389bab",
+    "XMCD_K18": "032bafbd7633a73286a8f64b19133abd6a6e9dd25182763ffddf019a66d8d0c6"
+  },
+  "change_control": "Any normative-contract change requires a version bump and a consciously regenerated lock after audit."
+}
