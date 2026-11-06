@@ -1,0 +1,58 @@
+{
+  "source": "СП 2.02.05-2026 приложение К, 2026",
+  "model_release": "R0.6.2-annex-K-v1",
+  "classification": "thermal benchmark only; not R90 strength certification",
+  "geometry_mm": {
+    "b": 600,
+    "h": 600
+  },
+  "exposure_faces": [
+    "left",
+    "right",
+    "bottom",
+    "top"
+  ],
+  "material": "siliceous",
+  "dry_density_kg_m3": 2400,
+  "thermal_coefficients": {
+    "a_red_m2_h": 0.00133,
+    "phi_1": 0.63,
+    "phi_2": 0.5,
+    "Wc_mass_percent": 2.5,
+    "rho_dry_kg_m3": 2400.0,
+    "material_family": "siliceous",
+    "a_red_source": "таблица К.1, готовое a_red",
+    "K2_density_status": "tabulated",
+    "coefficients_source": "СП 2.02.05-2026, приложение К, с. 145--149 (PDF с. 149--153)",
+    "release": "R0.6.2-annex-K-v1",
+    "normative_table_nodes": true
+  },
+  "time_minutes": 90,
+  "reference_bar_temperatures_C": {
+    "К18-угол": 596.465493181,
+    "К18-середина": 354.990515553
+  },
+  "critical_isotherm_K27": {
+    "status": "evaluated",
+    "remaining_area_m2": 0.20063101731132252,
+    "lost_area_m2": 0.15936898268867747,
+    "theta_critical_C": 500,
+    "lc_m": 0.03389295093062979,
+    "ld_m": 0.05829145877325145,
+    "delta_m": 0.031875067735239446,
+    "psi": 0.7083131847579831,
+    "r_parallel": 1.0,
+    "r3": 0.3545027756320972,
+    "w": 1.0,
+    "source": "К.20--К.28",
+    "release": "R0.6.2-annex-K-v1"
+  },
+  "K18_original_raw_temps_C": {
+    "corner": 596.4654931806213,
+    "middle": 354.99051555300593
+  },
+  "known_legacy_K24_difference": {
+    "historical_denominator": "1220*w",
+    "normative_K24_denominator": "1200*w"
+  }
+}
