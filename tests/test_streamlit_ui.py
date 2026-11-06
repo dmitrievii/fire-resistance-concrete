@@ -124,6 +124,22 @@ class StreamlitAppTests(unittest.TestCase):
         column=app.session_state["project"]["columns"][0]
         self.assertEqual(evaluate_column(column)["thermal_normative"]["status"],"not_evaluated")
 
+    def test_r062_plotted_thermal_field_survives_column_rerun(self):
+        """R0.6.2: real data render goes past the new Plotly heatmap path."""
+        from multicolumn_r05.project_model import update_thermal_spec
+        path=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        app=AppTest.from_file(str(path),default_timeout=60).run()
+        self.assertFalse(app.exception)
+        model=app.session_state["project"]
+        update_thermal_spec(model,"c1",{"concrete_family":"siliceous",
+            "dry_density_kg_m3":2400.,
+            "exposed_faces":["left","right","bottom","top"]})
+        page=next(r for r in app.radio if r.label=="Разделы")
+        page.set_value("c1").run()
+        self.assertFalse(app.exception, f"Annex K field display: {list(app.exception)}")
+        self.assertFalse(app.error, f"Annex K field warning: {list(app.error)}")
+        self.assertTrue(any("температурное поле" in t.value.lower() for t in app.subheader))
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core
