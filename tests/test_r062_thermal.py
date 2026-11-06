@@ -126,6 +126,14 @@ class AnnexKThermalTests(unittest.TestCase):
         self.assertGreater(abs(reduced['r3']-legacy_r3),.004)
         self.assertAlmostEqual(reduced['delta_m'],expected_r3*l-.63*math.sqrt(.00133))
 
+    def test_annex_Zh_is_separate_route_not_falsely_forced_equal(self):
+        """Table Ж.6 (400 mm R60) and Annex K are distinct approved methods."""
+        e=RectangularExposure(400,400,('left','right','bottom','top'))
+        analytic,_=temperature_rectangle(e,self.coeff,60,0,0)
+        tabulated_Zh6_400_R60_corner=933.0  # Table Ж.6, PDF p.125
+        self.assertAlmostEqual(float(analytic),1088.8005,delta=0.2)
+        self.assertGreater(float(analytic)-tabulated_Zh6_400_R60_corner,150)
+
     def test_profile_covers_material_and_column(self):
         bars=[{'id':f'B{i}','x_mm':x,'y_mm':y,'diameter_mm':20}
               for i,(x,y) in enumerate([(40,40),(300,40),(560,40),(40,300),(560,300),(40,560),(300,560),(560,560)])]
