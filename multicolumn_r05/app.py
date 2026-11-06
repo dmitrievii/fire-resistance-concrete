@@ -13,12 +13,13 @@ import streamlit as st
 from multicolumn_r05.project_model import (new_project,set_count,update_column,update_section,
     add_section,remove_section,replace_bars,reset_auto_bars,get_column,
     overview_rows,section_overview_rows,update_from_overview,update_from_section_overview,
-    export_json,load_json,load_state,CONCRETE,update_material_spec)
+    export_json,load_json,load_state,CONCRETE,update_material_spec,update_thermal_spec)
 from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
 from multicolumn_r05.r056_ui import render_spalling_inputs, render_r056_results, render_r056_overview
 from multicolumn_r05.section_preview import make_section_figure
 from rc_fire.materials.ui import render_material_inputs
+from rc_fire.thermal.ui import render_thermal_inputs, render_thermal_results, render_thermal_overview
 
 st.set_page_config(page_title='Огнестойкость ЖБ колонн',page_icon='🏗️',layout='wide')
 
@@ -110,6 +111,7 @@ def show_overview():
             'Ось*':w['axis'].upper() if w else '—',
             'max u*':round(w['u'],3) if w else None})
     st.dataframe(pd.DataFrame(resultrows),hide_index=True,use_container_width=True)
+    render_thermal_overview(st,project,calculations)
     render_r056_overview(st,project,calculations)
     st.caption('* Условная диагностическая величина max(MEd/MRd) по двум независимым плоскостям и рассчитанным сечениям. Не выполняет нормативную двухосную проверку.')
     if any(x['issues'] for x in calculations.values()):
@@ -209,6 +211,7 @@ def column_page(cid):
         st.text_input('Марка арматуры (фиксирована для R0.5)',value=c['steel_grade'],disabled=True)
         st.caption('Температурные коэффициенты ядра относятся к S500.')
     render_material_inputs(st,project,c,safe_change,update_material_spec)
+    render_thermal_inputs(st,project,c,safe_change,update_thermal_spec)
     render_spalling_inputs(st,project,c,safe_change)
     st.subheader('Схема арматуры')
     drawing_left,drawing_right=st.columns(2)
@@ -257,6 +260,7 @@ def column_page(cid):
         st.dataframe(pd.DataFrame(results),hide_index=True,use_container_width=True)
         w=calculation['worst']
         if w:st.caption(f"Наибольший диагностический u = {w['u']:.3f}; сечение {w['section_id']}, ось {w['axis'].upper()}.")
+    render_thermal_results(st,c,calculation)
     render_r056_results(st,calculation)
     st.caption('Численное совместное равновесие N–Mx–My и критерий F (при наличии данных) '
                'рассчитываются в R0.5.6. Это ещё не независимое нормативное подтверждение R90.')

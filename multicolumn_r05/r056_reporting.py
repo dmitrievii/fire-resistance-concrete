@@ -1,8 +1,10 @@
 """Report appendix for R0.5.6. Keeps approved DOCX footer, stamp and frame intact."""
 from multicolumn_r05.parametric_report import add_heading, add_text, add_table, add_equation, number
+from rc_fire.thermal.report import add_thermal_section
 
 def add_r056_diagnostics(doc,c,calc):
     """New section appended to all reports; does not rewrite the fixed frame/stamp."""
+    add_thermal_section(doc,c,calc)
     add_heading(doc,'R0.5.6 — совместные и дополнительные диагностические проверки',2)
     add_text(doc,'Воспроизведение Mathcad K18 и параметрическая волоконная модель имеют разный методический статус. '
              'Ниже приведён вычислительный контроль, а не нормативное подтверждение предела R90.')

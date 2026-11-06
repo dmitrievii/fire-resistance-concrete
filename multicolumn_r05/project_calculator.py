@@ -10,6 +10,7 @@ import json
 from multicolumn_r05.project_model import validate_column,load_state,to_engine_input
 from multicolumn_r05.parametric_engine import GeneralInput,compute_general
 from rc_fire.materials import resolve_materials
+from rc_fire.thermal import evaluate_rectangular_column
 from rc_fire.normative import audit_column
 from multicolumn_r05.r056_engine import (
     member_envelope, enrich_with_biaxial, spalling_assessment, check_provenance,
@@ -25,6 +26,7 @@ def evaluate_column(c,grid=48):
     spalling=spalling_assessment(c.get('spalling'))
     normative_preflight=audit_column(c)  # R0.6.0: immutable, never a PASS
     material_preflight=resolve_materials(c)
+    thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
     base={
         'id':c['id'],'name':c['name'],'status':'pending',
         'issues':issues,'section_statuses':states,'results':{},'worst':None,
@@ -32,6 +34,7 @@ def evaluate_column(c,grid=48):
         'model':'K18-derived temperature + R0.4 fiber / R0.5.6 diagnostics',
         'grid':grid,'spalling':spalling,'normative_preflight':normative_preflight,
         'material_preflight':material_preflight,
+        'thermal_normative':thermal_normative,
         'member':{'status':'not_evaluated'},
         'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
         'fire_resistance_status':'not_demonstrated',
@@ -42,6 +45,26 @@ def evaluate_column(c,grid=48):
     if any(s in ('invalid','incomplete') for s in states.values()):
         base['issues'].append('Некоторые нагрузки не заполнены полностью или N<=0')
     if not ready:return base
+    # The inherited R0.4 fibre solver only supports 4-face heating. Avoid
+    # quietly reporting a 4-face mechanical result for a user-selected
+    # 1-, 2-, or 3-face fire configuration.
+    tp=c.get('thermal_spec') or {}
+    chosen=set(tp.get('exposed_faces',('left','right','bottom','top')))
+    if chosen != {'left','right','bottom','top'}:
+        base['status']='pending'
+        base['issues'].append('R0.6.2: теплотехника для выбранных сторон рассчитана '
+            'отдельно; старая механика допускает только четыре стороны. '
+            'До R0.6.3 механическое заключение не формируется.')
+        return base
+    # Explicitly selected material data may not be silently replaced by
+    # siliceous 2400 kg/m3 K18 legacy constants if Annex K cannot resolve.
+    if (tp.get('dry_density_kg_m3') is not None or tp.get('concrete_family') is not None):
+        if thermal_normative['status']!='evaluated':
+            base['status']='pending'
+            base['issues'].append('Параметры теплотехники заданы, но нормативный '
+                'расчёт не квалифицирован: '+thermal_normative.get('reason',
+                     '; '.join(thermal_normative.get('issues',thermal_normative.get('missing',[])))))
+            return base
     try:
         data=to_engine_input(c,ready,grid)
         key=hashlib.sha256(json.dumps(data,sort_keys=True,ensure_ascii=False).encode()).hexdigest()

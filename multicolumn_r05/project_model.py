@@ -33,6 +33,8 @@ def new_column(idx):
     c['bars']=default_bars(c)
     c['spalling']={'method':'sp468'}  # no assumed mix data
     c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
+    c['thermal_spec']={'a_red_mode':'table_K1',
+                       'exposed_faces':['left','right','bottom','top']}
     return c
 
 
@@ -140,6 +142,53 @@ def update_material_spec(project,cid,fields):
     ConcreteMix(strength_class=col['concrete'],**out.get('concrete',{}))
     Reinforcement(grade=col['steel_grade'],**out.get('steel',{}))
     col['material_spec']=out
+    project['revision']+=1
+
+
+def update_thermal_spec(project,cid,fields):
+    """R0.6.2 Annex K authoring. No implicit concrete composition/density.
+
+    The tabulated thermal profile is usable only after the actual concrete
+    family and dry density are specified. Project JSON remains backwards
+    compatible with projects created before R0.6.2.
+    """
+    from rc_fire.thermal import CONCRETE_FAMILIES, FACE_NAMES, MODEL_CHOICES
+    from rc_fire.thermal import ThermalProfile
+    permitted={'concrete_family','dry_density_kg_m3','moisture_mass_pct',
+               'a_red_mode','exposed_faces'}
+    col=get_column(project,cid)
+    profile=copy.deepcopy(col.get('thermal_spec') or {})
+    for key,value in fields.items():
+        if key not in permitted:raise ValueError('Неизвестный параметр теплотехники: '+key)
+        if key=='exposed_faces':
+            if not isinstance(value,(list,tuple)) or not 1<=len(value)<=4:
+                raise ValueError('Выберите от 1 до 4 нагреваемых сторон')
+            if len(value)!=len(set(value)) or any(f not in FACE_NAMES for f in value):
+                raise ValueError('Неверные нагреваемые стороны')
+            profile[key]=list(value)
+        elif value is None or (isinstance(value,str) and not value.strip()):
+            profile.pop(key,None)
+        elif key=='concrete_family':
+            if value not in CONCRETE_FAMILIES:
+                raise ValueError('Нет такой группы бетона в таблице К.1')
+            profile[key]=value
+        elif key=='a_red_mode':
+            if value not in MODEL_CHOICES:raise ValueError('Неизвестная модель температуропроводности')
+            profile[key]=value
+        else:
+            v=float(value)
+            if not math.isfinite(v):raise ValueError(key+': значение не конечно')
+            if key=='dry_density_kg_m3' and not 800<=v<=2400:
+                raise ValueError('Плотность вне таблицы К.2 [800;2400]')
+            if key=='moisture_mass_pct' and not 0<=v<=30:
+                raise ValueError('Весовая влажность Wc вне диапазона [0;30] %')
+            profile[key]=v
+    # Do not require complete properties until actual thermal evaluation.
+    if profile.get('concrete_family') and profile.get('dry_density_kg_m3') is not None:
+        ThermalProfile(profile['concrete_family'],profile['dry_density_kg_m3'],
+                       profile.get('a_red_mode','table_K1'),
+                       profile.get('moisture_mass_pct')).validate()
+    col['thermal_spec']=profile
     project['revision']+=1
 
 
@@ -255,6 +304,31 @@ def validate_column(c):
                     if key=='n_p_percent' and not 0<x<=100:raise ValueError()
                 except (ValueError,TypeError):issues.append('Некорректный параметр F: '+key)
 
+    thermal=c.get('thermal_spec')
+    if thermal is not None:
+        try:
+            from rc_fire.thermal import ThermalProfile, CONCRETE_FAMILIES, FACE_NAMES, MODEL_CHOICES
+            if not isinstance(thermal,dict):
+                raise ValueError('Свойства нагрева должны быть объектом')
+            if set(thermal)-{'concrete_family','a_red_mode','dry_density_kg_m3',
+                             'moisture_mass_pct','exposed_faces'}:
+                raise ValueError('Неизвестный параметр теплотехники')
+            family=thermal.get('concrete_family')
+            if family is not None and family not in CONCRETE_FAMILIES:
+                raise ValueError('Неизвестный вид бетона К.1')
+            mode=thermal.get('a_red_mode','table_K1')
+            if mode not in MODEL_CHOICES:raise ValueError('Неизвестный метод a_red')
+            faces=thermal.get('exposed_faces',list(FACE_NAMES))
+            if not isinstance(faces,(list,tuple)) or not 1<=len(faces)<=4 or len(set(faces))!=len(faces) or any(v not in FACE_NAMES for v in faces):
+                raise ValueError('Неизвестные/повторные нагреваемые стороны')
+            if thermal.get('dry_density_kg_m3') is not None:
+                ThermalProfile(family or 'siliceous',thermal['dry_density_kg_m3'],mode,thermal.get('moisture_mass_pct')).validate()
+            elif thermal.get('moisture_mass_pct') is not None:
+                x=float(thermal['moisture_mass_pct'])
+                if not math.isfinite(x) or not 0<=x<=30:raise ValueError('Недопустимая влажность')
+        except (ValueError,TypeError,KeyError) as exc:
+            issues.append('Некорректная теплотехническая спецификация: '+str(exc))
+
     if c.get('steel_grade')!='S500' or float(c.get('f_y_MPa',0))!=500.0:
         issues.append('R0.5 допускает только сталь S500 с f_y=500 МПа; для иных марок требуется калибровка температурных характеристик')
     if not(0<c['fire_minutes']<=240):issues.append('Продолжительность пожара: (0;240] мин')
@@ -318,11 +392,27 @@ def to_engine_input(c,sections=None,grid=48):
     if catalog['concrete'] is not None and catalog['concrete']['E_cm_GPa'] is not None:
         ecm=catalog['concrete']['E_cm_GPa']
         ecm_source=catalog['concrete']['modulus_source']
+    from rc_fire.thermal import evaluate_rectangular_column
+    therm=evaluate_rectangular_column(c,grid=8)
+    if therm.get('status')=='evaluated' and len(therm.get('exposed_faces',()))==4 and therm.get('critical_temperature_C') is not None:
+        tc=therm['coefficients']
+        fire_params={'minutes':c['fire_minutes'],
+                     'exposed_faces':list(therm['exposed_faces']),
+                     'a_red_m2_h':tc['a_red_m2_h'],'phi_1':tc['phi_1'],'phi_2':tc['phi_2'],
+                     'critical_concrete_C':therm['critical_temperature_C']}
+        provenance={'source':'SP_2026_Annex_K','a_red_source':tc['a_red_source'],
+                    'normative_engine_qualified':False}
+    else:
+        fire_params={'minutes':c['fire_minutes'],
+                     'exposed_faces':['left','right','bottom','top'],
+                     'a_red_m2_h':0.00133,'phi_1':0.63,'phi_2':0.5,
+                     'critical_concrete_C':500}
+        provenance={'source':'legacy_K18_4face_diagnostic_fallback',
+                    'normative_engine_qualified':False}
     return {'schema':'k18-parametric-r04','geometry':{'b_m':c['b_mm']/1000,'h_m':c['h_mm']/1000,'length_m':c['length_m']},
       'material':{'f_ck_MPa':fck,'E_cm_GPa':ecm,'f_y_MPa':c['f_y_MPa'],'E_s_GPa':c['E_s_GPa']},
       'material_resolution':{'E_cm_source':ecm_source,'normative_engine_qualified':False},
-      'fire':{'minutes':c['fire_minutes'],'exposed_faces':['left','right','bottom','top'],
-             'a_red_m2_h':0.00133,'phi_1':0.63,'phi_2':0.5,'critical_concrete_C':500},
+      'fire':fire_params,'thermal_resolution':provenance,
       'mechanics':{'mu_x':c['mu_x'],'mu_y':c['mu_y']},'grid':int(grid),
       'variants':[{'id':s['id'],'N_kN':s['N_kN'],'M_x_kNm':s['Mx_kNm'],'M_y_kNm':s['My_kNm'],
                    'bars':[{'id':b['id'],'x_m':b['x_mm']/1000,'y_m':b['y_mm']/1000,

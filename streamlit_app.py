@@ -22,6 +22,7 @@ if _cached_model is not None:
     _actual = getattr(_cached_model, "__file__", None)
     _expected = (_ROOT / _PACKAGE / "project_model.py").resolve()
     _stale |= not callable(getattr(_cached_model, "update_spalling", None))
+    _stale |= not callable(getattr(_cached_model, "update_thermal_spec", None))
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:
@@ -33,7 +34,19 @@ for _suffix in _EXPECTED_MODULES:
     _stale |= not _actual or Path(_actual).resolve() != _expected
     _stale |= getattr(_loaded, "R056_SP468_RELEASE", None) != _SP468_RELEASE
 
+# R0.6.2 introduces a new thermal package and extends the project authoring
+# contract. On a Streamlit Cloud hot reload, stale module objects must not
+# survive even if the older R0.5.6 methods are still present.
+_THERMAL_NAME = "rc_fire.thermal.normative"
+_cached_thermal = sys.modules.get(_THERMAL_NAME)
+if _cached_thermal is not None:
+    _stale |= getattr(_cached_thermal,"VERSION",None) != "R0.6.2-annex-K-v1"
+
 if _stale:
+    for _name in tuple(sys.modules):
+        if _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal."):
+            sys.modules.pop(_name,None)
+    importlib.invalidate_caches()
     # Never mix a cached old UI/calculation facade with new material tables.
     for _name in tuple(sys.modules):
         if _name == _PACKAGE or _name.startswith(_PACKAGE + "."):

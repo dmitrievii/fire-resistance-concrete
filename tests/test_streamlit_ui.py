@@ -109,6 +109,21 @@ class StreamlitAppTests(unittest.TestCase):
         finally:
             old_ui.R056_SP468_RELEASE = saved
 
+    def test_r062_thermal_editor_and_empty_state_on_historic_cloud_entrypoint(self):
+        """The historical Streamlit Cloud URL must expose Annex K controls."""
+        entrypoint=(Path(__file__).resolve().parents[1] /
+                    "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_app.py")
+        app=AppTest.from_file(str(entrypoint),default_timeout=60).run()
+        self.assertFalse(app.exception,f"Cloud startup: {list(app.exception)}")
+        page=next(r for r in app.radio if r.label=="Разделы")
+        page.set_value("c1").run()
+        self.assertFalse(app.exception,f"Column page: {list(app.exception)}")
+        self.assertTrue(any("R0.6.2" in x.label for x in app.expander))
+        self.assertTrue(any("Сухая плотность" in x.label for x in app.text_input))
+        from multicolumn_r05.project_calculator import evaluate_column
+        column=app.session_state["project"]["columns"][0]
+        self.assertEqual(evaluate_column(column)["thermal_normative"]["status"],"not_evaluated")
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core
