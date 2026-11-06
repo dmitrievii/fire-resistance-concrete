@@ -11,6 +11,7 @@ from multicolumn_r05.project_model import validate_column,load_state,to_engine_i
 from multicolumn_r05.parametric_engine import GeneralInput,compute_general
 from rc_fire.materials import resolve_materials
 from rc_fire.thermal import evaluate_rectangular_column
+from rc_fire.mechanics import evaluate_column_mechanics
 from rc_fire.normative import audit_column
 from multicolumn_r05.r056_engine import (
     member_envelope, enrich_with_biaxial, spalling_assessment, check_provenance,
@@ -27,6 +28,15 @@ def evaluate_column(c,grid=48):
     normative_preflight=audit_column(c)  # R0.6.0: immutable, never a PASS
     material_preflight=resolve_materials(c)
     thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
+    # R0.6.3 is a separate first-order SECTION diagnostic, never the fire
+    # resistance verdict. Keep it even if the R0.4 mechanics cannot run.
+    try:
+        mechanics_r063=evaluate_column_mechanics(c,thermal_normative,
+            grid=min(28,max(12,int(grid))),above_800_policy='reject')
+    except Exception as exc:
+        mechanics_r063={'status':'error','issues':[type(exc).__name__+': '+str(exc)],
+                         'normative_claim':False,'fire_resistance_status':'not_demonstrated',
+                         'sections':{}}
     base={
         'id':c['id'],'name':c['name'],'status':'pending',
         'issues':issues,'section_statuses':states,'results':{},'worst':None,
@@ -35,6 +45,7 @@ def evaluate_column(c,grid=48):
         'grid':grid,'spalling':spalling,'normative_preflight':normative_preflight,
         'material_preflight':material_preflight,
         'thermal_normative':thermal_normative,
+        'mechanics_r063':mechanics_r063,
         'member':{'status':'not_evaluated'},
         'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
         'fire_resistance_status':'not_demonstrated',

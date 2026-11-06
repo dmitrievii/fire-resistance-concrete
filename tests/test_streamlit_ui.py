@@ -140,6 +140,21 @@ class StreamlitAppTests(unittest.TestCase):
         self.assertFalse(app.error, f"Annex K field warning: {list(app.error)}")
         self.assertTrue(any("температурное поле" in t.value.lower() for t in app.subheader))
 
+    def test_r063_mechanics_panel_via_historical_cloud_entrypoint(self):
+        """R0.6.3 panel renders with default incomplete inputs and no R90 pass."""
+        entrypoint=(Path(__file__).resolve().parents[1] /
+                    "K18_Streamlit_GitHub_MVP_R0.5"/"streamlit_app.py")
+        app=AppTest.from_file(str(entrypoint),default_timeout=60).run()
+        self.assertFalse(app.exception,f"Initial Cloud render: {list(app.exception)}")
+        page=next(r for r in app.radio if r.label=="Разделы")
+        page.set_value('c1').run()
+        self.assertFalse(app.exception,f"Column with R0.6.3: {list(app.exception)}")
+        self.assertTrue(any('R0.6.3' in x.label for x in app.expander))
+        from multicolumn_r05.project_calculator import evaluate_column
+        col=app.session_state["project"]["columns"][0]
+        result=evaluate_column(col,grid=20)
+        self.assertFalse(result['mechanics_r063']['normative_claim'])
+
     def test_cloud_legacy_entrypoint_refreshes_stale_backend(self):
         """Simulate a pre-R0.8 app_core cached during a Streamlit Cloud hot reload."""
         import app_core

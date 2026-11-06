@@ -42,9 +42,15 @@ _cached_thermal = sys.modules.get(_THERMAL_NAME)
 if _cached_thermal is not None:
     _stale |= getattr(_cached_thermal,"VERSION",None) != "R0.6.2-annex-K-v1"
 
+_MECHANICS_NAME = "rc_fire.mechanics.normative"
+_cached_mechanics = sys.modules.get(_MECHANICS_NAME)
+if _cached_mechanics is not None:
+    _stale |= getattr(_cached_mechanics, "VERSION", None) != "R0.6.3-section-mechanics-v1"
+
 if _stale:
     for _name in tuple(sys.modules):
-        if _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal."):
+        if (_name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
+             or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")):
             sys.modules.pop(_name,None)
     importlib.invalidate_caches()
     # Never mix a cached old UI/calculation facade with new material tables.
