@@ -49,6 +49,11 @@ def _evaluate_column_pre_r064d(c,grid=48):
         'member':{'status':'not_evaluated'},
         'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
         'fire_resistance_status':'not_demonstrated',
+        'load_summary':{'ready':sum(v=='ready' for v in states.values()),
+                        'empty':sum(v=='empty' for v in states.values()),
+                        'incomplete':sum(v=='incomplete' for v in states.values()),
+                        'invalid':sum(v=='invalid' for v in states.values()),
+                        'total':len(states)},
     }
     if issues:
         base['status']='invalid';return base
@@ -70,12 +75,25 @@ def _evaluate_column_pre_r064d(c,grid=48):
     # Explicitly selected material data may not be silently replaced by
     # siliceous 2400 kg/m3 K18 legacy constants if Annex K cannot resolve.
     if (tp.get('dry_density_kg_m3') is not None or tp.get('concrete_family') is not None):
-        if thermal_normative['status']!='evaluated':
+        # The K.2 intermediate-density uncertainty is documented rather than
+        # silently substituting reference K18 coefficients. Only that warning
+        # permits a *diagnostic* legacy computation; all other scope warnings
+        # remain blockers. There is never a normative R90 claim here.
+        warnings=thermal_normative.get('issues',[]) or []
+        diagnostic_k2=(thermal_normative.get('status')=='evaluated_with_scope_warnings'
+                       and bool(warnings)
+                       and all(str(x).startswith('К.2:') for x in warnings))
+        if thermal_normative['status']!='evaluated' and not diagnostic_k2:
             base['status']='pending'
-            base['issues'].append('Параметры теплотехники заданы, но нормативный '
-                'расчёт не квалифицирован: '+thermal_normative.get('reason',
-                     '; '.join(thermal_normative.get('issues',thermal_normative.get('missing',[])))))
+            base['issues'].append('Нагрузки введены, но механический расчёт '
+                'приостановлен из-за ограничений теплотехники: '+
+                str(thermal_normative.get('reason') or
+                    '; '.join(warnings or thermal_normative.get('missing',[])) or
+                    thermal_normative.get('status')))
             return base
+        if diagnostic_k2:
+            base['issues'].append('К.2: параметры интерполированы по плотности; '
+                'результат механики только диагностический, нормативный R90 не подтверждён')
     try:
         data=to_engine_input(c,ready,grid)
         key=hashlib.sha256(json.dumps(data,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
