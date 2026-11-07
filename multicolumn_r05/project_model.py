@@ -28,8 +28,9 @@ def new_column(idx):
        'concrete':'C30/37','steel_grade':'S500','f_y_MPa':500.0,
        'E_s_GPa':200.0,'cover_mm':20.0,'stirrup_mm':10.0,'bar_diameter_mm':20.0,
        'mu_x':1.0,'mu_y':1.0,'fire_minutes':90.0,'bar_mode':'perimeter8',
-       'sections':[{'id':'bottom','name':'Низ','z_m':0.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
-                   {'id':'top','name':'Верх','z_m':3.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
+       'sections':[{'id':'center','name':'Центр','z_m':1.5,
+                    'auto_midspan':True,
+                    'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
     c['spalling']={'method':'sp468'}  # no assumed mix data
     c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
@@ -72,7 +73,11 @@ def update_column(project,cid,fields):
         col[k]=v
     if 'length_m' in fields:
         for s in col['sections']:
-            if s['id']=='top':s['z_m']=float(col['length_m'])
+            # Default midspan follows length until manually repositioned.
+            if s.get('auto_midspan') is True:
+                s['z_m']=float(col['length_m'])/2
+            elif s['id']=='top':
+                s['z_m']=float(col['length_m'])
     # Automatic layout recomputes positions when geometry, cover or diameter changes.
     if col['bar_mode']=='perimeter8' and any(k in fields for k in ('b_mm','h_mm','cover_mm','stirrup_mm','bar_diameter_mm')):
         col['bars']=default_bars(col)
@@ -92,6 +97,8 @@ def update_section(project,cid,sid,fields):
             val=float(v)
             if not math.isfinite(val):raise ValueError('Неограниченная величина усилия/координаты')
             sec[k]=val
+            if k=='z_m' and sec.get('auto_midspan') is True:
+                sec['auto_midspan']=False
     project['revision']+=1
 
 
@@ -247,18 +254,32 @@ def reset_auto_bars(project,cid):
 
 
 def add_section(project,cid):
+    """Add a section in the largest free interval between z=0 and z=L.
+
+    Ends are possible user-defined positions, not mandatory sections.
+    There is no artificial 12-section ceiling.
+    """
     c=get_column(project,cid)
-    if len(c['sections'])>=12:raise ValueError('Не более 12 сечений на колонну')
     used={s['id'] for s in c['sections']};i=1
     while f'mid{i}' in used:i+=1
-    c['sections'].insert(-1,{'id':f'mid{i}','name':f'Промежуточное {i}',
-              'z_m':float(c['length_m'])/2,'N_kN':None,'Mx_kNm':None,'My_kNm':None})
+    L=float(c['length_m'])
+    occupied=sorted({0.0,L}|{float(x['z_m']) for x in c['sections']})
+    intervals=[(b-a,a,b) for a,b in zip(occupied,occupied[1:])]
+    if not intervals or max(intervals)[0]<1e-9:
+        raise ValueError('Недостаточно места между существующими сечениями')
+    _,a,b=max(intervals,key=lambda p:p[0])
+    c['sections'].append({'id':f'mid{i}','name':f'Дополнительное {i}',
+        'z_m':(a+b)/2,'N_kN':None,'Mx_kNm':None,'My_kNm':None})
+    c['sections'].sort(key=lambda x:float(x['z_m']))
     project['revision']+=1
 
 
 def remove_section(project,cid,sid):
     c=get_column(project,cid)
-    if sid in ('bottom','top'):raise ValueError('Низ и верх нельзя удалить')
+    if len(c['sections'])<=1:
+        raise ValueError('Должно остаться хотя бы одно расчётное сечение')
+    if not any(s['id']==sid for s in c['sections']):
+        raise ValueError('Сечение не найдено: '+str(sid))
     c['sections']=[s for s in c['sections'] if s['id']!=sid]
     project['revision']+=1
 
@@ -353,7 +374,7 @@ def validate_column(c):
                 if dist+1e-7<(a['diameter_mm']+other['diameter_mm'])/2:
                     issues.append(f"Пересечение стержней {a['id']}/{other['id']}")
             except (KeyError,TypeError,ValueError):pass
-    if len(c['sections'])<2 or len(c['sections'])>12:issues.append('Необходимо 2–12 расчётных сечений')
+    if len(c['sections'])<1:issues.append('Необходимо хотя бы одно расчётное сечение')
     secids=set()
     for s in c['sections']:
         if s['id'] in secids:issues.append(f'Повтор сечения {s["id"]}')
