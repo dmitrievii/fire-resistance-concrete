@@ -1,0 +1,32 @@
+name: Reinforcement browser rendering (Chromium)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-plotly-rebar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install application and browser driver
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install playwright
+      - name: Browser rendering and four toggle combinations
+        run: python qa/browser_reinforcement_plot.py
+      - name: Upload browser screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reinforcement-browser-failure
+          path: rebar_browser_failure.png
+          if-no-files-found: ignore
