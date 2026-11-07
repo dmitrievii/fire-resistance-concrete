@@ -415,13 +415,20 @@ def to_engine_input(c,sections=None,grid=48):
         ecm_source=catalog['concrete']['modulus_source']
     from rc_fire.thermal import evaluate_rectangular_column
     therm=evaluate_rectangular_column(c,grid=8)
-    if therm.get('status')=='evaluated' and len(therm.get('exposed_faces',()))==4 and therm.get('critical_temperature_C') is not None:
+    # Only K.2 intermediate-density interpolation is admissible as an
+    # explicitly labelled diagnostic warning; other scope issues still block.
+    acceptable=(therm.get('status')=='evaluated' or
+                (therm.get('status')=='evaluated_with_scope_warnings' and
+                 bool(therm.get('issues')) and
+                 all(str(x).startswith('К.2:') for x in therm['issues'])))
+    if acceptable and len(therm.get('exposed_faces',()))==4 and therm.get('critical_temperature_C') is not None:
         tc=therm['coefficients']
         fire_params={'minutes':c['fire_minutes'],
                      'exposed_faces':list(therm['exposed_faces']),
                      'a_red_m2_h':tc['a_red_m2_h'],'phi_1':tc['phi_1'],'phi_2':tc['phi_2'],
                      'critical_concrete_C':therm['critical_temperature_C']}
         provenance={'source':'SP_2026_Annex_K','a_red_source':tc['a_red_source'],
+                    'scope_warnings':list(therm.get('issues',[])),
                     'normative_engine_qualified':False}
     else:
         fire_params={'minutes':c['fire_minutes'],
