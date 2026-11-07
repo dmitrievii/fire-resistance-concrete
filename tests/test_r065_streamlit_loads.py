@@ -36,5 +36,23 @@ class R065StreamlitLoadTransferTests(unittest.TestCase):
         self.assertEqual(app.session_state['project']['columns'][0]['sections'][0]['N_kN'],50.)
 
 
+    def test_explicit_new_project_resets_old_end_sections_safely(self):
+        root=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        app=AppTest.from_file(str(root),default_timeout=120).run()
+        self.assertFalse(app.exception,list(app.exception))
+        old=app.session_state['project']['columns'][0]
+        old['sections']=[
+            {'id':'bottom','name':'Низ','z_m':0.,'N_kN':50.,'Mx_kNm':3.,'My_kNm':2.},
+            {'id':'top','name':'Верх','z_m':3.,'N_kN':None,'Mx_kNm':None,'My_kNm':None}]
+        app.run()
+        self.assertEqual(len(app.session_state['project']['columns'][0]['sections']),2)
+        app.button(key='r065_new_project').click().run()
+        self.assertFalse(app.exception,list(app.exception))
+        new=app.session_state['project']['columns'][0]['sections']
+        self.assertEqual(len(new),1)
+        self.assertEqual(new[0]['id'],'center')
+        self.assertIsNone(new[0]['N_kN'])
+
+
 if __name__=='__main__':
     unittest.main()
