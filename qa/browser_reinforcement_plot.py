@@ -57,7 +57,7 @@ def main():
                 page.on("pageerror",lambda e: errors.append(str(e)))
                 page.goto(URL,wait_until="domcontentloaded",timeout=60000)
                 sidebar=page.locator('[data-testid="stSidebar"]')
-                sidebar.get_by_text("К1",exact=True).first.click(timeout=45000)
+                sidebar.get_by_text("К1",exact=True).first.dispatch_event("click",timeout=45000)
                 page.get_by_text("Схема арматуры",exact=True).wait_for(timeout=45000)
                 try:
                     page.locator(".js-plotly-plot").first.wait_for(timeout=25000)
