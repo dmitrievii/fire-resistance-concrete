@@ -68,9 +68,9 @@ def _evaluate_column_pre_r064d(c,grid=48):
     chosen=set(tp.get('exposed_faces',('left','right','bottom','top')))
     if chosen != {'left','right','bottom','top'}:
         base['status']='pending'
-        base['issues'].append('R0.6.2: теплотехника для выбранных сторон рассчитана '
-            'отдельно; старая механика допускает только четыре стороны. '
-            'До R0.6.3 механическое заключение не формируется.')
+        base['issues'].append('R0.6.2: нагрузки введены, но диагностический расчёт '
+            'R0.5.6 применим только для четырёхстороннего обогрева; '
+            'нормативное заключение по выбранным сторонам не формируется.')
         return base
     # Explicitly selected material data may not be silently replaced by
     # siliceous 2400 kg/m3 K18 legacy constants if Annex K cannot resolve.
