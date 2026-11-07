@@ -34,7 +34,7 @@ class R067StreamlitAuthoringTests(unittest.TestCase):
         sel("Расчётная схема поперечной нагрузки").set_value("uniform_transverse_load")
         inp("Источник пожарного сочетания усилий").set_value(
             "Задан пользователем, пока не квалифицирован")
-        app.button("Сохранить схему нагрева, опирания и нагрузок").click().run()
+        next(x for x in app.button if x.label=="Сохранить схему нагрева, опирания и нагрузок").click().run()
         self.assertFalse(app.exception,list(app.exception))
         c=app.session_state["project"]["columns"][0]
         spec=c["member_spec"]
