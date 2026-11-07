@@ -138,6 +138,10 @@ def show_overview():
             except Exception as exc:st.error('Загрузка отклонена: '+str(exc))
     with buttons[2]:
         st.caption('Экспорт включает сводный отчёт, отдельные документы и все исходные данные.')
+        if st.button('Новый проект (сброс текущих данных)',key='r065_new_project'):
+            st.session_state.project=new_project(len(project['columns']))
+            st.session_state.exports=None
+            st.rerun()
     can_pdf=shutil.which('libreoffice') is not None or shutil.which('soffice') is not None
     want_pdf=st.checkbox('Создавать также PDF',value=can_pdf,disabled=not can_pdf)
     if not can_pdf:st.info('LibreOffice не установлен; DOCX формируется, PDF доступен после установки LibreOffice.')
