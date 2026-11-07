@@ -107,9 +107,16 @@ def render_r056_results(st,calc):
         st.caption('R0.6.0: ' + contract['status'] +
                    ' · нормативные контракты без квалифицированного ядра · ' +
                    contract['contract_sha256'][:12])
-        with st.expander('Нормативный протокол R0.6.0 — ограничения и источники',expanded=False):
+        with st.expander('Нормативный протокол R0.6.7 — разрешённые входные данные и ограничения',expanded=False):
             st.write('СП 2.02.05-2026 + СП 5.03.01-2020; маршрут: '+
                      contract['route'])
+            resolved=contract.get('resolved_inputs') or {}
+            if resolved:
+                st.caption('R0.6.7 проверяет актуальные material_spec и thermal_spec. '
+                    'Указанные параметры отделены от нормативно подтверждённых исходных данных.')
+                st.dataframe(pd.DataFrame([
+                    {'Параметр':key,'Разрешённое значение':str(value) if value is not None else '—'}
+                    for key,value in resolved.items()]),hide_index=True,use_container_width=True)
             st.write('Это не нормативное подтверждение R90. Исторический Mathcad и '
                      'СП 468 остаются диагностическими источниками.')
             st.dataframe(pd.DataFrame([{
