@@ -37,6 +37,8 @@ def new_column(idx):
     c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
     c['thermal_spec']={'a_red_mode':'table_K1',
                        'exposed_faces':['left','right','bottom','top']}
+    c['member_spec']={'thermal_longitudinal_mode':'explicit_only',
+                      'load_mode':'not_defined'}
     return c
 
 
@@ -200,6 +202,20 @@ def update_thermal_spec(project,cid,fields):
     project['revision']+=1
 
 
+def update_member_spec(project,cid,fields):
+    """Explicit longitudinal temperature assumption, end supports and loads."""
+    from rc_fire.integration.r067 import validate_member_spec
+    if not isinstance(fields,dict):
+        raise ValueError("Параметры колонны должны быть объектом")
+    c=get_column(project,cid)
+    new=copy.deepcopy(c.get('member_spec') or {})
+    for key,val in fields.items():
+        if val is None:new.pop(key,None)
+        else:new[key]=val
+    c['member_spec']=validate_member_spec(new)
+    project['revision']+=1
+
+
 def update_spalling(project,cid,fields):
     """Switch SP468/manual methods; validate source and units without false defaults."""
     from multicolumn_r05.r056_engine import SPALLING_FIELDS
@@ -350,6 +366,12 @@ def validate_column(c):
                 if not math.isfinite(x) or not 0<=x<=30:raise ValueError('Недопустимая влажность')
         except (ValueError,TypeError,KeyError) as exc:
             issues.append('Некорректная теплотехническая спецификация: '+str(exc))
+
+    try:
+        from rc_fire.integration.r067 import validate_member_spec
+        validate_member_spec(c.get('member_spec'))
+    except (TypeError,ValueError) as exc:
+        issues.append('Некорректные параметры колонны R0.6.7: '+str(exc))
 
     if c.get('steel_grade')!='S500' or float(c.get('f_y_MPa',0))!=500.0:
         issues.append('R0.5 допускает только сталь S500 с f_y=500 МПа; для иных марок требуется калибровка температурных характеристик')
