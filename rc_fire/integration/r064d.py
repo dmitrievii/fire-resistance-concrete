@@ -62,15 +62,31 @@ def sample_station_bundle(column, *, node_count=3):
     length=_numeric(column.get('length_m'),'column.length_m',lower=0,greater=True)
     z=[length*i/(int(node_count)-1) for i in range(int(node_count))]
     entry={'column':copy.deepcopy(column),'thermal':None}
+    # Section actions are carried as evidence, never silently converted into
+    # second-order bending loads or fire combinations.
+    actions=[]
+    for sec in column.get('sections',[]):
+        vals={k:sec.get(k) for k in ('N_kN','Mx_kNm','My_kNm')}
+        ready=(all(isinstance(q,(int,float)) and not isinstance(q,bool)
+                   and math.isfinite(q) for q in vals.values())
+               and vals['N_kN']>0)
+        actions.append({'section_id':sec.get('id'),'z_m':sec.get('z_m'),
+                        **vals,'load_state':'ready' if ready else 'not_ready'})
+    ns=[float(a['N_kN']) for a in actions if a['load_state']=='ready']
+    complete=bool(actions) and all(a['load_state']=='ready' for a in actions)
+    n=(ns[0] if complete and all(abs(q-ns[0])<=max(1e-6,1e-7*ns[0])
+                                  for q in ns) else None)
     return {'schema':'R0.6.4D-explicit-stations-v1',
-      'column_id':column.get('id'),'z_m':z,'N_kN':None,
+      'column_id':column.get('id'),'z_m':z,'N_kN':n,
+      'section_actions_reference_only':actions,
+      'section_action_origin':'editable_project_table_not_fire_combination',
       'gauss_stations':[[copy.deepcopy(entry) for _ in range(3)] for _ in z[:-1]],
       'node_stations':[copy.deepcopy(entry) for _ in z],
       'distributed_load_kNpm':None,
       'fire_actions_source':None,
       'temperature_time_minutes':column.get('fire_minutes'),
       'grid':12,
-      'method_notice':'Fill every thermal result and verified fire actions separately; no automatic z-interpolation or R90 approval.'}
+      'method_notice':'Section N/Mx/My copied for traceability, not an inferred bending load diagram. Supply all thermal stations, verified fire actions and supports; no R90 approval.'}
 
 
 def _validate_station_bundle(bundle:dict, *, expected_column=None):
