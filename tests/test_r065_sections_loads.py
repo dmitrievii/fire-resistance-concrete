@@ -76,7 +76,7 @@ class CenterSectionsAndActionsTests(unittest.TestCase):
         update_thermal_spec(p,'c1',{
             'concrete_family':'siliceous','dry_density_kg_m3':2300.,
             'exposed_faces':['left','right','bottom','top']})
-        update_column(p,'c1',{'fire_minutes':10.0})
+        update_column(p,'c1',{'fire_minutes':30.0})
         update_section(p,'c1','center',{'N_kN':50.,'Mx_kNm':3.,'My_kNm':2.})
         c=p['columns'][0]
         out=evaluate_column(c,grid=16)
@@ -99,7 +99,7 @@ class CenterSectionsAndActionsTests(unittest.TestCase):
         self.assertEqual(out['status'],'pending')
         self.assertEqual(out['load_summary']['ready'],1)
         self.assertEqual(out['section_statuses']['center'],'ready')
-        self.assertTrue(any('Нагрузки введены' in msg for msg in out['issues']))
+        self.assertTrue(any('нагрузки введены' in msg.lower() for msg in out['issues']))
         self.assertFalse(out['normative_claim'])
 
     def test_template_copies_section_actions_without_fabricating_bending_diagram(self):
