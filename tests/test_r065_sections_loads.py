@@ -79,7 +79,7 @@ class CenterSectionsAndActionsTests(unittest.TestCase):
         update_column(p,'c1',{'fire_minutes':30.0})
         update_section(p,'c1','center',{'N_kN':50.,'Mx_kNm':3.,'My_kNm':2.})
         c=p['columns'][0]
-        out=evaluate_column(c,grid=16)
+        out=evaluate_column(c,grid=48)
         thermal=out['thermal_normative']
         self.assertEqual(thermal['status'],'evaluated_with_scope_warnings',thermal.get('issues'))
         self.assertTrue(all(x.startswith('К.2:') for x in thermal.get('issues',[])))
