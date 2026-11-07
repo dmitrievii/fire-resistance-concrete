@@ -12,6 +12,15 @@ def render_member_evidence(st, column, existing_result):
         st.json({'status': existing_result.get('member_r064d',{}).get('status','NOT_EVALUATED'),
                  'normative_claim': False,'fire_resistance_status':'not_demonstrated'})
         sample=sample_station_bundle(column,node_count=3)
+        actions=sample.get('section_actions_reference_only',[])
+        ready=sum(a['load_state']=='ready' for a in actions)
+        n=sample.get('N_kN')
+        st.caption(f'Усилия из общей таблицы: {ready}/{len(actions)} сечений заполнено. '
+                   + (f'Постоянная N={n:g} кН перенесена в шаблон. ' if n is not None
+                      else 'Постоянная N не определена для всей колонны. ')
+                   + 'Mx/My сохранены в JSON как исходные данные, но не преобразуются '
+                     'автоматически в распределённую нагрузку. Тепловые станции '
+                     'и условия закрепления должны быть заданы отдельно.')
         st.download_button('Шаблон входных данных R0.6.4D (неполный)',
                            json.dumps(sample,ensure_ascii=False,indent=2),
                            file_name=f"{column.get('id','column')}_member_stations_template.json",
