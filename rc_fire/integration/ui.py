@@ -5,10 +5,99 @@ from .r064d import (sample_station_bundle, evaluate_explicit_member_bundle,
                     MemberEvidenceInputError, _signature)
 
 
-def render_member_evidence(st, column, existing_result):
-    with st.expander('R0.6.4D · Нагретая колонна: диагностика второго порядка (не R90)',expanded=False):
-        st.caption('Исследовательский режим. Требуются явные температуры всех точек Гаусса и узлов; '
-                   'из одного поперечного сечения температура автоматически по длине не переносится.')
+def render_member_evidence(st, column, existing_result, *,
+                           project=None, safe_change=None, update_member_spec=None):
+    from .r067 import (build_uniform_fire_bundle, evaluate_uniform_fire_member,
+                       validate_member_spec)
+    with st.expander('R0.6.7 · Нагретая колонна: автоматическое сопряжение (не R90)',expanded=False):
+        st.caption('R0.6.7: температурные поля для всех узлов и точек Гаусса '
+                   'можно построить по приложению К при явном допущении '
+                   'одинакового нагрева вдоль колонны. При неоднородном нагреве '
+                   'используйте независимые станции через JSON. '
+                   'Все результаты — только диагностические.')
+        spec=validate_member_spec(column.get('member_spec'))
+        if project is not None and update_member_spec is not None and safe_change is not None:
+            sid=column.get('id','column')
+            with st.form(f"r067_member_inputs_{sid}_{project['revision']}"):
+                modes=('explicit_only','uniform_assumed')
+                mode=st.selectbox('Температура по длине',
+                    modes,index=modes.index(spec.get('thermal_longitudinal_mode','explicit_only')),
+                    format_func=lambda x:('Независимые температурные станции (JSON)'
+                        if x=='explicit_only' else 'Одинаковый нагрев всех сечений (допущение пользователя)'))
+                note=st.text_input('Обоснование одинакового нагрева по длине',
+                    value=spec.get('uniform_fire_basis') or '',
+                    help='Например, одинаковое огневое воздействие и условия теплообмена по всей длине')
+                c1,c2=st.columns(2)
+                supports=('', 'pinned','fixed','guided')
+                with c1:
+                    left=st.selectbox('Нижняя опора',supports,
+                        index=supports.index(spec.get('left_support') or ''),
+                        format_func=lambda x: {'':'— не задана —',
+                            'pinned':'Шарнир','fixed':'Защемление','guided':'Направляющая'}[x])
+                with c2:
+                    right=st.selectbox('Верхняя опора',supports,
+                        index=supports.index(spec.get('right_support') or ''),
+                        format_func=lambda x: {'':'— не задана —',
+                            'pinned':'Шарнир','fixed':'Защемление','guided':'Направляющая'}[x])
+                support_src=st.text_input('Обоснование опор (проект, схема закрепления)',
+                    value=spec.get('support_provenance') or '')
+                choices=('not_defined','axial_only','uniform_transverse_load')
+                load_mode=st.selectbox('Расчётная схема поперечной нагрузки',
+                    choices,index=choices.index(spec.get('load_mode','not_defined')),
+                    format_func=lambda x: {'not_defined':'— не задана —',
+                        'axial_only':'Подтверждённое осевое нагружение (Mx=My=0)',
+                        'uniform_transverse_load':'Заданная равномерная нагрузка qx, qy'}[x])
+                q1,q2=st.columns(2)
+                with q1:
+                    qx=st.number_input('qx, кН/м (ось X)',
+                        value=float(spec.get('q_x_kNpm') or 0.0),step=0.1)
+                with q2:
+                    qy=st.number_input('qy, кН/м (ось Y)',
+                        value=float(spec.get('q_y_kNpm') or 0.0),step=0.1)
+                fire_src=st.text_input('Источник пожарного сочетания усилий',
+                    value=spec.get('fire_actions_source') or '',
+                    help='Происхождение нагрузки; текст сам по себе не подтверждает корректность сочетания')
+                nodes=st.number_input('Расчётные узлы по длине',
+                    value=int(spec.get('node_count',3)),min_value=2,max_value=21,step=1)
+                if st.form_submit_button('Сохранить схему нагрева, опирания и нагрузок'):
+                    payload={'thermal_longitudinal_mode':mode,
+                        'uniform_fire_basis':note.strip() or None,
+                        'left_support':left or None,'right_support':right or None,
+                        'support_provenance':support_src.strip() or None,
+                        'load_mode':load_mode,
+                        'q_x_kNpm':float(qx) if load_mode=='uniform_transverse_load' else None,
+                        'q_y_kNpm':float(qy) if load_mode=='uniform_transverse_load' else None,
+                        'fire_actions_source':fire_src.strip() or None,
+                        'node_count':int(nodes)}
+                    safe_change(update_member_spec,project,sid,payload)
+        if spec.get('thermal_longitudinal_mode')=='uniform_assumed':
+            try:
+                bundle=build_uniform_fire_bundle(column,
+                    thermal=existing_result.get('thermal_normative'))
+            except MemberEvidenceInputError as exc:
+                st.info('Автоматическое сопряжение пока недоступно: '+str(exc))
+            else:
+                st.caption('Подготовлены '+str(len(bundle['node_stations']))+
+                    ' узловых и '+str(3*len(bundle['gauss_stations']))+
+                    ' гауссовых температурных станций из одного аналитического '
+                    'профиля с явной записью допущения об одинаковом нагреве по длине.')
+                st.download_button('Скачать полный диагностический JSON R0.6.7',
+                    json.dumps(bundle,ensure_ascii=False,indent=2),
+                    file_name=f"{column.get('id','column')}_r067_uniform.json",
+                    mime='application/json',key=f"r067_download_{column.get('id','c')}")
+                if st.button('Вычислить R0.6.7: сопряжённая механика (не R90)',
+                             key=f"r067_run_{column.get('id','c')}"):
+                    with st.spinner('Проверка температур, материалов и равновесия колонны'):
+                        result=evaluate_uniform_fire_member(column,
+                            thermal=existing_result.get('thermal_normative'))
+                    st.session_state[f"r064d_result_{column.get('id','c')}"]={
+                        'result':result,'signature':_signature(column)}
+        else:
+            st.info('Автоматический перенос температур выключен. '
+                'Для неоднородного обогрева требуется полный независимый JSON.')
+        st.divider()
+        st.caption('R0.6.4D: ручной импорт независимых продольных температурных полей '
+                   'остаётся доступным ниже.')
         st.json({'status': existing_result.get('member_r064d',{}).get('status','NOT_EVALUATED'),
                  'normative_claim': False,'fire_resistance_status':'not_demonstrated'})
         sample=sample_station_bundle(column,node_count=3)
