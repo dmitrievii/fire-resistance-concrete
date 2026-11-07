@@ -116,7 +116,9 @@ def evaluate_tabular_column_scope(column: dict) -> dict:
             "normative_approval":False}
 
 
-def audit_column(column: dict, route: str = "general_member") -> dict:
+def audit_column(column: dict, route: str = "general_member", *,
+                 material_result: dict | None = None,
+                 thermal_result: dict | None = None) -> dict:
     """Build the frozen calculation contract and its blockers for one column.
 
     Only data proven by explicit input may satisfy a preflight input. The
@@ -130,18 +132,61 @@ def audit_column(column: dict, route: str = "general_member") -> dict:
 
     add("R060_CONTRACT_ONLY", "Нормативные методы заморожены как контракты, но не квалифицированы численно.",
         "R0.6.0; последующие этапы R0.6.1–R0.6.8")
-    if not column.get("fire_action_provenance"):
-        add("NO_FIRE_LOAD_SOURCE", "Не подтверждено происхождение пожарного сочетания усилий.",
-            "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
-    if not column.get("exposed_faces"):
-        add("ASSUMED_FOUR_SIDES", "Текущий движок не хранит явно фактические огреваемые грани.",
+    # R0.6.7: authoritative nested authoring and resolver results supersede
+    # obsolete flat R0.6.0 fields. Configured != physically verified.
+    tp=column.get("thermal_spec") or {}
+    mix=(column.get("material_spec") or {}).get("concrete") or {}
+    member=column.get("member_spec") or {}
+    if material_result is None and column.get("material_spec"):
+        from rc_fire.materials import resolve_materials
+        material_result=resolve_materials(column)
+    material_result=material_result or {}
+    thermal_result=thermal_result or {}
+    exposure=tp.get("exposed_faces") if tp.get("exposed_faces") is not None else column.get("exposed_faces")
+    faces_valid=(isinstance(exposure,(list,tuple)) and 1<=len(exposure)<=4
+                 and len(set(exposure))==len(exposure)
+                 and all(f in ("left","right","bottom","top") for f in exposure))
+    if not faces_valid:
+        add("ASSUMED_FOUR_SIDES", "Огреваемые грани не определены корректно.",
             "СП 2.02.05-2026, приложение К")
-    if not column.get("concrete_aggregate") or not column.get("concrete_density_type"):
-        add("MATERIAL_THERMAL_SCOPE_MISSING", "Не задан тип заполнителя и/или тип бетона для теплового метода.",
+    elif not column.get("fire_exposure_provenance"):
+        add("EXPOSURE_PHYSICAL_PROVENANCE_MISSING",
+            "Грани заданы, но соответствие фактическому огневому воздействию не подтверждено.",
+            "СП 2.02.05-2026, приложение К")
+    family=((thermal_result.get("coefficients") or {}).get("material_family")
+        or tp.get("concrete_family") or mix.get("aggregate_family") or column.get("concrete_aggregate"))
+    density=tp.get("dry_density_kg_m3")
+    density_type=column.get("concrete_density_type") or (
+        "heavy" if family in ("siliceous","calcareous") else None)
+    density_valid=_finite_pos(density) is not None
+    if not family or not density_type or (column.get("thermal_spec") and not density_valid):
+        add("MATERIAL_THERMAL_SCOPE_MISSING",
+            "Не разрешены тип бетона, заполнитель или сухая плотность для приложения К.",
             "СП 2.02.05-2026, 8.2.21, приложение К")
-    if not column.get("concrete_consistency_class") and not column.get("tested_Ecm_source"):
+    if thermal_result.get("status") in ("invalid","not_evaluated"):
+        add("THERMAL_EVIDENCE_NOT_RESOLVED","Расчёт температур по приложению К недоступен.",
+            "СП 2.02.05-2026, приложение К")
+    concrete=material_result.get("concrete") or {}
+    Ecm=concrete.get("E_cm_GPa")
+    Ecm_source=concrete.get("modulus_source")
+    if material_result and (Ecm is None or material_result.get("status")!="resolved_for_property_lookup"):
+        add("E_CM_NOT_PROVEN", "Каталог R0.6.1 не разрешил полный состав свойств.",
+            "СП 5.03.01-2020, таблица 6.3")
+    elif not material_result and not column.get("concrete_consistency_class") and not column.get("tested_Ecm_source"):
         add("E_CM_NOT_PROVEN", "Нельзя принимать Ecm из одного класса прочности.",
             "СП 5.03.01-2020, таблица 6.3")
+    if mix.get("fine_grained") is True and mix.get("modulus_aggregate")=="gravel_granite_upto40":
+        add("MATERIAL_DESCRIPTION_REQUIRES_REVIEW",
+            "Мелкозернистый бетон и заполнитель до 40 мм требуют проверки совместимости описаний.",
+            "СП 5.03.01-2020, таблица 6.3",severity="WARNING")
+    fire_action_source=column.get("fire_action_provenance") or member.get("fire_actions_source")
+    if not fire_action_source:
+        add("NO_FIRE_LOAD_SOURCE", "Происхождение пожарного сочетания усилий не подтверждено.",
+            "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
+    else:
+        add("FIRE_ACTION_COMBINATION_NOT_QUALIFIED",
+            "Источник усилий указан, но нормативное пожарное сочетание не квалифицировано.",
+            "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
     s = column.get("spalling") or {}
     if s.get("method") in ("sp468", "manual_k18", None):
         add("ANNEX_L_NOT_EVALUATED", "СП 468 и ручной К18 не заменяют приложение Л СП 2026.",
@@ -152,8 +197,13 @@ def audit_column(column: dict, route: str = "general_member") -> dict:
     else:
         add("ANNEX_L_UNQUALIFIED", "Алгоритм приложения Л не квалифицирован в R0.6.0.",
             "СП 2.02.05-2026, приложение Л")
-    if not column.get("member_support_model"):
-        add("SUPPORTS_NOT_VERIFIED", "Два коэффициента μ без сведений об опорах не обосновывают второй порядок.",
+    if not column.get("member_support_model") and not (
+        member.get("left_support") and member.get("right_support") and member.get("support_provenance")):
+        add("SUPPORTS_NOT_VERIFIED", "Задание типов опор без подтверждения не обосновывает второй порядок.",
+            "СП 5.03.01-2020, 5.3, 8.1.6")
+    elif member.get("left_support") and member.get("right_support") and member.get("support_provenance"):
+        add("SUPPORTS_MODEL_NOT_NORMATIVELY_VALIDATED",
+            "Схема опирания задана, но нормативное подтверждение её применимости отсутствует.",
             "СП 5.03.01-2020, 5.3, 8.1.6")
     if route == "table_3_column":
         scope = evaluate_tabular_column_scope(column)
@@ -164,8 +214,7 @@ def audit_column(column: dict, route: str = "general_member") -> dict:
             add("TABLE_3_INPUTS_MISSING", ", ".join(scope["missing"]),
                 "СП 2.02.05-2026, 8.2.11, таблица 3")
     else:
-        scope = select_critical_isotherm(column.get("concrete"), column.get("concrete_aggregate"),
-                                        column.get("concrete_density_type"))
+        scope = select_critical_isotherm(column.get("concrete"), family, density_type)
     if any(s.get("N_kN") is None or s.get("Mx_kNm") is None or s.get("My_kNm") is None
            for s in column.get("sections", ())):
         add("INCOMPLETE_SECTION_ACTIONS", "Не все усилия N, Mx и My заданы по сечениям.",
@@ -181,6 +230,19 @@ def audit_column(column: dict, route: str = "general_member") -> dict:
         "status":"NOT_QUALIFIED",
         "normative_claim":False,
         "scope_check":scope,
+        "resolved_inputs":{
+            "exposed_faces":list(exposure) if faces_valid else None,
+            "exposure_source":"thermal_spec.exposed_faces" if tp.get("exposed_faces") is not None else ("legacy.exposed_faces" if faces_valid else None),
+            "physical_exposure_verified":bool(column.get("fire_exposure_provenance")),
+            "concrete_aggregate":family,"concrete_density_type":density_type,
+            "dry_density_kg_m3":float(density) if density_valid else None,
+            "thermal_status":thermal_result.get("status") or "not_supplied",
+            "material_status":material_result.get("status") or "not_supplied",
+            "E_cm_GPa":Ecm,"E_cm_source":Ecm_source,
+            "member_supports_configured":bool(member.get("left_support") and member.get("right_support")),
+            "uniform_temperature_assumed":member.get("thermal_longitudinal_mode")=="uniform_assumed",
+            "fire_actions_source":fire_action_source
+        },
         "issues":issues,
     }
 
