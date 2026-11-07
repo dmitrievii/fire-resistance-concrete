@@ -13,7 +13,8 @@ import streamlit as st
 from multicolumn_r05.project_model import (new_project,set_count,update_column,update_section,
     add_section,remove_section,replace_bars,reset_auto_bars,get_column,
     overview_rows,section_overview_rows,update_from_overview,update_from_section_overview,
-    export_json,load_json,load_state,CONCRETE,update_material_spec,update_thermal_spec)
+    export_json,load_json,load_state,CONCRETE,update_material_spec,update_thermal_spec,
+    update_member_spec)
 from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
 from multicolumn_r05.r056_ui import render_spalling_inputs, render_r056_results, render_r056_overview
@@ -287,7 +288,8 @@ def column_page(cid):
     render_mechanics_results(st,c,calculation)
     # R064D_REPOSITORY_HOOK: diagnostic-only opt-in, no default solve.
     from rc_fire.integration.ui import render_member_evidence
-    render_member_evidence(st,c,calculation)
+    render_member_evidence(st,c,calculation,
+        project=project,safe_change=safe_change,update_member_spec=update_member_spec)
     render_r056_results(st,calculation)
     st.caption('Численное совместное равновесие N–Mx–My и критерий F (при наличии данных) '
                'рассчитываются в R0.5.6. Это ещё не независимое нормативное подтверждение R90.')
