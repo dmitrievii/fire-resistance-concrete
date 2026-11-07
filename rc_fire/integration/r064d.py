@@ -45,7 +45,7 @@ def _signature(column):
         raise MemberEvidenceInputError('full column dictionary required at every station')
     keys=('id','b_mm','h_mm','length_m','concrete','steel_grade','f_y_MPa',
           'bars','material_spec','cover_mm','stirrup_mm',
-          'fire_minutes','thermal_spec','mu_x','mu_y','sections')
+          'fire_minutes','thermal_spec','mu_x','mu_y','sections','member_spec')
     data={k:column.get(k) for k in keys}
     for k in ('b_mm','h_mm','length_m','f_y_MPa','cover_mm','stirrup_mm',
               'fire_minutes','mu_x','mu_y'):
