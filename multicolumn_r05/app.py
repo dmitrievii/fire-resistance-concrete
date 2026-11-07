@@ -157,7 +157,9 @@ def show_overview():
 
 def section_editor(c):
     st.subheader('Расчётные сечения')
-    st.caption('Низ z=0, верх z=L. Допускаются дополнительные промежуточные сечения. Усилия для каждого сечения независимы.')
+    st.caption('По умолчанию одно сечение в центре z=L/2. '
+               'Можно добавить любое количество сечений, в том числе на концах z=0 и z=L. '
+               'N, Mx и My задаются независимо для каждого сечения.')
     records=pd.DataFrame([{'ID':s['id'],'Сечение':s['name'],'z, м':s['z_m'],
              'N, кН':s['N_kN'],'Mx, кН·м':s['Mx_kNm'],'My, кН·м':s['My_kNm']} for s in c['sections']])
     for field in ('N, кН','Mx, кН·м','My, кН·м'):
@@ -176,10 +178,10 @@ def section_editor(c):
         except Exception as exc:st.error(str(exc))
     a,b=st.columns(2)
     with a:
-        if st.button('Добавить промежуточное сечение',key=f"{c['id']}_add"):
+        if st.button('Добавить сечение',key=f"{c['id']}_add"):
             safe_change(add_section,project,c['id'])
     with b:
-        extra=[s for s in c['sections'] if s['id'] not in ('bottom','top')]
+        extra=c['sections'] if len(c['sections'])>1 else []
         if extra:
             sid=st.selectbox('Удалить сечение',options=[s['id'] for s in extra],
                              format_func=lambda v:next(x['name'] for x in extra if x['id']==v))
@@ -244,10 +246,25 @@ def column_page(cid):
     section_editor(c)
     st.subheader('Результаты расчёта')
     calculation=calculations[cid]
-    st.info({'pending':'Нагрузки отсутствуют — расчёт не выполнялся.',
-             'partial':'Часть сечений рассчитана, другие пока не заполнены.',
-             'calculated':'Все сечения рассчитаны (диагностическая модель).',
-             'error':'Расчёт завершился ошибкой.','invalid':'Есть некорректные исходные данные.'}.get(calculation['status'],calculation['status']))
+    loads=calculation.get('load_summary') or {}
+    states=calculation.get('section_statuses',{})
+    ready=loads.get('ready',sum(v=='ready' for v in states.values()))
+    total=loads.get('total',len(c.get('sections',[])))
+    if calculation['status']=='pending':
+        if ready:
+            msg=f'Усилия переданы ({ready}/{total} сечений заполнено), но расчёт не выполнен: см. ограничения ниже.'
+        elif any(v=='incomplete' for v in states.values()):
+            msg='Усилия введены не полностью: задайте N, Mx и My. Нулевые моменты допустимы.'
+        elif any(v=='invalid' for v in states.values()):
+            msg='Часть введённых усилий некорректна; расчёт не запущен.'
+        else:
+            msg='Усилия ещё не заданы: расчёт не выполнялся.'
+    else:
+        msg={'partial':f'Рассчитано {ready}/{total} сечений; оставшиеся требуют заполнения.',
+             'calculated':f'Усилия переданы, рассчитано {ready}/{total} сечений (только диагностика).',
+             'error':'Нагрузки проверены, но вычисление завершилось ошибкой.',
+             'invalid':'Есть некорректные исходные данные.'}.get(calculation['status'],calculation['status'])
+    st.info(msg)
     for msg in calculation['issues']:st.warning(msg)
     if calculation['results']:
         results=[]
