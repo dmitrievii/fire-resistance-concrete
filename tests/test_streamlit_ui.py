@@ -172,10 +172,8 @@ class StreamlitAppTests(unittest.TestCase):
             'exposed_faces':['left','right','bottom','top']})
         # Positive display fixture stays inside the tabulated material range.
         update_column(proj,'c1',{'fire_minutes':10.})
-        update_section(proj,'c1','bottom',
+        update_section(proj,'c1','center',
             {'N_kN':500.,'Mx_kNm':25.,'My_kNm':-20.})
-        update_section(proj,'c1','top',
-            {'N_kN':400.,'Mx_kNm':10.,'My_kNm':10.})
         page=next(r for r in app.radio if r.label=='Разделы')
         page.set_value('c1').run()
         self.assertFalse(app.exception,f'Loaded R0.6.3: {list(app.exception)}')

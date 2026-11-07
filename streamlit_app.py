@@ -23,6 +23,7 @@ if _cached_model is not None:
     _expected = (_ROOT / _PACKAGE / "project_model.py").resolve()
     _stale |= not callable(getattr(_cached_model, "update_spalling", None))
     _stale |= not callable(getattr(_cached_model, "update_thermal_spec", None))
+    _stale |= getattr(_cached_model, "R065_MODEL_RELEASE", None) != "r065-center-sections-load-transfer-20261107"
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:

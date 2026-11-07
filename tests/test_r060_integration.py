@@ -20,6 +20,10 @@ class R060IntegrationTests(unittest.TestCase):
 
     def test_loaded_reference_remains_diagnostic(self):
         p=new_project()
+        c=p['columns'][0]
+        c['sections']=[
+            {'id':'bottom','name':'Низ','z_m':0.,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
+            {'id':'top','name':'Верх','z_m':c['length_m'],'N_kN':None,'Mx_kNm':None,'My_kNm':None}]
         update_section(p,"c1","bottom",{"N_kN":500,"Mx_kNm":10,"My_kNm":5})
         update_section(p,"c1","top",{"N_kN":510,"Mx_kNm":12,"My_kNm":7})
         r=evaluate_column(p["columns"][0])

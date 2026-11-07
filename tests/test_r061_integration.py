@@ -24,7 +24,7 @@ class R061IntegrationTests(unittest.TestCase):
         m=resolve_materials(p['columns'][0])
         self.assertEqual(m['status'],'resolved_for_property_lookup')
         self.assertAlmostEqual(m['concrete']['E_cm_GPa'],33)
-        update_section(p,'c1','bottom',{'N_kN':500,'Mx_kNm':20,'My_kNm':15})
+        update_section(p,'c1','center',{'N_kN':500,'Mx_kNm':20,'My_kNm':15})
         model=to_engine_input(p['columns'][0],[p['columns'][0]['sections'][0]])
         self.assertAlmostEqual(model['material']['E_cm_GPa'],33)
         self.assertEqual(model['material_resolution']['E_cm_source'],'SP 5.03.01-2020 table 6.3')

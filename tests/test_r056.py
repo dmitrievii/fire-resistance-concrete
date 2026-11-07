@@ -21,8 +21,17 @@ from multicolumn_r05.calculation_engine import Inputs, compute, Geometry, Fire, 
 ROOT=Path(__file__).resolve().parents[1]
 
 
+def legacy_two_end_project(count=1):
+    p=new_project(count)
+    for c in p['columns']:
+        c['sections']=[
+            {'id':'bottom','name':'Низ','z_m':0.,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
+            {'id':'top','name':'Верх','z_m':c['length_m'],'N_kN':None,'Mx_kNm':None,'My_kNm':None}]
+    return p
+
+
 def fully_loaded():
-    project=new_project(2)
+    project=legacy_two_end_project(2)
     update_section(project,'c1','bottom',{'N_kN':500,'Mx_kNm':20,'My_kNm':15})
     update_section(project,'c1','top',{'N_kN':520,'Mx_kNm':25,'My_kNm':20})
     return project
@@ -123,7 +132,7 @@ class R056Tests(unittest.TestCase):
             self.assertFalse(x['normative_claim'])
 
     def test_partial_sections_do_not_approve_r90(self):
-        p=new_project(1)
+        p=legacy_two_end_project(1)
         update_section(p,'c1','bottom',{'N_kN':350,'Mx_kNm':10,'My_kNm':5})
         x=evaluate_column(p['columns'][0])
         self.assertEqual(x['status'],'partial')

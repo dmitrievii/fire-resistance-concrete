@@ -11,6 +11,10 @@ from rc_fire.mechanics.report import add_mechanics_section
 class R063IntegrationTests(unittest.TestCase):
     def make_project(self):
         p=new_project(2)
+        c=p['columns'][0]
+        c['sections']=[
+            {'id':'bottom','name':'Низ','z_m':0.,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
+            {'id':'top','name':'Верх','z_m':c['length_m'],'N_kN':None,'Mx_kNm':None,'My_kNm':None}]
         update_material_spec(p,'c1',{
             'concrete':{
                 'aggregate_family':'siliceous',

@@ -15,6 +15,16 @@ from multicolumn_r05.project_model import (new_project,set_count,default_bars,up
 from multicolumn_r05.project_calculator import evaluate_column,evaluate_project
 from multicolumn_r05.project_reports import combined_report,single_report,make_exports,verify_footer_unchanged,MASTER
 
+def legacy_project(count=1):
+    """Explicit two-end legacy fixture, retained for backward compatibility."""
+    project=new_project(count)
+    for c in project['columns']:
+        c['sections']=[
+            {'id':'bottom','name':'Низ','z_m':0.0,'N_kN':None,'Mx_kNm':None,'My_kNm':None},
+            {'id':'top','name':'Верх','z_m':c['length_m'],'N_kN':None,'Mx_kNm':None,'My_kNm':None}]
+    return project
+
+
 class ProjectTests(unittest.TestCase):
     def test_initial_defaults_and_no_loads(self):
         p=new_project(3)
@@ -24,7 +34,9 @@ class ProjectTests(unittest.TestCase):
                 (600,600,3,20,10,20,1,1))
             self.assertEqual(c['bars'][0]['x_mm'],40)
             self.assertEqual(c['bars'][-1]['y_mm'],560)
-            self.assertEqual([load_state(x) for x in c['sections']],['empty','empty'])
+            self.assertEqual([load_state(x) for x in c['sections']],['empty'])
+            self.assertEqual(c['sections'][0]['id'],'center')
+            self.assertAlmostEqual(c['sections'][0]['z_m'],c['length_m']/2)
         self.assertTrue(all(v['status']=='pending' for v in evaluate_project(p).values()))
 
     def test_add_remove_unique_identity_and_shared_state(self):
@@ -44,7 +56,7 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(overview_rows(p)[1]['b, мм'],600)
 
     def test_sections_overview_two_way(self):
-        p=new_project(2)
+        p=legacy_project(2)
         rows=section_overview_rows(p)
         rows[0]['N, кН']=520;rows[0]['Mx, кН·м']=2.;rows[0]['My, кН·м']=0.
         rows[1]['N, кН']=540;rows[1]['Mx, кН·м']=3.;rows[1]['My, кН·м']=4.
@@ -55,7 +67,7 @@ class ProjectTests(unittest.TestCase):
         self.assertIsNone(p['columns'][1]['sections'][0]['N_kN'])
 
     def test_change_length_moves_top_and_auto_rebar(self):
-        p=new_project()
+        p=legacy_project()
         update_column(p,'c1',{'length_m':5,'cover_mm':25,'bar_diameter_mm':25})
         c=p['columns'][0]
         self.assertEqual(c['sections'][-1]['z_m'],5)
@@ -73,19 +85,19 @@ class ProjectTests(unittest.TestCase):
 
     def test_extra_sections_and_limits(self):
         p=new_project();add_section(p,'c1')
-        self.assertEqual(len(p['columns'][0]['sections']),3)
-        remove_section(p,'c1','mid1')
         self.assertEqual(len(p['columns'][0]['sections']),2)
-        with self.assertRaises(ValueError):remove_section(p,'c1','bottom')
+        remove_section(p,'c1','mid1')
+        self.assertEqual(len(p['columns'][0]['sections']),1)
+        with self.assertRaises(ValueError):remove_section(p,'c1','center')
 
     def test_save_load_roundtrip(self):
-        p=new_project(2);update_section(p,'c2','top',{'N_kN':1000,'Mx_kNm':0,'My_kNm':0})
+        p=legacy_project(2);update_section(p,'c2','top',{'N_kN':1000,'Mx_kNm':0,'My_kNm':0})
         q=load_json(export_json(p))
         self.assertEqual(q['columns'][1]['sections'][1]['N_kN'],1000)
         self.assertEqual(q['columns'][0]['bars'],p['columns'][0]['bars'])
 
     def test_incomplete_no_fabricated_zero_loads(self):
-        p=new_project();update_section(p,'c1','bottom',{'N_kN':200})
+        p=new_project();update_section(p,'c1','center',{'N_kN':200})
         r=evaluate_column(p['columns'][0])
         self.assertEqual(r['status'],'pending')
         self.assertIn('incomplete',r['section_statuses'].values())
@@ -97,7 +109,7 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(evaluate_column(p['columns'][0])['status'],'invalid')
 
     def test_two_sections_one_calculation_and_critical(self):
-        p=new_project()
+        p=legacy_project()
         update_section(p,'c1','bottom',{'N_kN':500,'Mx_kNm':6,'My_kNm':0})
         update_section(p,'c1','top',{'N_kN':510,'Mx_kNm':8,'My_kNm':4})
         result=evaluate_column(p['columns'][0],grid=48)
@@ -108,7 +120,7 @@ class ProjectTests(unittest.TestCase):
         self.assertLess(result['worst']['u'],1)
 
     def test_recalc_after_load_edit(self):
-        p=new_project()
+        p=legacy_project()
         for s in p['columns'][0]['sections']:
             update_section(p,'c1',s['id'],{'N_kN':500,'Mx_kNm':5,'My_kNm':0})
         a=evaluate_column(p['columns'][0])
@@ -118,7 +130,7 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(a['results']['bottom']['axes']['x']['M_Ed_kNm'],b['results']['bottom']['axes']['x']['M_Ed_kNm'])
 
     def test_draft_report_and_combined_original_frame(self):
-        p=new_project(2)
+        p=legacy_project(2)
         update_section(p,'c1','bottom',{'N_kN':500,'Mx_kNm':6,'My_kNm':0})
         update_section(p,'c1','top',{'N_kN':510,'Mx_kNm':8,'My_kNm':4})
         results=evaluate_project(p)
