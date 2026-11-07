@@ -21,7 +21,7 @@ _CACHE={}
 MAX_CACHE=60
 
 
-def evaluate_column(c,grid=48):
+def _evaluate_column_pre_r064d(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
     spalling=spalling_assessment(c.get('spalling'))
@@ -113,6 +113,13 @@ def evaluate_column(c,grid=48):
         base['status']='error'
         base['issues'].append(type(exc).__name__+': '+str(exc))
     return base
+
+
+# R064D_REPOSITORY_HOOK: add evidence without modifying historical calculation.
+def evaluate_column(c,grid=48):
+    from rc_fire.integration import attach_member_evidence
+    old = _evaluate_column_pre_r064d(c,grid)
+    return attach_member_evidence(old,expected_column=c)
 
 
 def evaluate_project(project,grid=48):

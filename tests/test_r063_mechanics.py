@@ -101,11 +101,16 @@ class SectionMechanicsTests(unittest.TestCase):
     def test_thermally_weakened_section_response(self):
         c=sample_column();p0=self.pre(c)
         f0,_,_=p0.response([.001,0.,0.])
+        c['fire_minutes']=10.
+        p10=self.pre(c)
+        f10,_,_=p10.response([.001,0.,0.])
+        self.assertLess(f10[0],f0[0])
+        self.assertGreater(max(p10.concrete_temperature_C),20)
+        # R0.6.3A: 30-min hot boundary is outside tabulated material range.
         c['fire_minutes']=30.
-        p30=self.pre(c)
-        f30,_,_=p30.response([.001,0.,0.])
-        self.assertLess(f30[0],f0[0])
-        self.assertGreater(max(p30.concrete_temperature_C),20)
+        t30=evaluate_rectangular_column(c,grid=20)
+        with self.assertRaisesRegex(SectionMechanicsError,'800'):
+            prepare_section(c,t30,grid=20)
 
     def test_section_grid_refinement(self):
         p24=self.pre(g=24);p48=self.pre(g=48)

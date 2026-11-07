@@ -30,8 +30,10 @@ from rc_fire.materials.normative import (CONCRETE_K, CONCRETE_BETA, FIRE_TEMP,
     STEEL_TEMP, STEEL_GROUPS, _family, normal_reinforcement)
 from rc_fire.thermal import (evaluate_rectangular_column, RectangularExposure,
     temperature_rectangle)
+from .constitutive_qualification import assess_constitutive_qualification
+from .normative_resolution import constitutive_closure_decisions
 
-VERSION = "R0.6.3-section-mechanics-v1"
+VERSION = "R0.6.3C-source-adjudication-candidate"
 NORMATIVE_SOURCES = (
     "СП 5.03.01-2020: 4.2.5.3, 6.1.2.11, 6.1.5.4, 6.2.2.12-13, 8.1.2.1-4",
     "СП 2.02.05-2026: 8.2.16-8.2.20, таблицы 9-10",
@@ -130,6 +132,7 @@ class PreparedSection:
     out_of_table_concrete_cells:int
     out_of_table_bars:int
     grid:int
+    boundary_temperature_max_C:float
 
     def response(self, unknown:Any, include_maps:bool=False):
         """N [kN], Mx/My [kNm], tangent 3x3 w.r.t scaled strains.
@@ -166,7 +169,8 @@ class PreparedSection:
         jrowc=np.stack((np.ones_like(ec),yc,xc),axis=0)
         jrowb=np.stack((np.ones_like(es),yb,xb),axis=0)
         tangent=(jrowc*dcw[None,:])@dc_recip.T + (jrowb*dbw[None,:])@db_recip.T
-        meta={'max_concrete_compression':float(np.max(ec)),
+        meta={'max_concrete_compression':float(max(np.max(ec),e0+abs(gx)+abs(gy))),
+              'max_concrete_compression_cell_centers':float(np.max(ec)),
               'min_steel_strain':float(np.min(es)),
               'max_steel_strain':float(np.max(es)),
               'eps_cu2':self.eps_cu2,
@@ -258,6 +262,17 @@ def prepare_section(column:dict, thermal:dict, *, grid:int=26,
     te=np.asarray(theta,dtype=float).ravel()
     bar_theta=np.asarray(bar_theta)
     tbarc=np.asarray(concrete_at_bar_theta)
+    # R0.6.3A: range validation must not depend on grid cell centres.
+    # Rectangle boundary extrema are sampled explicitly; the standard fire
+    # corner can exceed the last property-table node on a coarse mesh.
+    edge_x=np.array([0.,b*500.,b*1000.,0.,b*1000.,0.,b*500.,b*1000.])
+    edge_y=np.array([0.,0.,0.,h*500.,h*500.,h*1000.,h*1000.,h*1000.])
+    boundary_theta,boundary_scope=temperature_rectangle(ex,coeff,t,edge_x,edge_y)
+    if not np.all(np.isfinite(boundary_theta)) or np.any(boundary_scope['outside_approximation_C']):
+        raise SectionMechanicsError('Температурное поле на границе вне области применимости')
+    if above_800_policy=='reject' and np.any(boundary_theta>MAX_TABULATED_C):
+        raise SectionMechanicsError('Таблицы 9/10 заканчиваются при 800 °C: '+
+            'температура границы превышает диапазон даже если центры ячеек холоднее')
     count_c=int(np.sum(te>MAX_TABULATED_C))
     count_b=int(np.sum(bar_theta>MAX_TABULATED_C))
     if above_800_policy=='reject' and (count_c or count_b or np.any(tbarc>MAX_TABULATED_C)):
@@ -322,7 +337,8 @@ def prepare_section(column:dict, thermal:dict, *, grid:int=26,
             'deformation_diagram':'(6.17)-(6.18) with fcd,theta; steel (6.2.2.13) plateau',
             'strain_limit_source':'8.1.2.1'},
         issues=tuple(issues),out_of_table_concrete_cells=count_c,
-        out_of_table_bars=count_b,grid=grid)
+        out_of_table_bars=count_b,grid=grid,
+        boundary_temperature_max_C=float(np.max(boundary_theta)))
 
 
 def solve_load(prepared:PreparedSection, N_kN:float, Mx_kNm:float,
@@ -416,7 +432,28 @@ def evaluate_column_mechanics(column:dict, thermal:dict|None=None, *,
     except (SectionMechanicsError,MaterialError,KeyError,TypeError,ValueError) as exc:
         base['status']='blocked';base['issues'].append(str(exc));return base
     base['material_strengths']=section.strength_data
+    base['constitutive_qualification']=assess_constitutive_qualification(
+        concrete_temperatures_C=section.concrete_temperature_C,
+        steel_temperatures_C=section.bar_temperature_C,
+        concrete_family=section.strength_data['concrete_family'],
+        steel_group=section.strength_data['steel_group'],
+        ambient_fck_MPa=section.strength_data['f_cd_MPa']*section.strength_data['gamma_c']/section.strength_data['alpha_cc']/section.strength_data['k_tc'],
+        ambient_fcd_MPa=section.strength_data['f_cd_MPa'],
+        include_high_temp_diagnostic=above_800_policy=='zero_strength_diagnostic',
+        boundary_max_C=section.boundary_temperature_max_C)
+    base['constitutive_closure_r063c']=constitutive_closure_decisions(
+        concrete_temperatures_C=section.concrete_temperature_C,
+        steel_temperatures_C=section.bar_temperature_C,
+        concrete_family=section.strength_data['concrete_family'],
+        steel_group=section.strength_data['steel_group'],
+        fck_MPa=section.strength_data['f_cd_MPa']*section.strength_data['gamma_c']/section.strength_data['alpha_cc']/section.strength_data['k_tc'],
+        fcd_MPa=section.strength_data['f_cd_MPa'],
+        fyk_MPa=section.strength_data['f_yd_MPa']*section.strength_data['gamma_s'],
+        fyd_MPa=section.strength_data['f_yd_MPa'],
+        Ecm_MPa=section.strength_data['Ecm_ambient_GPa']*1000.,
+        eps_c2=section.eps_c2,n=section.n_parabola)
     base['issues'].extend(section.issues)
+    base['issues'].extend(base['constitutive_qualification']['issues'])
     base['thermal_summary']={'concrete_max_C':float(np.max(section.concrete_temperature_C)),
         'concrete_min_C':float(np.min(section.concrete_temperature_C)),
         'bar_max_C':float(np.max(section.bar_temperature_C)),
