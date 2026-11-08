@@ -20,6 +20,36 @@ def history_signature(column):
     return hashlib.sha256(src.encode("utf-8")).hexdigest()
 
 
+def render_resistance_overview(st,project,calculations):
+    """One independent time-history and Table 3 status for every column."""
+    rows=[]
+    for c in project.get("columns",[]):
+        hist=(calculations.get(c["id"]) or {}).get("resistance_r069") or {}
+        tab=evaluate_table3_class(c)
+        br=hist.get("diagnostic_limit_bracket_min")
+        member=hist.get("member_diagnostic_limit_bracket_min")
+        rows.append({
+            "Колонна":c["name"],
+            "Таблица 3: условный класс":
+                "R"+str(tab["conditional_class_max_min"])
+                if tab.get("conditional_class_max_min") else "не установлен",
+            "η":round(tab["eta"],4) if tab.get("eta") is not None else None,
+            "История R(t)":hist.get("status","не запускалась"),
+            "Первая граница области, мин":hist.get("first_outside_scope_min"),
+            "Интервал деформаций, мин":
+                f"{br[0]:g}–{br[1]:g}" if br else "—",
+            "Колонна (2-й порядок), мин":
+                f"{member[0]:g}–{member[1]:g}" if member else "—",
+            "Нормативный предел R":"не подтверждён",
+        })
+    with st.expander("R0.6.9 — временной анализ R(t) по колоннам",expanded=False):
+        st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
+        st.caption("Табличный класс — условная геометрическая/нагрузочная кандидатура "
+                   "при подтверждении всех требований §8.2.11. "
+                   "Диагностический интервал деформаций и выход за предел "
+                   "800 °C не являются временем разрушения.")
+
+
 def render_resistance(st,column,calc,*,project=None,safe_change=None,
                       update_fire_resistance_reference=None):
     cid=str(column["id"])
