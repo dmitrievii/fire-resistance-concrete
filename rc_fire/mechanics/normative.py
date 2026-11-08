@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 
 from rc_fire.materials import (ConcreteMix, Reinforcement, MaterialError,
-    normal_concrete)
+    resolve_materials)
 from rc_fire.materials.normative import (CONCRETE_K, CONCRETE_BETA, FIRE_TEMP,
     STEEL_TEMP, STEEL_GROUPS, _family, normal_reinforcement)
 from rc_fire.thermal import (evaluate_rectangular_column, RectangularExposure,
@@ -34,6 +34,7 @@ from .constitutive_qualification import assess_constitutive_qualification
 from .normative_resolution import constitutive_closure_decisions
 
 VERSION = "R0.6.3C-source-adjudication-candidate"
+RESOLVED_MATERIAL_COUPLING = "R0.6.8.2-central-material-resolution-v1"
 NORMATIVE_SOURCES = (
     "СП 5.03.01-2020: 4.2.5.3, 6.1.2.11, 6.1.5.4, 6.2.2.12-13, 8.1.2.1-4",
     "СП 2.02.05-2026: 8.2.16-8.2.20, таблицы 9-10",
@@ -211,20 +212,32 @@ def prepare_section(column:dict, thermal:dict, *, grid:int=26,
         raise SectionMechanicsError('Сетка сечения: 12...100')
     if thermal.get('status') not in ('evaluated','evaluated_with_scope_warnings'):
         raise SectionMechanicsError('Нормативная теплотехника приложения К не выполнена')
+    # Single source of material truth: Annex L, R0.6.1 catalog and this
+    # section solver MUST use identical concrete classification and Ecm.
+    # The independent legacy fine_grained flag is no longer authoritative.
+    resolved=resolve_materials(column)
+    classification=resolved.get('fine_grained_classification') or {}
     mat=column.get('material_spec') or {}
-    concrete_data=mat.get('concrete') or {}
+    concrete_data=dict(mat.get('concrete') or {})
+    concrete_data.pop('fine_grained',None)
+    concrete_data['fine_grained']=classification.get('fine_grained')
     steel_data=mat.get('steel') or {}
-    cm=ConcreteMix(strength_class=column['concrete'],**concrete_data)
-    rm=Reinforcement(grade=column.get('steel_grade','S500'),**steel_data)
     try:
-        normal_c=normal_concrete(cm)
-        normal_s=normal_reinforcement(rm)
-        family=_family(cm.strength_class,cm.aggregate_family)
+        cm=ConcreteMix(strength_class=column['concrete'],**concrete_data)
+        rm=Reinforcement(grade=column.get('steel_grade','S500'),**steel_data)
+        normal_c=resolved.get('concrete')
+        normal_s=resolved.get('steel')
+        family=resolved.get('fire_family')
+        if normal_c is None or normal_s is None:
+            raise SectionMechanicsError('Нормативный каталог материалов не разрешён: '+
+                '; '.join(map(str,resolved.get('issues') or [])))
     except (MaterialError,ValueError,TypeError) as exc:
         raise SectionMechanicsError(str(exc)) from exc
     if normal_c['E_cm_GPa'] is None:
-        raise SectionMechanicsError('Ecm не определён по СП 5.03.01-2020: '+
-                  '; '.join(normal_c.get('missing') or normal_c.get('notes') or []))
+        cause=(classification.get('reason') or
+               '; '.join(normal_c.get('missing') or normal_c.get('notes') or []) or
+               '; '.join(map(str,resolved.get('issues') or [])))
+        raise SectionMechanicsError('Ecm не определён по СП 5.03.01-2020: '+cause)
     if normal_s['f_yk_MPa'] is None:
         raise SectionMechanicsError('Не задано fyk арматуры')
     if family not in CONCRETE_BETA:

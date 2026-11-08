@@ -15,6 +15,7 @@ from rc_fire.materials.normative import concrete_thermal_strain_coefficients
 from rc_fire.thermal.normative import property_K1
 
 VERSION="R0.6.8-BY-annex-L-source-first-v1"
+DEFAULT_SAND_POLICY="R0.6.8.2-traceable-positive-default-v1"
 SOURCE="СП 2.02.05-2026, приложение Л, с. 150–151, Л.1–Л.6"
 ALPHA_F=1.16e-2
 BETA=0.6
@@ -73,8 +74,9 @@ def physical_inputs(column):
             explicit[new]=legacy[old]
             old_used.append(new)
     if explicit.get("natural_sand_confirmed") is None:
-        # Only explicitly selected physical composition can substantiate
-        # 'natural sand' under Table L.1; never infer this from silica family.
+        # The current form defaults to the natural-sand + coarse-aggregate
+        # tabulated scenario, but this is NOT a verified material fact.
+        # Never promote a UI default to a normative design proof.
         legacy_type=legacy.get("aggregate_type")
         fam=(column.get("thermal_spec") or {}).get("concrete_family") or (
             (column.get("material_spec") or {}).get("concrete") or {}).get("aggregate_family")
@@ -82,7 +84,16 @@ def physical_inputs(column):
                 or (legacy_type=="limestone_gravel" and fam=="calcareous")
                 or (legacy_type=="expanded_clay" and fam=="expanded_clay")):
             explicit["natural_sand_confirmed"]=True
+            sand_source="legacy_explicit_aggregate_description"
             old_used.append("natural_sand_confirmed")
+        else:
+            # Positive by default as requested; explicitly labelled as an
+            # assumption until the user saves the checkbox affirmatively.
+            explicit["natural_sand_confirmed"]=True
+            sand_source="default_assumption_not_verified"
+    else:
+        sand_source=("user_declared_natural_sand" if explicit["natural_sand_confirmed"]
+                     else "user_declared_no_natural_sand")
     tp=column.get("thermal_spec") or {}
     mat=(column.get("material_spec") or {}).get("concrete") or {}
     from rc_fire.materials.normative import classify_fine_grained
@@ -96,6 +107,8 @@ def physical_inputs(column):
         "concrete_strength_class":column.get("concrete"),
         "explicit_thermal_moisture_mass_pct":tp.get("moisture_mass_pct"),
         "legacy_user_input_fields":old_used,
+        "natural_sand_source":sand_source,
+        "natural_sand_requires_confirmation":sand_source=="default_assumption_not_verified",
     }
 
 
@@ -149,9 +162,13 @@ def moisture_wc(cement,humidity,measured=None,measurement_source=None, *,
     if mode=="auto" and c in TABLE_L2 and rh in TABLE_L2[c]:
         return TABLE_L2[c][rh]*1e-2,"table_L2_exact",{
             "cement_kg_m3":c,"rh_pct":rh,"interpretation_requires_review":False}
-    if not 200<=c<=700 or not 15<=rh<=75:
-        raise AnnexLError("Для автоматического применения Л.5/Л.2 принят "
-                           "табличный диапазон C=200–700 кг/м³, RH=15–75 %")
+    # L.2 contains nodes only for 200..700 kg/m3 and RH 15..75%.
+    # The text of L.5 does not impose those tabular bounds on the equation.
+    # Apply the explicit L.5 formula to any positive C and physical RH
+    # in (0,100], keeping the existing unit-interpretation qualification.
+    if not 0 < rh <= 100:
+        raise AnnexLError("RH должно находиться в пределах (0,100] %")
+    outside_table=(not 200<=c<=700 or not 15<=rh<=75)
     if mode in ("auto","formula_L5"):
         ratio=_positive_number(water_cement_ratio,"В/Ц для формулы Л.5")
         water=c*ratio  # formula L.5: В denotes water in kg/m3, NOT W/C.
@@ -165,6 +182,9 @@ def moisture_wc(cement,humidity,measured=None,measurement_source=None, *,
             "raw_L5_numeric":raw,"raw_L5_interpreted_as":"percent",
             "Wc_kg_kg":kgkg,"conversion":"percent / 100",
             "interpretation_requires_review":True,
+            "outside_table_L2_domain":outside_table,
+            "table_L2_cement_range_kg_m3":[200,700],
+            "table_L2_RH_range_pct":[15,75],
             "source":"СП 2.02.05-2026, приложение Л, формула Л.5"}
     # Explicit engineering option only: not prescribed by Annex L.2.
     cs=sorted(TABLE_L2)
@@ -241,6 +261,8 @@ def evaluate_annex_l(column,*,material_result=None):
         out.update({"status":"calculated_method_scope","F":value,
             "classification":("F_le_4" if value<=4 else "F_4_to_6" if value<=6 else "F_gt_6"),
             "protection_required":value>4,
+            "natural_sand_verification_source":x["natural_sand_source"],
+            "natural_sand_verified":not x["natural_sand_requires_confirmation"],
             "moisture_method_qualified":not moist_note.get("interpretation_requires_review",False),
             "formula":"Л.1","temperature_range_C":[200,300],
             "temperature_profile":profiles,"critical_temperature_C":maximum["temperature_C"],

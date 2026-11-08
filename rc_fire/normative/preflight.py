@@ -205,6 +205,12 @@ def audit_column(column: dict, route: str = "general_member", *,
             str(annex_l_result.get("reason","недостаточно данных")),
             "СП 2.02.05-2026, приложение Л")
     else:
+        if not annex_l_result.get("natural_sand_verified",True):
+            add("ANNEX_L_NATURAL_SAND_UNVERIFIED",
+                "Для расчёта F принято наличие природного песка по умолчанию. "
+                "Состав смеси не подтверждён проектной документацией; результат "
+                "нельзя использовать как нормативное заключение.",
+                "СП 2.02.05-2026, приложение Л, таблица Л.1")
         if not annex_l_result.get("moisture_method_qualified",True):
             add("ANNEX_L_MOISTURE_METHOD_UNQUALIFIED",
                 "Влажность рассчитана по формуле Л.5 с явно принятой интерпретацией единиц "

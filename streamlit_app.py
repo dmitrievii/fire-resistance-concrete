@@ -54,6 +54,8 @@ _MECHANICS_NAME = "rc_fire.mechanics.normative"
 _cached_mechanics = sys.modules.get(_MECHANICS_NAME)
 if _cached_mechanics is not None:
     _stale |= getattr(_cached_mechanics, "VERSION", None) != "R0.6.3C-source-adjudication-candidate"
+    _stale |= getattr(_cached_mechanics, "RESOLVED_MATERIAL_COUPLING", None) != (
+        "R0.6.8.2-central-material-resolution-v1")
 
 # R064D_HOT_RELOAD_GUARD: prevent mixing old member/bridge modules.
 for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-diagnostic-v1"),
@@ -63,9 +65,18 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
 
+# The Belarus Annex L input form changed from the old Russian numeric
+# range tooltips. Invalidate cached UI objects after the range-help release.
+_old_annex_ui=sys.modules.get("rc_fire.spalling.ui")
+if _old_annex_ui is not None:
+    _stale |= getattr(_old_annex_ui, "RANGE_HINTS_RELEASE", None) != (
+        "r0682-belarus-input-range-tooltips-v1")
+
 _old_annex=sys.modules.get("rc_fire.spalling.annex_l")
 if _old_annex is not None:
     _stale |= getattr(_old_annex,"VERSION",None) != "R0.6.8-BY-annex-L-source-first-v1"
+    _stale |= getattr(_old_annex,"DEFAULT_SAND_POLICY",None) != (
+        "R0.6.8.2-traceable-positive-default-v1")
 
 # R0.6.8 introduced classify_fine_grained in the existing normative.py,
 # but did NOT change the old R0.6.1 VERSION stamp. Streamlit Cloud can keep
