@@ -19,7 +19,7 @@ from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
 from multicolumn_r05.r056_ui import render_r056_results, render_r056_overview
 from rc_fire.spalling.ui import render_annex_l_inputs
-from rc_fire.resistance.ui import render_resistance
+from rc_fire.resistance.ui import render_resistance,render_resistance_overview
 from multicolumn_r05.section_preview import make_section_figure
 from rc_fire.materials.ui import render_material_inputs
 from rc_fire.thermal.ui import render_thermal_inputs, render_thermal_results, render_thermal_overview
@@ -118,6 +118,7 @@ def show_overview():
     render_thermal_overview(st,project,calculations)
     render_mechanics_overview(st,project,calculations)
     render_r056_overview(st,project,calculations)
+    render_resistance_overview(st,project,calculations)
     st.caption('* Условная диагностическая величина max(MEd/MRd) по двум независимым плоскостям и рассчитанным сечениям. Не выполняет нормативную двухосную проверку.')
     if any(x['issues'] for x in calculations.values()):
         with st.expander('Ошибки и предупреждения'):
