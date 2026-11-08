@@ -52,7 +52,7 @@ class R056Tests(unittest.TestCase):
 
     def test_spalling_missing_never_passes_and_formula(self):
         p=new_project()
-        self.assertEqual(evaluate_column(p['columns'][0])['spalling']['status'],'not_evaluated')
+        self.assertEqual(evaluate_column(p['columns'][0])['spalling']['status'],'archived_legacy_inactive')
         vals=dict.fromkeys(SPALLING_FIELDS,1.0)
         vals['E_c_MPa']=20.0;vals['rho_kg_m3']=2.0
         F=spalling_assessment(vals)
@@ -71,10 +71,12 @@ class R056Tests(unittest.TestCase):
         data['E_c_MPa']=20
         data['method']='manual_k18'
         update_spalling(p,'c1',data)
-        self.assertEqual(evaluate_project(p)['c1']['spalling']['status'],'protection_required')
-        self.assertEqual(evaluate_project(p)['c2']['spalling']['status'],'not_evaluated')
+        self.assertEqual(spalling_assessment(p['columns'][0]['spalling'])['status'],'protection_required')
+        self.assertEqual(evaluate_project(p)['c1']['spalling']['status'],'archived_legacy_inactive')
+        self.assertIsNone(evaluate_project(p)['c1']['spalling']['F'])
+        self.assertEqual(evaluate_project(p)['c2']['spalling']['status'],'archived_legacy_inactive')
         update_spalling(p,'c1',{'W_e_volume_fraction':None})
-        self.assertIn('W_e_volume_fraction',evaluate_column(p['columns'][0])['spalling']['missing'])
+        self.assertIn('W_e_volume_fraction',spalling_assessment(p['columns'][0]['spalling'])['missing'])
 
     def test_member_reuses_column_axial_max_for_every_section(self):
         p=fully_loaded();c=p['columns'][0]
