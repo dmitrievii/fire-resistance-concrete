@@ -14,6 +14,7 @@ import math
 from .r064d import (MemberEvidenceInputError, sample_station_bundle,
                     evaluate_explicit_member_bundle)
 from rc_fire.thermal import evaluate_rectangular_column
+from rc_fire.normative.actions import ACTION_INPUT_CONTRACT, action_source
 
 VERSION = "R0.6.7-uniform-longitudinal-thermal-member-diagnostic-v1"
 SUPPORTS = ("pinned", "fixed", "guided")
@@ -132,7 +133,7 @@ def build_uniform_fire_bundle(column, *, thermal=None, member_spec=None):
     bundle["left_support"] = {"kind": spec["left_support"]}
     bundle["right_support"] = {"kind": spec["right_support"]}
     bundle["distributed_load_kNpm"] = [[qx, qy] for _ in bundle["z_m"]]
-    bundle["fire_actions_source"] = spec.get("fire_actions_source") or None
+    bundle["fire_actions_source"] = action_source(spec.get("fire_actions_source"))
     bundle["grid"] = 12
     bundle["r067_assumptions"] = {
         "version": VERSION,
@@ -141,6 +142,8 @@ def build_uniform_fire_bundle(column, *, thermal=None, member_spec=None):
         "longitudinal_uniformity_basis": note.strip(),
         "support_provenance": spec.get("support_provenance") or None,
         "member_load_mode": spec["load_mode"],
+        "fire_action_input_contract": ACTION_INPUT_CONTRACT,
+        "fire_design_actions_accepted_as_entered": True,
         "section_moments_not_converted_to_transverse_loads": True,
         "source_thermal": source,
         "temperature_source_sha256": hashlib.sha256(json.dumps(
