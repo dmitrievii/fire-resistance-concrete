@@ -19,6 +19,7 @@ Annex L: user explicitly confirms natural sand, 40% coarse aggregate, max aggreg
 | Concrete ambient Ecm | 41 GPa | SP 5.03.01-2020, Table 6.3, specified consistency and aggregate |
 | Water content by Annex L.5 | about 0.02146 kg/kg | Formula result interpreted as percent then divided by 100; normative unit ambiguity explicitly tracked |
 | Brittle spalling criterion F | **3.26208** | Maximum over evaluation temperatures 200–300 °C; below F=4, **conditional** on the L.5 unit convention |
+| Alternative exploratory L.2 RH interpolation | F≈3.8627 (Wc≈0.02532 kg/kg) | Also below F=4, but interpolation between table nodes is **not** an explicitly qualified normative method; margin is smaller |
 | Dry-density K.2 coefficients at 2200 kg/m³ | phi1=0.62; phi2=0.5 | Unprescribed numerical interpolation between published density nodes 2000 and 2400 kg/m³; sensitivity reported independently |
 | Heated 600 × 600 mm K.27 analytical remaining area | about 0.2000 m² | About 44.4% below original area; geometry only |
 | Exposed corner concrete temperature at 90 min | about 1132 °C | Exceeds 800 °C end of published strength tables |
