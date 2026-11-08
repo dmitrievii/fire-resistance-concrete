@@ -19,7 +19,7 @@ class BelarusFireSourceTests(unittest.TestCase):
         q=qualification()
         self.assertFalse(q['normative_member_R_t_claim'])
         self.assertEqual(q['concrete_constitutive_domain_C'],[20,1100])
-        self.assertIn('1100_to_1200',q['concrete_1100_to_1200'])
+        self.assertEqual(q['concrete_1100_to_1200'],'strength_only_strain_curve_unresolved')
 
     def test_every_siliceous_table_3_1_coefficient_exact(self):
         expected=[1,1,.95,.85,.75,.6,.45,.3,.15,.08,.04,.01,0]
