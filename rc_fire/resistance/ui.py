@@ -94,7 +94,7 @@ def render_resistance(st,column,calc,*,project=None,safe_change=None,
                              help="До 61 станции (0 ... время пожара). "
                                   "Шаг влияет на дискретизацию, не на физическую достоверность.")
         grid=st.select_slider("Сетка поперечного сечения",
-                              options=(8,12,16,24),value=12,
+                              options=(12,16,24,32),value=12,
                               key=f"r069_grid_{cid}")
         with_member=st.checkbox("Проверять также модель колонны R0.6.7",
                                 value=False,key=f"r069_member_{cid}",
