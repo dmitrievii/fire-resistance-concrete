@@ -29,7 +29,7 @@ from rc_fire.spalling.annex_l import DEFAULT_SAND_POLICY, moisture_wc
 def sample(*, minutes=90.):
     project = new_project()
     update_material_spec(project, 'c1', {'concrete': {
-        'aggregate_family':'siliceous', 'consistency':'S3_S5',
+        'aggregate_family':'siliceous', 'consistency':'V3_V4',
         'curing':'natural', 'modulus_aggregate':'gravel_granite_upto40'},
         'steel':{'product_type':'weldable_bar'}})
     update_thermal_spec(project, 'c1', {
