@@ -69,8 +69,10 @@ class BelarusAnnexLTests(unittest.TestCase):
         wc,src,_=moisture_wc(500.,50.)
         self.assertEqual(src,'table_L2_exact')
         self.assertAlmostEqual(wc,0.027)
-        with self.assertRaises(AnnexLError):
-            moisture_wc(500.,55.)
+        w,src,note=moisture_wc(500.,55.,water_cement_ratio=.4)
+        self.assertEqual(src,"formula_L5_unit_interpretation")
+        self.assertAlmostEqual(w,0.024619110145109882)
+        self.assertTrue(note["interpretation_requires_review"])
 
     def test_porosity_both_source_equations(self):
         self.assertAlmostEqual(porosity_np(500.,.4)[0],.1)
@@ -113,25 +115,60 @@ class BelarusAnnexLTests(unittest.TestCase):
         self.assertNotAlmostEqual(r['F'],2.3903,places=3)
         self.assertEqual(r['provenance']['Wc'],'table_L2_exact')
 
-    def test_fine_grained_and_coarse_mix_conflict_blocks(self):
+    def test_fine_grained_is_derived_and_conflicting_data_blocks(self):
+        from rc_fire.materials.normative import classify_fine_grained
         p=prepared_project()
-        p['columns'][0]['material_spec']['concrete']['fine_grained']=True
-        r=evaluate_annex_l(p['columns'][0])
+        c=p['columns'][0]
+        c['material_spec']['concrete']['fine_grained']=True
+        self.assertIs(classify_fine_grained(c)['fine_grained'],False)
+        self.assertEqual(evaluate_annex_l(c)['status'],'calculated_method_scope')
+        # Actual 0% aggregate conflicts with explicitly selected granite for Ecm.
+        update_annex_l_spec(p,'c1',{'coarse_aggregate_volume_pct':0.})
+        r=evaluate_annex_l(c)
         self.assertEqual(r['status'],'blocked_input_or_scope')
-        self.assertIn('Мелкозернистый',r['reason'])
+        self.assertIn('0 % крупного',r['reason'])
         self.assertIsNone(r['F'])
 
-    def test_annex_L_uses_only_source_supported_moisture(self):
+    def test_L5_intermediate_RH_and_explicit_non_normative_L2_interpolation(self):
         p=prepared_project()
         update_annex_l_spec(p,'c1',{'relative_humidity_pct':55.})
         r=evaluate_annex_l(p['columns'][0])
-        self.assertEqual(r['status'],'blocked_input_or_scope')
-        self.assertIn('Л.2',r['reason'])
+        self.assertEqual(r['status'],'calculated_method_scope',r.get('reason'))
+        self.assertEqual(r['provenance']['Wc'],'formula_L5_unit_interpretation')
+        self.assertAlmostEqual(r['coefficients']['Wc_kg_kg'],.024619110145109882)
+        self.assertFalse(r['moisture_method_qualified'])
+        report=evaluate_column(p['columns'][0],grid=16)
+        self.assertIn('ANNEX_L_MOISTURE_METHOD_UNQUALIFIED',
+                      {x['code'] for x in report['normative_preflight']['issues']})
+        update_annex_l_spec(p,'c1',{'moisture_mode':'linear_L2_exploratory'})
+        other=evaluate_annex_l(p['columns'][0])
+        self.assertEqual(other['status'],'calculated_method_scope')
+        self.assertEqual(other['provenance']['Wc'],'linear_L2_engineering_not_normative')
+        self.assertAlmostEqual(other['coefficients']['Wc_kg_kg'],.0292)
+        self.assertNotAlmostEqual(other['coefficients']['Wc_kg_kg'],
+                                  r['coefficients']['Wc_kg_kg'],places=3)
+        self.assertFalse(other['moisture_method_qualified'])
         update_annex_l_spec(p,'c1',{'measured_Wc_kg_kg':.027,
             'moisture_measurement_source':'Измерено на образце'})
-        r=evaluate_annex_l(p['columns'][0])
-        self.assertEqual(r['status'],'calculated_method_scope')
-        self.assertEqual(r['provenance']['Wc'],'documented_measurement')
+        measured=evaluate_annex_l(p['columns'][0])
+        self.assertEqual(measured['status'],'calculated_method_scope')
+        self.assertEqual(measured['provenance']['Wc'],'documented_measurement')
+        self.assertTrue(measured['moisture_method_qualified'])
+
+    def test_unknown_kind_is_not_fabricated_from_strength_or_density(self):
+        from rc_fire.materials.normative import classify_fine_grained,resolve_materials
+        p=new_project()
+        c=p['columns'][0]
+        c['material_spec']={'concrete':{'consistency':'S3_S5','curing':'natural',
+                                'aggregate_family':'siliceous','modulus_aggregate':'other'},
+                            'steel':{'product_type':'weldable_bar'}}
+        c['thermal_spec']['dry_density_kg_m3']=2400.
+        kind=classify_fine_grained(c)
+        self.assertEqual(kind['status'],'unknown')
+        self.assertIsNone(kind['fine_grained'])
+        self.assertIsNone(resolve_materials(c)['concrete']['E_cm_GPa'])
+        update_annex_l_spec(p,'c1',{'coarse_aggregate_volume_pct':0.})
+        self.assertIs(classify_fine_grained(c)['fine_grained'],True)
 
     def test_export_roundtrip_and_preflight_no_foreign_F(self):
         p=prepared_project()
