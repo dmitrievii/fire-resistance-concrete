@@ -111,6 +111,15 @@ class CriticalIsothermScopeTests(unittest.TestCase):
         self.assertIsNone(axis)
         self.assertIn('BIAXIAL_OR_MIXED_AXIS_BENDING_OUTSIDE_8_2_21',issues)
 
+    def test_incomplete_material_catalog_blocks_ceiling_but_not_K27_area(self):
+        c=case()
+        c['material_spec']['concrete'].pop('consistency')
+        r=evaluate_critical_isotherm_section(c)
+        self.assertEqual(r['status'],'K27_GEOMETRY_ONLY_STRENGTH_UNRESOLVED',r)
+        self.assertIn('MATERIAL_CATALOG_OR_AGGREGATE_NOT_QUALIFIED',r['blockers'])
+        self.assertIsNone(r['N_optimistic_upper_kN'])
+        self.assertGreater(r['remaining_area_m2'],0)
+
     def test_above_800_bar_temperature_does_not_get_extrapolated(self):
         c=case()
         # Keep symmetric two extreme layers, move them close to fire.
