@@ -36,6 +36,11 @@ for _suffix in _EXPECTED_MODULES:
     _expected = (_ROOT / _PACKAGE / (_suffix + ".py")).resolve()
     _stale |= not _actual or Path(_actual).resolve() != _expected
     _stale |= getattr(_loaded, "R056_SP468_RELEASE", None) != _SP468_RELEASE
+    if _suffix == "r056_ui":
+        # The legacy SP468 stamp was accidentally retained in the new
+        # Belarus-only R0.6.8 UI, so it cannot detect a stale Cloud UI.
+        _stale |= getattr(_loaded, "R068_BELARUS_UI_RELEASE", None) != (
+            "r0681-belarus-only-ui")
 
 # R0.6.2 introduces a new thermal package and extends the project authoring
 # contract. On a Streamlit Cloud hot reload, stale module objects must not
@@ -62,9 +67,31 @@ _old_annex=sys.modules.get("rc_fire.spalling.annex_l")
 if _old_annex is not None:
     _stale |= getattr(_old_annex,"VERSION",None) != "R0.6.8-BY-annex-L-source-first-v1"
 
+# R0.6.8 introduced classify_fine_grained in the existing normative.py,
+# but did NOT change the old R0.6.1 VERSION stamp. Streamlit Cloud can keep
+# the old imported module in sys.modules while loading the new Annex L.
+# The resulting import fails before a single calculation is performed.
+# Detect the actual API and on-disk origin rather than relying only on VERSION.
+_MATERIALS_MODULES = (
+    ("rc_fire.materials", _ROOT / "rc_fire" / "materials" / "__init__.py"),
+    ("rc_fire.materials.normative",
+     _ROOT / "rc_fire" / "materials" / "normative.py"),
+)
+for _name, _expected in _MATERIALS_MODULES:
+    _cached = sys.modules.get(_name)
+    if _cached is not None:
+        _file = getattr(_cached, "__file__", None)
+        _stale |= not _file or Path(_file).resolve() != _expected.resolve()
+        if _name.endswith(".normative"):
+            _stale |= not callable(getattr(_cached, "classify_fine_grained", None))
+            _stale |= not callable(getattr(_cached, "resolve_materials", None))
+        else:
+            _stale |= not callable(getattr(_cached, "resolve_materials", None))
+
 if _stale:
     for _name in tuple(sys.modules):
-        if (_name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
+        if (_name == "rc_fire.materials" or _name.startswith("rc_fire.materials.")
+             or _name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
              or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")
              or _name == "rc_fire.member" or _name.startswith("rc_fire.member.")
              or _name == "rc_fire.integration" or _name.startswith("rc_fire.integration.")

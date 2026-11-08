@@ -10,6 +10,7 @@ from rc_fire.spalling.ui import render_annex_l_results
 # The old constant name is retained only to avoid breaking the existing
 # Streamlit Cloud hot-reload guard. It is NOT a normative source.
 R056_SP468_RELEASE = "r056-sp468-20261105-hotfix1"
+R068_BELARUS_UI_RELEASE = "r0681-belarus-only-ui"
 
 
 def render_r056_results(st,calc):
