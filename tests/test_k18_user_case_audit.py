@@ -82,6 +82,14 @@ class UploadedK18SourceAuditTests(unittest.TestCase):
         self.assertIn('ANNEX_L5_WC_UNIT_INTERPRETATION',
                       self.r['summary']['normative_method_gaps'])
 
+    def test_annex_l2_exploratory_moisture_sensitivity_is_not_certified(self):
+        alt=self.r['annex_L']['exploratory_L2_interpolation_not_normative']
+        self.assertAlmostEqual(alt['Wc_kg_kg'],.02532,places=5)
+        self.assertAlmostEqual(alt['F'],3.862701302443783,delta=.02)
+        self.assertTrue(alt['alternative_F_le_4'])
+        self.assertFalse(alt['is_normative_confirmation'])
+        self.assertFalse(self.r['normative_claim'])
+
     def test_annex_k_thermal_fields_and_analytical_K27(self):
         self.assertIn(self.r['thermal']['status'],
                       ('evaluated','evaluated_with_scope_warnings'))
