@@ -91,6 +91,44 @@ def render_member_evidence(st, column, existing_result, *,
                             thermal=existing_result.get('thermal_normative'))
                     st.session_state[f"r064d_result_{column.get('id','c')}"]={
                         'result':result,'signature':_signature(column)}
+                st.divider()
+                st.caption('R0.6.9A · История нагрева и предельных деформаций по времени. '
+                           'Это численная диагностика, а не нормативный предел R(t). '
+                           'Точки с температурой вне диапазона таблиц или отсутствием '
+                           'сходимости обозначаются как неопределённые, а не как отказ.')
+                step=st.number_input('Шаг временного сканирования, мин',
+                    min_value=1.0,max_value=120.0,value=10.0,step=1.0,
+                    key=f"r069_step_{column.get('id','c')}",
+                    help='Каждая точка: новый расчёт поля приложения К и пространственной механики. '
+                         'Расчёт начинается с 1 мин (аналитическая модель не применяется при t=0).')
+                if st.button('Рассчитать историю R(t) — только диагностика',
+                             key=f"r069_run_{column.get('id','c')}"):
+                    from .r069 import evaluate_uniform_fire_time_history
+                    try:
+                        with st.spinner('Повторный расчёт температур и ULS на каждом временном шаге'):
+                            history=evaluate_uniform_fire_time_history(
+                                column,step_minutes=float(step))
+                        st.session_state[f"r069_result_{column.get('id','c')}"]={
+                            'result':history,'signature':_signature(column)}
+                    except (MemberEvidenceInputError,ValueError,TypeError) as exc:
+                        st.error('R0.6.9A: '+str(exc))
+                history_cache=st.session_state.get(f"r069_result_{column.get('id','c')}")
+                if history_cache is not None and history_cache.get('signature') != _signature(column):
+                    st.session_state.pop(f"r069_result_{column.get('id','c')}",None)
+                    history_cache=None
+                if history_cache is not None:
+                    history=history_cache['result']
+                    st.write('Диагностический статус истории:',history['status'])
+                    st.dataframe(history['samples'],use_container_width=True,hide_index=True)
+                    st.json({'R_t_minutes':None,
+                             'observed_transition_brackets_minutes':history['observed_transition_brackets_minutes'],
+                             'unresolved_times_minutes':history['unresolved_times_minutes'],
+                             'normative_claim':False,
+                             'fire_resistance_status':'not_demonstrated'})
+                    st.download_button('Скачать диагностику R0.6.9A (JSON)',
+                        json.dumps(history,ensure_ascii=False,indent=2),
+                        file_name=f"{column.get('id','column')}_r069_time_history.json",
+                        mime='application/json',key=f"r069_download_{column.get('id','c')}")
         else:
             st.info('Автоматический перенос температур выключен. '
                 'Для неоднородного обогрева требуется полный независимый JSON.')
