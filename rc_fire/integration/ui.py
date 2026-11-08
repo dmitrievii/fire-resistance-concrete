@@ -236,3 +236,71 @@ def render_member_evidence(st, column, existing_result, *,
                 json.dumps(scan,ensure_ascii=False,indent=2),
                 file_name=f'{colid}_r069b_history.json',
                 mime='application/json',key=f"r069b_history_json_{colid}")
+
+    with st.expander('R0.6.9C · Запас по N–Mx–My и пространственной колонне во времени (диагностика)',expanded=False):
+        st.caption('Два независимых расчёта: (1) все введённые N, Mx, My '
+                   'масштабируются без пересчёта пожарных сочетаний и проверяются '
+                   'на нелинейном волокнистом сечении; (2) по выбору — расчёт '
+                   'пространственной колонны по явно заданным N, qx, qy и опорам '
+                   'с P–Δ и собственными температурными деформациями. '
+                   'Введённые Mx/My НЕ преобразуются в q и НЕ считаются '
+                   'проверенными в пространственной схеме автоматически.')
+        st.warning('Это численный запас на фиксированной траектории нагрузок, '
+                   'а не нормативная несущая способность. Несходимость, '
+                   'неполные сведения и нагрев выше 800 °C = неопределённость, '
+                   'НЕ разрушение. Положительное заключение R90 запрещено.')
+        cid=column.get('id','c')
+        tm=st.number_input('Шаг сканирования времени, мин (R0.6.9C)',
+            min_value=1.,max_value=120.,value=30.,step=1.,
+            key=f'r069c_time_step_{cid}',
+            help='Каждый момент: независимая температура, N–Mx–My и при выборе '
+                 'отдельная пространственная модель. Не более 12 временных точек.')
+        inc=st.checkbox('Дополнительно считать пространственную колонну по явно заданным N и q',
+            value=False,key=f'r069c_member_enabled_{cid}',
+            help='Только если в R0.6.7 уже определены нагрев вдоль длины, '
+                 'опирание и нагрузка. Заметно увеличивает время вычисления.')
+        if st.button('Рассчитать диаграмму запаса во времени R0.6.9C',
+                     key=f'r069c_run_{cid}'):
+            from .r069c import evaluate_fire_action_capacity_history
+            try:
+                with st.spinner('Независимый расчёт температур и двухосной прочности на каждом шаге'):
+                    outcome=evaluate_fire_action_capacity_history(
+                        column,step_minutes=float(tm),factor_step=.5,
+                        max_factor=2.,max_bisection=4,grid=12,
+                        include_member=bool(inc))
+                st.session_state[f'r069c_cache_{cid}']={
+                    'result':outcome,'signature':_signature(column),
+                    'settings':(float(tm),bool(inc))}
+            except (ValueError,MemberEvidenceInputError,TypeError) as exc:
+                st.error('R0.6.9C: '+str(exc))
+        cached_c=st.session_state.get(f'r069c_cache_{cid}')
+        if (not isinstance(cached_c,dict) or
+            cached_c.get('signature')!=_signature(column) or
+            cached_c.get('settings')!=(float(tm),bool(inc))):
+            st.session_state.pop(f'r069c_cache_{cid}',None)
+            cached_c=None
+        if cached_c is not None:
+            outcome=cached_c['result']
+            st.write('Статус:',outcome['status'])
+            st.dataframe([{
+                't, мин':s['time_minutes'],
+                'Расчёт сечений':s['section_classification_at_lambda_1'],
+                'Расчёт колонны':s['member_classification_at_lambda_1'],
+                'T_max, °C':s['temperature_max_C'],
+                'T_s,max, °C':s['steel_temperature_max_C'],
+                'Площадь К.27, м²':s['K27_area_m2_geometry_only'],
+                'Причина':s.get('reason')}
+                for s in outcome['samples']],use_container_width=True,hide_index=True)
+            st.caption('При неизменных введённых пожарных усилиях λ=1 — '
+                       'расчётная точка. Наблюдаемые интервалы λ между '
+                       'равновесными состояниями не являются нормативной N_Rd или R(t). '
+                       'Для R(t) нужна квалификация полной расчётной модели.')
+            st.json({'R_t_minutes':outcome['R_t_minutes'],
+                     'normative_claim':outcome['normative_claim'],
+                     'sampled_time_transition_brackets':
+                         outcome['observed_section_reference_transitions_minutes'],
+                     'unresolved_times_minutes':outcome['unresolved_times_minutes']})
+            st.download_button('Скачать полный аудит R0.6.9C (JSON)',
+                json.dumps(outcome,ensure_ascii=False,indent=2),
+                file_name=f'{cid}_r069c_capacity_history.json',
+                mime='application/json',key=f'r069c_download_{cid}')
