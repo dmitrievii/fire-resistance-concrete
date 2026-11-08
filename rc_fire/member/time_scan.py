@@ -64,11 +64,19 @@ def classify_evidence(data: dict) -> dict:
     material = data.get('material_audit') if isinstance(data.get('material_audit'), dict) else {}
     uls_status = str(uls.get('status', status))
     blockers = list(data.get('blockers') or []) + list(uls.get('blockers') or []) + list(material.get('blockers') or [])
-    hard = [str(b) for b in blockers if any(k in str(b) for k in (
-        'MATERIAL_', 'NOT_QUALIFIED_STRENGTH', 'TEMPERATURE_', 'SECTION_EQUILIBRIUM_',
-        'GAUSS_STATION_EVIDENCE_', 'NODE_SECTION_EQUILIBRIUM_',
-        'LOCAL_STRAIN_LIMIT_INFORMATION_', 'END_AND_INTERIOR_NODES_',
-    ))]
+    # Separate *input/model invalidity* from known constitutive qualification
+    # warnings. The latter permit a strain diagnostic but NEVER a normative R(t).
+    # In particular FIRE_MATERIAL_R90_VALIDATION_MISSING is a certification
+    # blocker, not evidence that a computed strain value is unavailable.
+    hard_codes = (
+        'MATERIAL_TABLE_DOMAIN_EXCEEDED', 'MATERIAL_OR_TEMPERATURE_INPUT_NOT_QUALIFIED',
+        'FIRE_REFERENCE_STRENGTH_NOT_LITERAL_8_2_18',
+        'MATERIAL_CONSTITUTIVE_LAW_NOT_TYPED',
+        'SECTION_EQUILIBRIUM_NOT_DEMONSTRATED', 'GAUSS_STATION_EVIDENCE_INCOMPLETE',
+        'NODE_SECTION_EQUILIBRIUM_NOT_RESOLVED',
+        'LOCAL_STRAIN_LIMIT_INFORMATION_MISSING', 'END_AND_INTERIOR_NODES_NOT_ASSESSED',
+    )
+    hard = [str(b) for b in blockers if any(code in str(b) for code in hard_codes)]
     if status.startswith('BLOCKED') or hard or uls_status == 'MODEL_NOT_SOLVED':
         return {'class': UNKNOWN, 'reason': str(data.get('reason') or '; '.join(hard) or status),
                 'critical_ratio': None}
