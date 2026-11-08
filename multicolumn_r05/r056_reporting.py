@@ -86,6 +86,15 @@ def add_r056_diagnostics(doc,c,calc):
                if val<=6 else
                'F > 6: прогнозируется хрупкое разрушение, необходима защита по Л.6.')
         add_text(doc,'F = '+number(val,4)+'. '+label)
+        moist=(annex.get('provenance') or {}).get('Wc','не определён')
+        mass=(annex.get('coefficients') or {}).get('Wc_kg_kg')
+        add_text(doc,'Влажность Wc: '+str(moist)+
+            ('; '+number(mass,6)+' кг/кг.' if mass is not None else '.'))
+        if not annex.get('moisture_method_qualified',True):
+            add_text(doc,'ОГРАНИЧЕНИЕ: для влажности использована формула Л.5 с явно принятой '
+                'интерпретацией процентов либо инженерная интерполяция таблицы Л.2. '
+                'Нормативная квалификация этого способа не завершена. '
+                'Результат F — только диагностический.')
         add_table(doc,['T, °C','αbt, 1/°C','λ, Вт/(м·°C)','F'],[
             (number(x['temperature_C'],1),
              number(x['alpha_bt_1_C'],9),
