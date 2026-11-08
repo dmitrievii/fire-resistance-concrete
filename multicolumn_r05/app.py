@@ -212,7 +212,7 @@ def column_page(cid):
         from rc_fire.integration.r064d import _signature
         signature=_signature(c)
         cache_key=f'r069c_k18_source_audit_{cid}'
-        if st.button('Проверить все входы К1 и блокировки',
+        if st.button(f"Проверить все входы {c['name']} и блокировки",
                      key=f'r069c_k18_audit_button_{cid}'):
             from rc_fire.integration.project_audit import audit_rc_fire_project_column
             try:
@@ -255,7 +255,7 @@ def column_page(cid):
                 'blocking_input_data':summary['hard_input_blockers'],
                 'method_gaps':summary['normative_method_gaps'],
                 'optional_member_configuration':summary['optional_model_inputs_not_set']})
-            st.download_button('Скачать полный аудит К1 (JSON)',
+            st.download_button('Скачать полный аудит колонны (JSON)',
                 data=json.dumps(audit,ensure_ascii=False,indent=2),
                 file_name=f'{cid}_r069c_full_audit.json',
                 mime='application/json',key=f'r069c_k18_audit_download_{cid}')
