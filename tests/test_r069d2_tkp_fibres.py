@@ -74,7 +74,7 @@ class SourceIntegratedFibres(unittest.TestCase):
     def test_free_thermal_expansion_is_added_to_compression_strain(self):
         p=self.p
         eps=-concrete_free_thermal_strain(20.,aggregate='siliceous')
-        self.assertAlmostEqual(eps,0.,delta=1e-7)
+        self.assertAlmostEqual(eps,0.,delta=3e-7)  # literal §3.3.1 polynomial at 20 C: -1.84e-7
         # Uniform unheated source temperature: 0 total strain -> no force.
         # Source Annex K at 1 min is already warm, so do not assert it is 20.
         self.assertGreaterEqual(float(np.max(p.eps_th_c)),0.)
