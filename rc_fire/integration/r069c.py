@@ -166,8 +166,9 @@ def _member_load_path_at_time(column, thermal, *, factor_step,max_factor,max_bis
 
 
 def evaluate_fire_action_capacity_at_time(column, *, grid=12,max_factor=2.,
-                 factor_step=.5,max_bisection=4,include_member=True):
-    """Compute BOTH separately identified mechanical models at exactly one time."""
+                 factor_step=.5,max_bisection=4,include_member=True,
+                 material_policy='reject'):
+    """Calculate separated mechanics; high-T zero-strength is model-only."""
     base={'version':VERSION,'status':'BLOCKED_INPUT',
         'normative_claim':False,'fire_resistance_status':R_STATUS,
         'R_t_minutes':None,'lambda_capacity_normative':None,
@@ -179,6 +180,8 @@ def evaluate_fire_action_capacity_at_time(column, *, grid=12,max_factor=2.,
         if type(grid) is not int or not 12<=grid<=64:
             raise ValueError('grid must be an integer in 12..64')
         _finite(column.get('fire_minutes'),'fire_minutes',positive=True)
+        if material_policy not in ('reject','zero_strength_diagnostic'):
+            raise ValueError('material_policy must be reject or zero_strength_diagnostic')
         sections=_action_sections(column)
     except (ValueError,TypeError) as exc:
         return {**base,'status':'BLOCKED_INPUT','blockers':['INCOMPLETE_DESIGN_ACTIONS'],
@@ -191,28 +194,54 @@ def evaluate_fire_action_capacity_at_time(column, *, grid=12,max_factor=2.,
     critical=thermal.get('critical_section') or {}
     reduced_area=(critical.get('remaining_area_m2')
                   if critical.get('status')=='evaluated' else None)
+    from rc_fire.thermal import temperature_rectangle, RectangularExposure
+    exposure=RectangularExposure(float(column['b_mm']),float(column['h_mm']),
+                                tuple(thermal['exposed_faces']))
+    b,h=exposure.b_mm,exposure.h_mm
+    boundary, _=temperature_rectangle(exposure,thermal['coefficients'],
+        float(column['fire_minutes']),[0.,b,b,0.],[0.,0.,h,h])
     base={**base,'annex_K_status':thermal['status'],
+          'annex_K_issues':list(thermal.get('issues') or []),
+          'thermal_boundary_max_C':float(np.max(boundary)),
           'temperature_max_C':thermal.get('max_temperature_C'),
           'steel_temperature_max_C':max((float(b['theta_C']) for b in
               thermal.get('reinforcement',[])),default=None),
           'K27_area_m2_geometry_only':reduced_area}
     try:
-        pre=prepare_section(column,thermal,grid=grid,above_800_policy='reject')
+        pre=prepare_section(column,thermal,grid=grid,above_800_policy=material_policy)
         pre,reference=select_fire_reference_strength(pre,mode=LITERAL)
     except (SectionMechanicsError,ValueError,KeyError,TypeError) as exc:
         return {**base,'status':'BLOCKED_SECTION_MATERIAL_DOMAIN',
             'blockers':['SECTION_MATERIAL_TEMPERATURE_UNSUPPORTED'],
             'reason':str(exc)}
+    out_of_table=(pre.boundary_temperature_max_C>800. or
+                  pre.out_of_table_concrete_cells>0 or pre.out_of_table_bars>0)
+    modelling_only=material_policy=='zero_strength_diagnostic' and out_of_table
     report=[]
     for section in sections:
         path=scan_prepared_section(pre,section['N_kN'],section['Mx_kNm'],
             section['My_kNm'],max_factor=max_factor,
             factor_step=factor_step,max_bisection=max_bisection)
+        raw_reference=path['design_action_evidence']
+        # A strictly model-assumed >800 C response must not masquerade as
+        # physically verified survival/failure even when Newton converges.
+        assessed_reference=({**raw_reference,'classification':UNKNOWN,
+            'model_only_classification':raw_reference['classification'],
+            'reason':'Zeroed >800 C material is a non-normative numerical assumption; '
+                     'physical capacity and failure at this time are unknown.'}
+            if modelling_only else raw_reference)
+        if modelling_only:
+            path={**path,'physical_qualification':'UNSUPPORTED_T_GT_800',
+                'numerical_model_only':True,
+                'model_assumption':'concrete/rebar >800 C assigned zero strength; '
+                                   'reference classification is UNKNOWN',
+                'raw_model_reference_state':raw_reference,
+                'lambda_capacity_normative':None}
         report.append({'section_id':section['id'],'z_m':section['z_m'],
                        'entered_fire_design_actions':{
                            k:section[k] for k in ('N_kN','Mx_kNm','My_kNm')},
                        'action_path':path,
-                       'at_design_actions':path['design_action_evidence']})
+                       'at_design_actions':assessed_reference})
     classes=[s['at_design_actions']['classification'] for s in report]
     state=('SAMPLED_SECTION_STRAIN_EXCEEDANCE' if EXCEEDED in classes
         else 'SAMPLED_SECTIONS_WITHIN_DIAGNOSTIC_LIMITS' if
@@ -221,7 +250,15 @@ def evaluate_fire_action_capacity_at_time(column, *, grid=12,max_factor=2.,
     member=_member_load_path_at_time(column,thermal,
         factor_step=factor_step,max_factor=max_factor,max_bisection=max_bisection) \
         if include_member else None
+    if modelling_only:
+        state='UNQUALIFIED_HIGH_TEMPERATURE_MODEL_ONLY'
     return {**base,'status':state,'sections':report,'member':member,
+        'section_temperature_policy':material_policy,
+        'material_response_model_only':modelling_only,
+        'out_of_table_concrete_cells':pre.out_of_table_concrete_cells,
+        'out_of_table_rebars':pre.out_of_table_bars,
+        'reference_bar_temperatures_C':{
+            str(bar['id']):float(bar['theta_C']) for bar in thermal.get('reinforcement',[])},
         'design_action_sections_count':len(report),
         'section_material_strength_reference':reference,
         'thermal_free_strains_in_section_solver':False,
@@ -233,12 +270,15 @@ def evaluate_fire_action_capacity_at_time(column, *, grid=12,max_factor=2.,
             'SECOND_ORDER_NOT_INCLUDED_IN_DIRECT_SECTION_SOLVER',
             'FULL_MEMBER_ULS_NOT_QUALIFIED',
             'NUMERICAL_SCAN_NOT_PROOF_OF_FIRST_FAILURE_TIME',
+            *(['HOT_CONCRETE_ASSUMED_ZERO_STRENGTH_ABOVE_800_NON_NORMATIVE']
+              if modelling_only else []),
         ],'normative_claim':False,'fire_resistance_status':R_STATUS}
 
 
 def evaluate_fire_action_capacity_history(column, *, step_minutes=30.,
                  start_minutes=1.,max_factor=2.,factor_step=.5,
-                 max_bisection=4,grid=12,include_member=True,max_time_points=12):
+                 max_bisection=4,grid=12,include_member=True,max_time_points=12,
+                 material_policy='reject'):
     """Fresh thermal + action-path scans at each time, with no extrapolated R(t)."""
     if not isinstance(column,dict):
         raise ValueError('column object required')
@@ -253,7 +293,8 @@ def evaluate_fire_action_capacity_history(column, *, step_minutes=30.,
         try:
             r=evaluate_fire_action_capacity_at_time(c,grid=grid,
                 max_factor=max_factor,factor_step=factor_step,
-                max_bisection=max_bisection,include_member=include_member)
+                max_bisection=max_bisection,include_member=include_member,
+                material_policy=material_policy)
         except (ValueError,KeyError,TypeError,RuntimeError) as exc:
             r={'status':'UNRESOLVED_EXCEPTION','reason':f'{type(exc).__name__}: {exc}',
                'sections':[],'member':None}
@@ -268,6 +309,9 @@ def evaluate_fire_action_capacity_history(column, *, step_minutes=30.,
             'member_classification_at_lambda_1':member_class,
             'K27_area_m2_geometry_only':r.get('K27_area_m2_geometry_only'),
             'temperature_max_C':r.get('temperature_max_C'),
+            'thermal_boundary_max_C':r.get('thermal_boundary_max_C'),
+            'material_response_model_only':r.get('material_response_model_only',False),
+            'section_temperature_policy':material_policy,
             'steel_temperature_max_C':r.get('steel_temperature_max_C'),
             'section_count':len(r.get('sections',[])),
             'section_load_factors':[
@@ -298,6 +342,7 @@ def evaluate_fire_action_capacity_history(column, *, step_minutes=30.,
         'section_model':'first_order_biaxial_N_Mx_My',
         'member_model':'second_order_N_plus_explicit_q_only' if include_member else 'not_evaluated',
         'member_section_moment_equivalence_not_inferred':True,
+        'section_temperature_policy':material_policy,
         'samples':rows,'sample_count':len(rows),
         'observed_section_reference_transitions_minutes':observed,
         'unresolved_times_minutes':[s['time_minutes'] for s in rows

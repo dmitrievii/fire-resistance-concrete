@@ -199,6 +199,66 @@ def column_page(cid):
     c=get_column(project,cid)
     st.title(f"Колонна {c['name']}")
     st.caption('Прямоугольное железобетонное сечение; защитный слой до наружной поверхности хомута.')
+    # K18 source audit is accessible before the long material/geometry editor;
+    # it is opt-in and never silently changes physically declared inputs.
+    with st.expander('Аудит исходных данных и расчёта по СП · К / Л / R0.6.9C',
+                     expanded=False):
+        st.caption('Проверка использует текущий JSON проекта: приложение Л, '
+                   'температуры по приложению К, армирование и материалы, '
+                   'область применения критической изотермы и расчёт '
+                   'N–Mx–My. Отдельно перечисляются фактически недостающие '
+                   'данные и ограничения самой методики. '
+                   'Вывод R90 не формируется автоматически.')
+        from rc_fire.integration.r064d import _signature
+        signature=_signature(c)
+        cache_key=f'r069c_k18_source_audit_{cid}'
+        if st.button(f"Проверить все входы {c['name']} и блокировки",
+                     key=f'r069c_k18_audit_button_{cid}'):
+            from rc_fire.integration.project_audit import audit_rc_fire_project_column
+            try:
+                with st.spinner('Пересчёт приложения Л, К, материалов и N–Mx–My'):
+                    audit=audit_rc_fire_project_column(
+                        c,grid=12,test_high_temp_model=True)
+                st.session_state[cache_key]={'signature':signature,'result':audit}
+            except (ValueError,TypeError,KeyError,ArithmeticError) as exc:
+                st.error('Аудит входных данных: '+str(exc))
+        saved=st.session_state.get(cache_key)
+        if not isinstance(saved,dict) or saved.get('signature')!=signature:
+            st.session_state.pop(cache_key,None)
+            saved=None
+        if saved is not None:
+            audit=saved['result']
+            summary=audit['summary']
+            st.write('Статус: нормативный R(t) — **не подтверждён**.')
+            ma=audit['material'];la=audit['annex_L'];th=audit['thermal']
+            st.write('Материалы:',ma['status'],
+                     'Ecm, ГПа:',ma.get('E_cm_GPa'),
+                     'F (приложение Л):',la.get('F'))
+            st.write('Температурное поле:',th['status'],
+                     'К.27, м²:',audit['critical_isotherm'].get('remaining_area_m2'))
+            st.write('Строгая механика:',audit['strict_section_capacity']['status'])
+            hot=audit.get('high_temperature_research_only') or {}
+            if hot.get('status') not in ('not_requested_or_not_needed',None):
+                st.write('Дополнительная модель (Т > 800 °C, только диагностика):',
+                         hot['status'])
+                st.warning('Нулевая прочность горячего бетона — численное допущение, '
+                           'не нормативное доказательство работоспособности или отказа.')
+            st.write('Пространственная колонна:',audit['member']['status'])
+            if audit['issues']:
+                st.dataframe([{
+                    'Код':issue['code'],
+                    'Тип':issue['category'],
+                    'Ограничение':issue['description'],
+                    'Что необходимо':issue['required_action']
+                } for issue in audit['issues']],hide_index=True,use_container_width=True)
+            st.json({'R_t_minutes':None,'normative_claim':False,
+                'blocking_input_data':summary['hard_input_blockers'],
+                'method_gaps':summary['normative_method_gaps'],
+                'optional_member_configuration':summary['optional_model_inputs_not_set']})
+            st.download_button('Скачать полный аудит колонны (JSON)',
+                data=json.dumps(audit,ensure_ascii=False,indent=2),
+                file_name=f'{cid}_r069c_full_audit.json',
+                mime='application/json',key=f'r069c_k18_audit_download_{cid}')
     groups=[('Геометрия',[('Ширина b, мм','b_mm'),('Высота h, мм','h_mm'),('Длина L, м','length_m'),
                           ('Защитный слой, мм','cover_mm'),('Диаметр хомута, мм','stirrup_mm')]),
            ('Армирование и материалы',[('Диаметр продольной арматуры, мм','bar_diameter_mm'),
