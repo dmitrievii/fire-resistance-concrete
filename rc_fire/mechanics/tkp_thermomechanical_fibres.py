@@ -320,8 +320,13 @@ def prepare_tkp_fibres(column,thermal,*,grid=12,production_route,
         raise TKPFibreInputError('invalid high_temperature_tail policy')
     if not isinstance(column,dict) or not isinstance(thermal,dict):
         raise TKPFibreInputError('column and independently calculated thermal field required')
-    if thermal.get('status') not in ('evaluated','evaluated_with_scope_warnings'):
-        raise TKPFibreInputError('Annex K thermal source not evaluated')
+    tkp_field=thermal.get('thermal_method')=='TKP_4.3.2_FVM'
+    permitted=('evaluated_tkp_diagnostic',) if tkp_field else (
+        'evaluated','evaluated_with_scope_warnings')
+    if thermal.get('status') not in permitted:
+        raise TKPFibreInputError('source thermal field not evaluated')
+    if tkp_field and not isinstance(thermal.get('snapshot'),dict):
+        raise TKPFibreInputError('explicit time-matched TKP thermal snapshot required')
     if abs(_finite(thermal.get('fire_minutes'),'thermal time')-
            _finite(column.get('fire_minutes'),'column time'))>1e-9:
         raise TKPFibreInputError('thermal field time does not match column')
@@ -350,19 +355,37 @@ def prepare_tkp_fibres(column,thermal,*,grid=12,production_route,
     yy=(np.arange(grid)+.5)*h/grid
     X,Y=np.meshgrid(xx,yy,indexing='xy')
     exp=RectangularExposure(b*1000,h*1000,tuple(thermal['exposed_faces']))
-    coeff=thermal.get('coefficients')
-    if not isinstance(coeff,dict):
-        raise TKPFibreInputError('Annex K coefficients absent')
     t=float(column['fire_minutes'])
-    cell,scope=temperature_rectangle(exp,coeff,t,X*1000,Y*1000)
-    if np.any(scope['outside_approximation_C']) or not np.all(np.isfinite(cell)):
-        raise TKPFibreInputError('Annex K centre temperatures outside thermal domain')
-    # Crucial: use actual corners, not cell centres to check the hottest region.
+    if tkp_field:
+        from rc_fire.thermal.tkp_heat import sample_tkp_temperature
+        thermal_grid=thermal.get('grid') or {}
+        if abs(float(thermal_grid.get('width_mm',-1))-b*1000)>1e-6 or abs(
+                float(thermal_grid.get('height_mm',-1))-h*1000)>1e-6:
+            raise TKPFibreInputError('thermal mesh geometry differs from column')
+        if thermal.get('material_family')!=aggregate:
+            raise TKPFibreInputError('TKP heat material family differs from column')
+        # Centres are sampled from the actual FVM field; when equal to
+        # native FVM cell centres, interpolation reproduces the solved values.
+        cell=np.asarray([sample_tkp_temperature(thermal,float(x),float(y))
+             for x,y in zip(X.ravel()*1000,Y.ravel()*1000)]).reshape(X.shape)
+    else:
+        coeff=thermal.get('coefficients')
+        if not isinstance(coeff,dict):
+            raise TKPFibreInputError('Annex K coefficients absent')
+        cell,scope=temperature_rectangle(exp,coeff,t,X*1000,Y*1000)
+        if np.any(scope['outside_approximation_C']) or not np.all(np.isfinite(cell)):
+            raise TKPFibreInputError('Annex K centre temperatures outside thermal domain')
     corners_x=np.asarray([0,b*1000,0,b*1000],dtype=float)
     corners_y=np.asarray([0,0,h*1000,h*1000],dtype=float)
-    boundary,bscope=temperature_rectangle(exp,coeff,t,corners_x,corners_y)
-    if np.any(bscope['outside_approximation_C']) or not np.all(np.isfinite(boundary)):
-        raise TKPFibreInputError('Annex K corner boundary outside domain')
+    if tkp_field:
+        boundary=np.asarray([sample_tkp_temperature(thermal,float(x),float(y))
+             for x,y in zip(corners_x,corners_y)])
+        boundary=np.r_[boundary,
+             float(thermal['snapshot']['boundary_max_C'])]
+    else:
+        boundary,bscope=temperature_rectangle(exp,coeff,t,corners_x,corners_y)
+        if np.any(bscope['outside_approximation_C']) or not np.all(np.isfinite(boundary)):
+            raise TKPFibreInputError('Annex K corner boundary outside domain')
     bmax=float(np.max(boundary))
     if bmax>1200.:
         raise TKPFibreInputError('concrete corner exceeds 1200 °C source limit')
@@ -377,8 +400,14 @@ def prepare_tkp_fibres(column,thermal,*,grid=12,production_route,
         dia=_finite(bar.get('diameter_mm'),f'bar[{i}].d',positive=True)
         if not dia/2000.<x<b-dia/2000. or not dia/2000.<y<h-dia/2000.:
             raise TKPFibreInputError('bar crosses concrete boundary')
-        temp,_=temperature_rectangle(exp,coeff,t,x*1000.,y*1000.,dia)
-        tc,_=temperature_rectangle(exp,coeff,t,x*1000.,y*1000.)
+        if tkp_field:
+            # TKP §4.3.2(4) permits neglecting rebar disturbance of concrete
+            # heat flow. Actual bar-centre is sampled, no ANNEX K correction.
+            temp=sample_tkp_temperature(thermal,x*1000.,y*1000.)
+            tc=temp
+        else:
+            temp,_=temperature_rectangle(exp,coeff,t,x*1000.,y*1000.,dia)
+            tc,_=temperature_rectangle(exp,coeff,t,x*1000.,y*1000.)
         bar_ids.append(str(bar.get('id') or f'bar{i}'))
         bx.append(x);by.append(y);ba.append(math.pi*(dia/2000.)**2)
         bt.append(float(temp));bct.append(float(tc))
@@ -415,8 +444,10 @@ def prepare_tkp_fibres(column,thermal,*,grid=12,production_route,
         boundary_max_C=bmax,boundary_gap=gap,
         hot_fibre_count=badc+badb,bar_ids=tuple(bar_ids),
         source={'tkp':TKP_SOURCE,'tkp_material_version':TKP_MATERIAL_VERSION,
-                'thermal':'СП 2.02.05-2026 приложение К (hybrid diagnostic)',
+                'thermal':('ТКП EN 1992-1-2-2009 §4.3.2 (2D implicit FVM)' if
+                           tkp_field else 'СП 2.02.05-2026 приложение К (hybrid diagnostic)'),
                 'normal_temperature_materials':mat.get('source'),
                 'reference_material_catalog':'СП 5.03.01-2020 values reused as explicit input',
                 'strength_convention':'TkP gamma_M_fi=1; no SP accidental gamma',
+                'thermal_transport_mesh_validated':False,
                 'validation':'not qualified under TKP 4.3.4; research diagnostics only'})
