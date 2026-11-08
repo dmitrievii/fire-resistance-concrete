@@ -103,6 +103,12 @@ class R069TimeHistoryTests(unittest.TestCase):
         self.assertTrue(any(x['state']==SCOPE for x in r['samples']))
         self.assertEqual(r['first_outside_scope_min'],
                          min(x['time_min'] for x in r['samples'] if x['state']==SCOPE))
+        solved=[x for x in r['samples'] if x.get('section_solver_status')=='evaluated_diagnostic']
+        self.assertTrue(solved,"At least the initial ambient K1 section must solve")
+        for row in solved:
+            self.assertIsNotNone(row['strain_limit_ratio_diagnostic'])
+            self.assertEqual(row['controlling_section_id'],'center')
+            self.assertTrue(math.isfinite(row['strain_limit_ratio_diagnostic']))
 
     def test_no_fabricated_time_when_model_does_not_converge(self):
         c=example(minutes=30.)['columns'][0]
