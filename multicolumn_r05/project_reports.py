@@ -59,6 +59,8 @@ def add_column(doc,c,calc):
     if calc.get("member_r064d",{}).get("status") not in (None, "NOT_EVALUATED"):
         from rc_fire.integration.report import add_member_evidence_note
         add_member_evidence_note(doc,calc)
+    from rc_fire.integration.report import add_fire_history_note
+    add_fire_history_note(doc,calc)
     add_table(doc,['Характеристика','Значение'],[
         ('Сечение, мм',f'{c["b_mm"]:g} × {c["h_mm"]:g}'),
         ('Длина, м',number(c['length_m'],2)),
@@ -150,6 +152,8 @@ def single_report(c,calc,target,template=MASTER):
         if calc.get('member_r064d',{}).get('status') not in (None, 'NOT_EVALUATED'):
             from rc_fire.integration.report import add_member_evidence_note
             add_member_evidence_note(doc,calc)
+        from rc_fire.integration.report import add_fire_history_note
+        add_fire_history_note(doc,calc)
         finish(doc,target,template)
         return legacy_audit
     doc=init_master(template)
@@ -224,4 +228,11 @@ def make_exports(project,calcs,pdf=True,template=MASTER):
             for name,p in allpaths:z.write(p,arcname=name)
             z.writestr('project.json',export_json(project))
             z.writestr('summary.json',json.dumps(calcs,ensure_ascii=False,indent=2,default=str))
+            from rc_fire.integration.time_ui import time_history_csv
+            for c in project['columns']:
+                history=calcs[c['id']].get('fire_history_r069')
+                if history:
+                    z.writestr(f"time_history/{c['id']}.json",json.dumps(
+                        history,ensure_ascii=False,indent=2,allow_nan=False))
+                    z.writestr(f"time_history/{c['id']}.csv",time_history_csv(history))
         return data.getvalue()
