@@ -14,6 +14,7 @@ SCHEMA = 'k18-multi-column-project-r05'
 R065_MODEL_RELEASE = 'r065-center-sections-load-transfer-20261107'
 R067_MODEL_RELEASE = 'r067-unified-preflight-member-20261107'
 R068_MODEL_RELEASE = 'r068-belarus-annex-l-unified-20261108'
+R069_MODEL_RELEASE = 'r069-temporal-resistance-20261108'
 CONCRETE = {'C20/25': (20.0, 25.0), 'C25/30': (25.0, 27.0), 'C30/37': (30.0, 29.0), 'C35/45': (35.0, 31.0), 'C40/50': (40.0, 33.0)}
 COLUMN_EDITABLE = ('name','b_mm','h_mm','length_m','concrete','steel_grade','f_y_MPa', 'cover_mm','stirrup_mm','bar_diameter_mm','mu_x','mu_y','fire_minutes')
 LOAD_EDITABLE=('z_m','N_kN','Mx_kNm','My_kNm')
@@ -208,6 +209,36 @@ def update_thermal_spec(project,cid,fields):
                        profile.get('moisture_mass_pct')).validate()
     col['thermal_spec']=profile
     project['revision']+=1
+
+
+def update_fire_resistance_reference(project,cid,fields):
+    """Explicit normal-temperature resistance and source for Table 3.
+
+    N_Rd is a *resistance*, not a second fire load or fire combination.
+    No N_Rd is fabricated from historic R0.5.6 diagnostics.
+    """
+    allowed={"N_Rd_normal_temperature_kN","effective_length_provenance",
+             "fire_exposure_provenance"}
+    if not isinstance(fields,dict) or set(fields)-allowed:
+        raise ValueError("R0.6.9: unknown tabular evidence input")
+    c=get_column(project,cid)
+    staged=copy.deepcopy(c)
+    for k,v in fields.items():
+        if k=="N_Rd_normal_temperature_kN":
+            if v is None or str(v).strip()=="":
+                staged.pop(k,None)
+            else:
+                if isinstance(v,bool):raise ValueError("N_Rd must be positive")
+                x=float(v)
+                if not math.isfinite(x) or x<=0:
+                    raise ValueError("N_Rd must be a finite positive resistance")
+                staged[k]=x
+        elif v is None or not str(v).strip():
+            staged.pop(k,None)
+        else:
+            staged[k]=str(v).strip()
+    c.clear();c.update(staged)
+    project["revision"]+=1
 
 
 def update_member_spec(project,cid,fields):
