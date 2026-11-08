@@ -32,8 +32,8 @@ class R067StreamlitAuthoringTests(unittest.TestCase):
         inp("Обоснование опор (проект, схема закрепления)").set_value(
             "Диагностическая модель, схема опирания из чертежа")
         sel("Расчётная схема поперечной нагрузки").set_value("uniform_transverse_load")
-        inp("Источник пожарного сочетания усилий").set_value(
-            "Задан пользователем, пока не квалифицирован")
+        self.assertNotIn("Источник пожарного сочетания усилий",
+                         [x.label for x in app.text_input])
         next(x for x in app.button if x.label=="Сохранить схему нагрева, опирания и нагрузок").click().run()
         self.assertFalse(app.exception,list(app.exception))
         c=app.session_state["project"]["columns"][0]
