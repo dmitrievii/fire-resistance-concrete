@@ -404,3 +404,114 @@ def render_member_evidence(st, column, existing_result, *,
                 json.dumps(result,ensure_ascii=False,indent=2,default=str),
                 file_name=f'{cid}_r069d2_{kind}.json',
                 mime='application/json',key=f'r069d2_dl_{kind}_{cid}')
+
+    with st.expander('R0.6.9D3 · ТКП: 2D нестационарный прогрев → волокна → N–Mx–My',
+                     expanded=False):
+        st.caption('Расчёт прогрева теперь независим от аналитического температурного '
+                   'поля приложения К: конечно-объёмное решение уравнения '
+                   'теплопроводности с нижней теплопроводностью ТКП, '
+                   'теплоёмкостью и плотностью по температуре, конвекцией и '
+                   'излучением. Используется явно выбранный опорный режим '
+                   'приложения А (h=25 Вт/(м²·К), ε=0,7) и стандартная '
+                   'газовая кривая по формуле (3) СП 2.02.05-2026.')
+        cid=column.get('id','c')
+        moisture=st.number_input('Начальная массовая влажность бетона, % (ТКП)',
+            min_value=0.,max_value=3.,value=1.5,step=.1,
+            help='1,5% — исходное условие температурных графиков приложения А. '
+                 'Это НЕ оценка влажности по относительной влажности воздуха '
+                 'из приложения Л. Подтвердите фактическое значение.',
+            key=f'r069d3_water_{cid}')
+        mesh=st.selectbox('Сетка теплопроводности по каждой оси',options=(8,12,16),
+            index=1,key=f'r069d3_mesh_{cid}')
+        maxdt=st.number_input('Максимальный шаг теплопроводности, мин',
+            min_value=.5,max_value=10.,value=5.,step=.5,
+            key=f'r069d3_dt_{cid}')
+        timestep=st.number_input('Шаг вывода механики во времени, мин',
+            min_value=1.,max_value=120.,value=30.,step=1.,
+            key=f'r069d3_time_{cid}')
+        sr=st.selectbox('Фактическая технология арматуры S500 (D3)',
+            ('Не установлена','hot_rolled','cold_worked'),
+            key=f'r069d3_steel_{cid}',
+            help='Не выводится автоматически из марки S500.')
+        sd=st.selectbox('Класс пластичности S500 (D3)',
+            ('Не установлен','A','B','C'),key=f'r069d3_duct_{cid}')
+        member3=st.checkbox('Дополнительно рассчитать пространственную колонну P–Δ',
+            value=False,key=f'r069d3_member_{cid}',
+            help='Только при явно заданных N, qx, qy, опорах и принятом '
+                 'одинаковом прогреве вдоль длины. Моменты не конвертируются в q.')
+        st.warning('Опорный тепловой расчёт ещё требует проверки по EN 1991-1-2, '
+                   'экспериментам и сеточной сходимости. Статус R(t) остаётся '
+                   '«не установлен». Выбор процента влажности здесь — '
+                   'исходный параметр сценария, а не измеренное значение.')
+        settings=(float(moisture),int(mesh),float(maxdt),float(timestep),
+                  sr,sd,bool(member3))
+        cache_key=f'r069d3_cache_{cid}'
+        if st.button('Выполнить полный тепловой и механический расчёт D3',
+                     key=f'r069d3_run_{cid}'):
+            from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
+            from .r069d3 import evaluate_tkp_thermal_mechanical_history
+            try:
+                bound=reference_annex_a_boundary(moisture_mass_pct=float(moisture))
+                with st.spinner('2D температура, баланс энергии и независимое N–Mx–My'):
+                    r=evaluate_tkp_thermal_mechanical_history(
+                        column,boundary=bound,cell_count=int(mesh),
+                        max_step_minutes=float(maxdt),step_minutes=float(timestep),
+                        production_route=None if sr=='Не установлена' else sr,
+                        ductility_class=None if sd=='Не установлен' else sd,
+                        max_factor=1.,factor_step=1.,max_bisection=0,
+                        include_member=bool(member3))
+                st.session_state[cache_key]={
+                    'result':r,'signature':_signature(column),'settings':settings}
+            except (ValueError,TypeError,ArithmeticError) as exc:
+                st.error('D3: '+str(exc))
+        result_cache=st.session_state.get(cache_key)
+        if (not isinstance(result_cache,dict) or
+            result_cache.get('signature')!=_signature(column) or
+            result_cache.get('settings')!=settings):
+            st.session_state.pop(cache_key,None)
+            result_cache=None
+        if result_cache is not None:
+            out=result_cache['result']
+            st.write('Статус:',out['status'])
+            st.write('Относительная невязка теплового баланса:',
+                out['thermal_energy_balance']['relative_cumulative_residual'])
+            st.dataframe([{
+                't, мин':s['time_minutes'],
+                'Температура газа, °C':s['T_gas_C'],
+                'Макс. бетон, °C':s['T_concrete_boundary_max_C'],
+                'Центр бетона, °C':s['T_concrete_center_C'],
+                'Нелинейное N–Mx–My':s['reference_classification'],
+                'Статус':s['status'],
+                'Пространственная модель':(
+                    (s.get('member') or {}).get('status'))
+            } for s in out['samples']],use_container_width=True,hide_index=True)
+            st.json({'R_t_minutes':None,'normative_claim':False,
+                     'mesh_time_convergence_still_required':True,
+                     'source_gas_temperature_C':out[
+                         'reference_standard_fire_gas_at_end_C']})
+            st.download_button('Скачать D3 тепловую и механическую историю (JSON)',
+                data=json.dumps(out,ensure_ascii=False,indent=2,default=str),
+                file_name=f'{cid}_R069D3_TKP_Thermomechanics.json',
+                mime='application/json',key=f'r069d3_dl_{cid}')
+        if st.button('Проверить сеточную и временную чувствительность D3',
+                     key=f'r069d3_refine_{cid}'):
+            from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
+            from .r069d3 import compare_tkp_thermal_refinement
+            try:
+                with st.spinner('Сравнение трёх независимых решений теплопроводности'):
+                    rr=compare_tkp_thermal_refinement(column,
+                        boundary=reference_annex_a_boundary(
+                            moisture_mass_pct=float(moisture)),
+                        coarse=8,fine=12,dt_minutes=float(maxdt))
+                st.write('Максимальное различие по сетке, °C:',
+                         rr['max_spatial_difference_C'])
+                st.write('Максимальное различие по времени, °C:',
+                         rr['max_temporal_difference_C'])
+                st.caption('Численная сходимость сама по себе не заменяет '
+                           'верификацию граничных условий и эксперимент.')
+                st.download_button('Скачать сравнение сетки D3 (JSON)',
+                    json.dumps(rr,ensure_ascii=False,indent=2),
+                    file_name=f'{cid}_R069D3_refinement.json',
+                    mime='application/json',key=f'r069d3_refine_json_{cid}')
+            except (ValueError,TypeError,ArithmeticError) as exc:
+                st.error('Сеточная проверка D3: '+str(exc))
