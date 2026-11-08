@@ -76,7 +76,7 @@ class UploadedK18SourceAuditTests(unittest.TestCase):
     def test_annex_l_f_is_computed_below_4_with_documented_uncertainty(self):
         self.assertEqual(self.r['annex_L']['status'],'calculated_method_scope')
         self.assertTrue(self.r['annex_L']['natural_sand_verified'])
-        self.assertAlmostEqual(self.r['annex_L']['F'],3.453966951393796,delta=.03)
+        self.assertAlmostEqual(self.r['annex_L']['F'],3.262079898538585,delta=.005)
         self.assertFalse(self.r['annex_L']['protection_required_method_indicator'])
         self.assertFalse(self.r['annex_L']['moisture_method_qualified'])
         self.assertIn('ANNEX_L5_WC_UNIT_INTERPRETATION',
