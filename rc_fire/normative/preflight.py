@@ -9,6 +9,7 @@ import math
 import re
 from typing import Any
 from .contracts import CONTRACT_VERSION, contract_sha256, methods_for_route
+from .actions import ACTION_INPUT_CONTRACT, action_source
 
 class NormativeQualificationError(RuntimeError):
     """Raised if a consumer requests an unqualified normative decision."""
@@ -106,8 +107,6 @@ def evaluate_tabular_column_scope(column: dict) -> dict:
         except (ValueError, TypeError): missing.append("valid moments: " + str(s.get("id")))
     if not column.get("effective_length_provenance"):
         missing.append("effective_length_provenance")
-    if not column.get("fire_action_provenance"):
-        missing.append("fire_action_provenance")
     if not column.get("N_Rd_normal_temperature_kN"):
         missing.append("N_Rd_normal_temperature_kN for η=Nfi/NRd")
     status = "OUTSIDE_SCOPE" if failures else "INCOMPLETE" if missing else "SCOPE_CANDIDATE_UNQUALIFIED"
@@ -185,14 +184,12 @@ def audit_column(column: dict, route: str = "general_member", *,
     elif cls.get("status")=="unknown":
         add("MATERIAL_KIND_NOT_RESOLVED",str(cls.get("reason")),
             "СП 5.03.01-2020, 6.1.2.1; таблица 6.3")
-    fire_action_source=column.get("fire_action_provenance") or member.get("fire_actions_source")
-    if not fire_action_source:
-        add("NO_FIRE_LOAD_SOURCE", "Происхождение пожарного сочетания усилий не подтверждено.",
-            "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
-    else:
-        add("FIRE_ACTION_COMBINATION_NOT_QUALIFIED",
-            "Источник усилий указан, но нормативное пожарное сочетание не квалифицировано.",
-            "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
+    # PROJECT INPUT CONTRACT: all explicitly entered N/Mx/My are already
+    # design actions for the fire situation. No fire-combination calculation
+    # is performed here and provenance is NOT a separate qualification gate.
+    # Completeness is still audited below, and no geometry/load-diagram is inferred.
+    fire_action_source=action_source(
+        column.get("fire_action_provenance") or member.get("fire_actions_source"))
     # Only Belarus Annex L is authoritative for the active spalling check.
     # Russian legacy fields may remain in historical JSON but have no
     # normative weight and never override this result.
@@ -264,7 +261,10 @@ def audit_column(column: dict, route: str = "general_member", *,
             "E_cm_GPa":Ecm,"E_cm_source":Ecm_source,
             "member_supports_configured":bool(member.get("left_support") and member.get("right_support")),
             "uniform_temperature_assumed":member.get("thermal_longitudinal_mode")=="uniform_assumed",
-            "fire_actions_source":fire_action_source
+            "fire_actions_source":fire_action_source,
+            "fire_action_input_contract":ACTION_INPUT_CONTRACT,
+            "fire_actions_are_design_values":True,
+            "fire_combination_recalculated":False
         },
         "issues":issues,
     }
