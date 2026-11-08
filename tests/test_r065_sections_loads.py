@@ -113,7 +113,8 @@ class CenterSectionsAndActionsTests(unittest.TestCase):
         self.assertEqual(bundle['section_actions_reference_only'][0]['Mx_kNm'],3.)
         self.assertEqual(bundle['section_actions_reference_only'][0]['My_kNm'],2.)
         self.assertIsNone(bundle['distributed_load_kNpm'])
-        self.assertIsNone(bundle['fire_actions_source'])
+        from rc_fire.normative.actions import DEFAULT_ACTION_PROVENANCE
+        self.assertEqual(bundle['fire_actions_source'],DEFAULT_ACTION_PROVENANCE)
         self.assertIsNone(bundle['node_stations'][0]['thermal'])
         add_section(p,'c1')
         bundle=sample_station_bundle(c)

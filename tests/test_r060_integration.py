@@ -16,7 +16,10 @@ class R060IntegrationTests(unittest.TestCase):
             self.assertFalse(c["normative_claim"])
             self.assertFalse(r["normative_claim"])
             self.assertEqual(r["fire_resistance_status"],"not_demonstrated")
-            self.assertIn("NO_FIRE_LOAD_SOURCE", {x["code"] for x in c["issues"]})
+            self.assertNotIn("NO_FIRE_LOAD_SOURCE", {x["code"] for x in c["issues"]})
+        self.assertNotIn("FIRE_ACTION_COMBINATION_NOT_QUALIFIED",
+                         {x["code"] for x in c["issues"]})
+        self.assertTrue(c["resolved_inputs"]["fire_actions_are_design_values"])
 
     def test_loaded_reference_remains_diagnostic(self):
         p=new_project()

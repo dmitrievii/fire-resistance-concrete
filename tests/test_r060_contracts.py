@@ -106,7 +106,9 @@ class R060ContractTests(unittest.TestCase):
         codes={i["code"] for i in a["issues"]}
         self.assertEqual(a["status"],"NOT_QUALIFIED")
         self.assertFalse(a["normative_claim"])
-        self.assertIn("NO_FIRE_LOAD_SOURCE",codes)
+        self.assertNotIn("NO_FIRE_LOAD_SOURCE",codes)
+        self.assertNotIn("FIRE_ACTION_COMBINATION_NOT_QUALIFIED",codes)
+        self.assertTrue(a["resolved_inputs"]["fire_actions_are_design_values"])
         self.assertIn("ANNEX_L_NOT_EVALUATED",codes)
         self.assertIn("E_CM_NOT_PROVEN",codes)
         self.assertIn("ASSUMED_FOUR_SIDES",codes)

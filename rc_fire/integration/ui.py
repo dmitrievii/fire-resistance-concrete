@@ -15,6 +15,9 @@ def render_member_evidence(st, column, existing_result, *,
                    'одинакового нагрева вдоль колонны. При неоднородном нагреве '
                    'используйте независимые станции через JSON. '
                    'Все результаты — только диагностические.')
+        st.info('По условиям проекта все N, Mx, My в расчётных сечениях '
+                'уже являются расчётными усилиями для пожарной ситуации. '
+                'Повторное формирование пожарного сочетания не требуется.')
         spec=validate_member_spec(column.get('member_spec'))
         if project is not None and update_member_spec is not None and safe_change is not None:
             sid=column.get('id','column')
@@ -54,9 +57,6 @@ def render_member_evidence(st, column, existing_result, *,
                 with q2:
                     qy=st.number_input('qy, кН/м (ось Y)',
                         value=float(spec.get('q_y_kNpm') or 0.0),step=0.1)
-                fire_src=st.text_input('Источник пожарного сочетания усилий',
-                    value=spec.get('fire_actions_source') or '',
-                    help='Происхождение нагрузки; текст сам по себе не подтверждает корректность сочетания')
                 nodes=st.number_input('Расчётные узлы по длине',
                     value=int(spec.get('node_count',3)),min_value=2,max_value=21,step=1)
                 if st.form_submit_button('Сохранить схему нагрева, опирания и нагрузок'):
@@ -67,7 +67,6 @@ def render_member_evidence(st, column, existing_result, *,
                         'load_mode':load_mode,
                         'q_x_kNpm':float(qx) if load_mode=='uniform_transverse_load' else None,
                         'q_y_kNpm':float(qy) if load_mode=='uniform_transverse_load' else None,
-                        'fire_actions_source':fire_src.strip() or None,
                         'node_count':int(nodes)}
                     safe_change(update_member_spec,project,sid,payload)
         if spec.get('thermal_longitudinal_mode')=='uniform_assumed':
@@ -104,10 +103,10 @@ def render_member_evidence(st, column, existing_result, *,
         actions=sample.get('section_actions_reference_only',[])
         ready=sum(a['load_state']=='ready' for a in actions)
         n=sample.get('N_kN')
-        st.caption(f'Усилия из общей таблицы: {ready}/{len(actions)} сечений заполнено. '
+        st.caption(f'Расчётные усилия при пожаре из общей таблицы: {ready}/{len(actions)} сечений заполнено. '
                    + (f'Постоянная N={n:g} кН перенесена в шаблон. ' if n is not None
                       else 'Постоянная N не определена для всей колонны. ')
-                   + 'Mx/My сохранены в JSON как исходные данные, но не преобразуются '
+                   + 'Mx/My сохранены как пожарные расчётные усилия, но не преобразуются '
                      'автоматически в распределённую нагрузку. Тепловые станции '
                      'и условия закрепления должны быть заданы отдельно.')
         st.download_button('Шаблон входных данных R0.6.4D (неполный)',

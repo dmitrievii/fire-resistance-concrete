@@ -1,5 +1,24 @@
 # R0.6.7 — Unified Normative Preflight & Automatic Thermal–Member Coupling
 
+## Input-actions policy (R0.6.8.3)
+
+All user-entered N, Mx and My values in every section are **already
+design actions for the fire situation**. The software must never require
+a second fire load combination, a separate source reference for those
+actions, or an additional СН 2.01.03-2019 upload before accepting them.
+
+- The origin of the design-action *values* is the user's project input
+  convention, explicitly represented by
+  `R0.6.8.3-user-supplied-fire-design-actions-v1`.
+- Empty or incomplete action components still block calculations that need
+  them. An absent source comment does not.
+- A set of section actions does **not** automatically establish an FE
+  member load diagram. R0.6.7 still needs the structural model required
+  to calculate effects of second order: supports and, when applicable,
+  transverse loading or nodal forces.
+- Acceptance of N/M as fire-design inputs neither validates a section's
+  strength nor certifies R90. Other normative blockers are unaffected.
+
 ## Scope
 
 **Diagnostic implementation only.** Neither convergence nor a calculated
@@ -34,8 +53,9 @@ the user may explicitly choose:
    `uniform_transverse_load` with numeric `q_x_kNpm`/`q_y_kNpm`.
    Only complete, consistent section values of N can supply the solver's
    constant axial force. Mx/My do not infer bending load distributions.
-4. `fire_actions_source` for traceability. This is *not* independent
-   validation of a fire design combination.
+4. An optional `fire_actions_source` note is retained for legacy
+   JSON compatibility. Its absence is never a blocker: all N/M are
+   already fire-design values by the project input contract.
 5. A discrete FE node count (2–21).
 
 R0.6.2 is evaluated once for the selected column. Its actual coefficients,

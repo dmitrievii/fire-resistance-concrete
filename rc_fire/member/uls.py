@@ -14,6 +14,7 @@ import math
 import numpy as np
 
 from .coupled import CoupledMemberError, _shape, _finite_vector
+from rc_fire.normative.actions import action_source, ACTION_INPUT_CONTRACT
 
 VERSION = 'R0.6.4C-ULS-evidence-audit-v1'
 
@@ -79,9 +80,10 @@ def audit_heated_member_uls(result:dict,z_m,N_kN:float,*,
     if not math.isfinite(N) or N<0:raise CoupledMemberError('N must be finite compression')
     if temperature_time_minutes is not None and (not math.isfinite(float(temperature_time_minutes)) or float(temperature_time_minutes)<0):
         raise CoupledMemberError('invalid time')
-    # Structural model and fire-design qualification are distinct.
+    # Project convention: all explicit N/M are already fire-design actions.
+    # A redundant source field is not an independent qualification gate.
+    action_provenance=action_source(action_provenance)
     blockers=[]
-    if not action_provenance:blockers.append('FIRE_ACTIONS_NOT_DOCUMENTED')
     if not material_provenance:blockers.append('HOT_MATERIAL_LAW_NOT_QUALIFIED')
     if not axial_restraint_qualified:blockers.append('AXIAL_RESTRAINT_OR_RELEASE_NOT_QUALIFIED')
     if not spalling_qualified:blockers.append('SPALLING_NOT_QUALIFIED')
@@ -148,6 +150,8 @@ def audit_heated_member_uls(result:dict,z_m,N_kN:float,*,
       'exceeded_count':len(exceeded),'critical_sample':critical,
       'numerical_second_order_tangent_min_eigenvalue':result.get('tangent_min_eigenvalue'),
       'equilibrium_relative_residual':result.get('relative_equilibrium_residual'),
-      'action_provenance':action_provenance,'material_provenance':material_provenance,
+      'action_provenance':action_provenance,
+       'fire_action_input_contract':ACTION_INPUT_CONTRACT,
+       'material_provenance':material_provenance,
       'blockers':sorted(set(blockers)),'samples':sampled,
       'normative_claim':False,'fire_resistance_status':'not_demonstrated'}

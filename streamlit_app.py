@@ -65,6 +65,17 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
 
+# R0.6.8.3: a cached normative/member module predating the project-wide
+# fire-design-action convention must not survive Streamlit Cloud hot reload.
+for _name in ("rc_fire.normative.preflight",
+              "rc_fire.integration.r064d",
+              "rc_fire.integration.r067",
+              "rc_fire.member.uls"):
+    _loaded=sys.modules.get(_name)
+    if _loaded is not None:
+        _stale |= getattr(_loaded, "ACTION_INPUT_CONTRACT", None) != (
+            "R0.6.8.3-user-supplied-fire-design-actions-v1")
+
 # The Belarus Annex L input form changed from the old Russian numeric
 # range tooltips. Invalidate cached UI objects after the range-help release.
 _old_annex_ui=sys.modules.get("rc_fire.spalling.ui")
@@ -101,7 +112,8 @@ for _name, _expected in _MATERIALS_MODULES:
 
 if _stale:
     for _name in tuple(sys.modules):
-        if (_name == "rc_fire.materials" or _name.startswith("rc_fire.materials.")
+        if (_name == "rc_fire.normative" or _name.startswith("rc_fire.normative.")
+             or _name == "rc_fire.materials" or _name.startswith("rc_fire.materials.")
              or _name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
              or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")
              or _name == "rc_fire.member" or _name.startswith("rc_fire.member.")

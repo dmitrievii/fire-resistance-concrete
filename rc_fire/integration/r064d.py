@@ -10,6 +10,7 @@ import copy
 import json
 import math
 from typing import Any
+from rc_fire.normative.actions import ACTION_INPUT_CONTRACT, action_source
 
 VERSION = 'R0.6.4D-repository-integration-v1'
 BLOCKED = 'not_demonstrated'
@@ -19,11 +20,12 @@ class MemberEvidenceInputError(ValueError):
     pass
 
 
-def pending_member_evidence(*, reason='Explicit longitudinal thermal stations and verified fire actions not supplied'):
+def pending_member_evidence(*, reason='Required longitudinal thermal stations or member model not supplied'):
     return {'version': VERSION, 'status': 'NOT_EVALUATED', 'reason': str(reason),
         'normative_claim': False, 'fire_resistance_status': BLOCKED,
+        'fire_action_input_contract': ACTION_INPUT_CONTRACT,
         'blockers': ['EXPLICIT_THERMAL_STATIONS_REQUIRED',
-                     'FIRE_ACTIONS_AND_CONSTITUTIVE_QUALIFICATION_REQUIRED']}
+                     'CONSTITUTIVE_QUALIFICATION_REQUIRED']}
 
 
 def _numeric(v, path, *, lower=None, greater=False):
@@ -79,14 +81,17 @@ def sample_station_bundle(column, *, node_count=3):
     return {'schema':'R0.6.4D-explicit-stations-v1',
       'column_id':column.get('id'),'z_m':z,'N_kN':n,
       'section_actions_reference_only':actions,
-      'section_action_origin':'editable_project_table_not_fire_combination',
+      'section_action_origin':'project_table_fire_design_actions_no_recombination',
       'gauss_stations':[[copy.deepcopy(entry) for _ in range(3)] for _ in z[:-1]],
       'node_stations':[copy.deepcopy(entry) for _ in z],
       'distributed_load_kNpm':None,
-      'fire_actions_source':None,
+      'fire_actions_source':action_source(
+           (column.get('member_spec') or {}).get('fire_actions_source')
+           or column.get('fire_action_provenance')),
       'temperature_time_minutes':column.get('fire_minutes'),
       'grid':12,
-      'method_notice':'Section N/Mx/My copied for traceability, not an inferred bending load diagram. Supply all thermal stations, verified fire actions and supports; no R90 approval.'}
+      'fire_action_input_contract':ACTION_INPUT_CONTRACT,
+       'method_notice':'Section N/Mx/My are already fire-design actions by project input convention. No second fire combination; no inferred bending load diagram. Supply required thermal stations and supports; no R90 approval.'}
 
 
 def _validate_station_bundle(bundle:dict, *, expected_column=None):
@@ -175,13 +180,14 @@ def evaluate_explicit_member_bundle(bundle:dict, *, expected_column=None):
       distributed_load_kNpm=bundle.get('distributed_load_kNpm'),
       nodal_forces=bundle.get('nodal_forces'),
       initial_imperfection=bundle.get('initial_imperfection'),
-      fire_actions_source=bundle.get('fire_actions_source'),
+      fire_actions_source=action_source(bundle.get('fire_actions_source')),
       temperature_time_minutes=bundle.get('temperature_time_minutes'),
       strength_mode='literal_8_2_18_normative_strength')
     if not isinstance(result,dict):
         raise RuntimeError('unknown member response')
     # Strict fail-closed wrapper: even unexpected inherited claims cannot pass.
-    return {**result,'version':VERSION,'normative_claim':False,
+    return {**result,'version':VERSION,
+            'fire_action_input_contract':ACTION_INPUT_CONTRACT,'normative_claim':False,
             'fire_resistance_status':BLOCKED,
             'integration_status':'DIAGNOSTIC_ONLY',
             'source_member_version':result.get('version')}
