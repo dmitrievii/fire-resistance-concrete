@@ -133,6 +133,11 @@ def render_resistance(st,column,calc,*,project=None,safe_change=None,
             st.metric("Диагностический интервал первого превышения деформаций",
                       f"{bracket[0]:g}–{bracket[1]:g} мин")
             st.caption("Не является квалифицированным пределом огнестойкости.")
+        member_bracket=result.get("member_diagnostic_limit_bracket_min")
+        if member_bracket:
+            st.metric("Второй порядок: диагностический интервал предельных деформаций",
+                      f"{member_bracket[0]:g}–{member_bracket[1]:g} мин")
+            st.caption("Отдельное численное наблюдение R0.6.7, не физический t_R.")
         if result.get("first_outside_scope_min") is not None:
             st.error("Материальная/тепловая область применимости впервые "
                      f"нарушена при t={result['first_outside_scope_min']:g} мин. "
