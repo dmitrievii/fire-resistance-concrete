@@ -86,6 +86,10 @@ def add_r056_diagnostics(doc,c,calc):
                if val<=6 else
                'F > 6: прогнозируется хрупкое разрушение, необходима защита по Л.6.')
         add_text(doc,'F = '+number(val,4)+'. '+label)
+        if not annex.get('natural_sand_verified',True):
+            add_text(doc,'ОГРАНИЧЕНИЕ: природный песок для таблицы Л.1 принят '
+                'положительным по умолчанию только для диагностики; документально '
+                'состав заполнителя не подтверждён. Нормативное применение F заблокировано.')
         moist=(annex.get('provenance') or {}).get('Wc','не определён')
         mass=(annex.get('coefficients') or {}).get('Wc_kg_kg')
         add_text(doc,'Влажность Wc: '+str(moist)+
