@@ -170,6 +170,30 @@ class BelarusAnnexLTests(unittest.TestCase):
         update_annex_l_spec(p,'c1',{'coarse_aggregate_volume_pct':0.})
         self.assertIs(classify_fine_grained(c)['fine_grained'],True)
 
+    def test_material_Ecm_does_not_use_archived_wrong_fine_grained_switch(self):
+        from rc_fire.materials.normative import resolve_materials
+        p=prepared_project()
+        c=p['columns'][0]
+        c['material_spec']['concrete']['fine_grained']=True  # bad legacy flag
+        m=resolve_materials(c)
+        self.assertEqual(m['fine_grained_classification']['status'],'resolved')
+        self.assertIs(m['fine_grained_classification']['fine_grained'],False)
+        self.assertAlmostEqual(m['concrete']['E_cm_GPa'],33.)  # S3–S5 C30/37
+        self.assertNotAlmostEqual(m['concrete']['E_cm_GPa'],33.*.85)
+
+    def test_streamlit_no_fine_checkbox_and_moisture_method_available(self):
+        from pathlib import Path
+        try:from streamlit.testing.v1 import AppTest
+        except ImportError:self.skipTest('Streamlit testing not installed')
+        entry=Path(__file__).resolve().parents[1]/'streamlit_app.py'
+        app=AppTest.from_file(str(entry),default_timeout=100).run()
+        self.assertFalse(app.exception,list(app.exception))
+        nav=next(r for r in app.radio if r.label=='Разделы')
+        nav.set_value('c1').run()
+        self.assertFalse(app.exception,list(app.exception))
+        self.assertNotIn('Мелкозернистый бетон',[x.label for x in app.selectbox])
+        self.assertIn('Метод определения влажности Wc',[x.label for x in app.selectbox])
+
     def test_export_roundtrip_and_preflight_no_foreign_F(self):
         p=prepared_project()
         q=load_json(export_json(p))
