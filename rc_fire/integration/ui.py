@@ -185,10 +185,10 @@ def render_member_evidence(st, column, existing_result, *,
         if st.button('Проверить изотерму и область применения',
                      key=f"r069b_now_{colid}"):
             result=evaluate_critical_isotherm_section(column,grid=40)
-            st.session_state[f"r069b_now_{colid}"]={'result':result,'signature':_signature(column)}
-        cached_now=st.session_state.get(f"r069b_now_{colid}")
+            st.session_state[f"r069b_now_cache_{colid}"]={'result':result,'signature':_signature(column)}
+        cached_now=st.session_state.get(f"r069b_now_cache_{colid}")
         if cached_now is not None and cached_now.get('signature') != _signature(column):
-            st.session_state.pop(f"r069b_now_{colid}",None)
+            st.session_state.pop(f"r069b_now_cache_{colid}",None)
             cached_now=None
         if cached_now is not None:
             result=cached_now['result']
