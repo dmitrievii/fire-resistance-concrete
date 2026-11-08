@@ -124,6 +124,35 @@ class R069TimeHistoryTests(unittest.TestCase):
         self.assertIsNone(r['computed_exact_R_min'])
         self.assertFalse(r['normative_claim'])
 
+    def test_explicit_research_zero_strength_is_never_normative_R(self):
+        c=example(minutes=30.)['columns'][0]
+        def model(col,t,**kw):
+            r=dummy(t,"RESEARCH_"+(GOOD if t<20 else EXCEEDED))
+            return r
+        with patch('rc_fire.resistance.history.evaluate_station',side_effect=model):
+            r=evaluate_resistance_history(c,step_minutes=15.,grid=12,
+                policy="zero_strength_diagnostic")
+        self.assertEqual(r['status'],'RESEARCH_LIMIT_BRACKETED')
+        self.assertEqual(r['diagnostic_limit_bracket_min'],[15.,30.])
+        self.assertIsNone(r['computed_exact_R_min'])
+        self.assertFalse(r['normative_claim'])
+
+    def test_independent_member_strain_bracket_is_not_exact_R(self):
+        c=example(minutes=30.)['columns'][0]
+        def model(col,t,**kw):
+            r=dummy(t,GOOD)
+            r['member_uls_status']=(
+                "SAMPLED_STRAINS_WITHIN_LIMITS_NOT_NORMATIVE_ULS"
+                if t<20 else "DIAGNOSTIC_STRAIN_LIMIT_EXCEEDED")
+            return r
+        with patch('rc_fire.resistance.history.evaluate_station',side_effect=model):
+            r=evaluate_resistance_history(c,step_minutes=15.,grid=12,
+                                          with_member=True)
+        self.assertEqual(r['member_diagnostic_limit_bracket_min'],[15.,30.])
+        self.assertEqual(r['member_first_observed_strain_limit_min'],30.)
+        self.assertIsNone(r['computed_exact_R_min'])
+        self.assertFalse(r['normative_claim'])
+
     def test_gap_in_history_must_not_form_a_failure_bracket(self):
         c=example(minutes=30.)['columns'][0]
         def model(col,t,**kw):
