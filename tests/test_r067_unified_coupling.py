@@ -149,15 +149,18 @@ class R067CouplingTests(unittest.TestCase):
         with self.assertRaises(NormativeQualificationError):
             prevent_normative_claim(audit)
 
-    def test_preflight_warns_on_conflicting_mix_description(self):
+    def test_preflight_auto_resolves_kind_but_blocks_real_mix_conflict(self):
         p=prepared_column()
-        p['columns'][0]['material_spec']['concrete']['fine_grained']=True
         c=p['columns'][0]
+        c['material_spec']['concrete']['fine_grained']=True
+        normal=resolve_materials(c)
+        self.assertIs(normal['fine_grained_classification']['fine_grained'],False)
+        c['annex_l_spec']={'coarse_aggregate_volume_pct':0.}
         a=audit_column(c,material_result=resolve_materials(c),
                        thermal_result=evaluate_rectangular_column(c,grid=12))
         code={x['code']:x for x in a['issues']}
-        self.assertIn('MATERIAL_DESCRIPTION_REQUIRES_REVIEW',code)
-        self.assertEqual(code['MATERIAL_DESCRIPTION_REQUIRES_REVIEW']['severity'],'WARNING')
+        self.assertIn('MATERIAL_MIX_CONFLICT',code)
+        self.assertEqual(code['MATERIAL_MIX_CONFLICT']['severity'],'BLOCKER')
         self.assertFalse(a['normative_claim'])
 
     def test_project_json_roundtrip_persists_explicit_assumptions(self):
