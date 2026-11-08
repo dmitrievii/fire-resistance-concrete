@@ -53,7 +53,10 @@ def _evaluate_column_pre_r064d(c,grid=48):
         'thermal_normative':thermal_normative,
         'mechanics_r063':mechanics_r063,
         'member':{'status':'not_evaluated'},
-        'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
+        'biaxial':{'status':'not_evaluated'},
+        'provenance':{**{k:v for k,v in check_provenance().items()
+                         if k!='spalling'},
+                      'annex_l':'СП 2.02.05-2026, приложение Л'},
         'fire_resistance_status':'not_demonstrated',
         'load_summary':{'ready':sum(v=='ready' for v in states.values()),
                         'empty':sum(v=='empty' for v in states.values()),
