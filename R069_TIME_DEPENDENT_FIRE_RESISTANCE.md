@@ -36,7 +36,7 @@ classification, **not a computed exact physical failure at t=120 min**.
 
 ## Route B: Time-dependent Annex K and R0.6.3
 
-Given the user-selected fire duration and time step (max 61 stations), build
+Given the user-selected fire duration and time step (max 61 stations, section grid 12–48), build
 a temporary copy of the *same column* for t=0..fire duration. Evaluate
 Annex K temperature at t and pass the unmodified original N/M fire actions to
 the heated N–Mx–My section solver at that t.
@@ -56,7 +56,7 @@ Status distinction:
 - OUTSIDE_MATERIAL_OR_THERMAL_SCOPE;
 - INCOMPLETE_INPUT.
 
-A diagnostic strain exceedance can only be *bracketed* if the immediately
+The optional R0.6.7 FE/member ULS history has a **separate** bracket, based on sampled Gauss/node strain-limit states. A bracket in the member is independent from section strain failure and never a certified R. An explicitly selected high-temperature zero-strength *research* mode can also bracket sampled diagnostic exceedances, but reports `RESEARCH_LIMIT_BRACKETED` and never upgrades normative status.\n\nA diagnostic strain exceedance can only be *bracketed* if the immediately
 preceding temporal sample was a solved admissible state, and no unresolved/
 out-of-scope state lies within this bracket. Optional bisection remains
 **diagnostic**. Do not interpolate across gaps. A non-converged Newton
@@ -86,7 +86,7 @@ Until these are done:
 `normative_claim = false`,
 `fire_resistance_status = not_demonstrated`.
 
-## Acceptance
+## Presentation\n\nThe Streamlit column page contains an opt-in time sweep with grid and time-step controls, a history table, temperature plot, explicit research-only mode and JSON download. The project overview summarizes history status per column. Cached histories are invalidated when ANY column input changes. Word reports include sampled histories without a false positive R verdict; no scan runs implicitly when the user edits a field.\n\n## Acceptance
 
 ```bash
 python -m unittest discover -s tests -v
