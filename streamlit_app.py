@@ -65,6 +65,13 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
 
+# The Belarus Annex L input form changed from the old Russian numeric
+# range tooltips. Invalidate cached UI objects after the range-help release.
+_old_annex_ui=sys.modules.get("rc_fire.spalling.ui")
+if _old_annex_ui is not None:
+    _stale |= getattr(_old_annex_ui, "RANGE_HINTS_RELEASE", None) != (
+        "r0682-belarus-input-range-tooltips-v1")
+
 _old_annex=sys.modules.get("rc_fire.spalling.annex_l")
 if _old_annex is not None:
     _stale |= getattr(_old_annex,"VERSION",None) != "R0.6.8-BY-annex-L-source-first-v1"
