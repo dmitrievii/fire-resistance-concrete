@@ -122,8 +122,8 @@ def evaluate_resistance_history(column,*,horizon_minutes=None,step_minutes=15.,
     h=_float(column.get("fire_minutes") if horizon_minutes is None else horizon_minutes,
              "time horizon",max_v=240.)
     dt=_float(step_minutes,"time step",min_v=0.,max_v=240.,strict=True)
-    if type(grid) is not int or not 8<=grid<=48:
-        raise ValueError("time-history calculation grid must be 8..48")
+    if type(grid) is not int or not 12<=grid<=48:
+        raise ValueError("time-history calculation grid must be 12..48")
     times=_times(h,dt)
     evaluated=[evaluate_station(column,t,grid=grid,policy=policy,
                                 with_member=with_member) for t in times]
