@@ -24,13 +24,15 @@ MAX_CACHE=60
 def _evaluate_column_pre_r064d(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
+    # Preserve archived data for old report comparisons; do not use the
+    # foreign spalling index for current Belarus fire-resistance decisions.
     spalling=spalling_assessment(c.get('spalling'))
     material_preflight=resolve_materials(c)
     thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
-    # R0.6.7: single authoritative provenance adjudication using the resolved
-    # material and thermal inputs; R90 remains hard-blocked.
+    from rc_fire.spalling import evaluate_annex_l
+    annex_l=evaluate_annex_l(c,material_result=material_preflight)
     normative_preflight=audit_column(c,material_result=material_preflight,
-                                     thermal_result=thermal_normative)
+        thermal_result=thermal_normative,annex_l_result=annex_l)
     # R0.6.3 is a separate first-order SECTION diagnostic, never the fire
     # resistance verdict. Keep it even if the R0.4 mechanics cannot run.
     try:
@@ -45,7 +47,8 @@ def _evaluate_column_pre_r064d(c,grid=48):
         'issues':issues,'section_statuses':states,'results':{},'worst':None,
         'engine_inputs':None,'normative_claim':False,
         'model':'K18-derived temperature + R0.4 fiber / R0.5.6 diagnostics',
-        'grid':grid,'spalling':spalling,'normative_preflight':normative_preflight,
+        'grid':grid,'spalling':spalling,'annex_l':annex_l,
+        'normative_preflight':normative_preflight,
         'material_preflight':material_preflight,
         'thermal_normative':thermal_normative,
         'mechanics_r063':mechanics_r063,
