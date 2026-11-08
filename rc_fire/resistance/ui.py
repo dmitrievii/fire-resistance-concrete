@@ -180,6 +180,8 @@ def render_resistance(st,column,calc,*,project=None,safe_change=None,
                "Tmax бетона, °C":r["temperature_max_C"],
                "Tmax арматуры, °C":r["bar_temperature_max_C"],
                "A500, м²":r["area_after_critical_isotherm_m2"],
+               "max ε/εlim (диагн.)":r.get("strain_limit_ratio_diagnostic"),
+               "Сечение":r.get("controlling_section_id"),
                "R0.6.7":r["member_status"]}
               for r in result["samples"]]
         st.dataframe(pd.DataFrame(rows),hide_index=True,use_container_width=True)
@@ -196,6 +198,25 @@ def render_resistance(st,column,calc,*,project=None,safe_change=None,
             fig.update_layout(xaxis_title="Время огневого воздействия, мин",
                               yaxis_title="Температура, °C",height=350)
             st.plotly_chart(fig,use_container_width=True,key=f"r069_graph_{cid}")
+        strain_rows=[r for r in result["samples"] if
+                     r.get("strain_limit_ratio_diagnostic") is not None]
+        if strain_rows:
+            figure=go.Figure()
+            figure.add_scatter(
+                x=[r["time_min"] for r in strain_rows],
+                y=[r["strain_limit_ratio_diagnostic"] for r in strain_rows],
+                mode="lines+markers",name="max ε/εlim (только диагностика)")
+            figure.add_hline(y=1.,line_dash="dot",
+                             annotation_text="Диагностическая граница деформаций")
+            figure.update_layout(xaxis_title="Время пожара, мин",
+                yaxis_title="Отношение к предельной деформации, не нормативное η",
+                height=330)
+            st.plotly_chart(figure,use_container_width=True,
+                            key=f"r069_strain_graph_{cid}")
+        st.caption("Показатель ε/εlim — максимум по сечениям и только по найденным "
+                   "равновесным состояниям. Он не является коэффициентом "
+                   "использования несущей способности и не заменяет анализ "
+                   "устойчивости колонны.")
         st.download_button("Скачать историю R(t) (JSON, без нормативного заключения)",
             json.dumps(result,ensure_ascii=False,indent=2),
             mime="application/json",file_name=f"{cid}_r069_history.json",
