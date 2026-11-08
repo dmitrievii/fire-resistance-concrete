@@ -22,6 +22,7 @@ from multicolumn_r05.parametric_report import (_prune_document,add_heading,add_t
 from multicolumn_r05.clean_unused import prune_unused_template_assets
 from multicolumn_r05.project_model import CONCRETE,to_engine_input,load_state
 from multicolumn_r05.r056_reporting import add_r056_diagnostics
+from rc_fire.resistance.report import add_resistance_history_note
 from multicolumn_r05.parametric_engine import GeneralInput
 
 HERE=Path(__file__).resolve().parent
@@ -55,6 +56,7 @@ def finish(doc,out,template=MASTER):
 def add_column(doc,c,calc):
     add_heading(doc,f'{c["name"]} — характеристики и расчётные сечения',1)
     add_text(doc,'Параметрический диагностический расчёт. Не является нормативным подтверждением R90.',bold=True)
+    add_resistance_history_note(doc,calc)
     # R064D_REPOSITORY_HOOK: no extra pages for an unrequested member diagnostic.
     if calc.get("member_r064d",{}).get("status") not in (None, "NOT_EVALUATED"):
         from rc_fire.integration.report import add_member_evidence_note
@@ -147,6 +149,7 @@ def single_report(c,calc,target,template=MASTER):
         doc=Document(target)
         doc.add_page_break()
         add_r056_diagnostics(doc,c,calc)
+        add_resistance_history_note(doc,calc)
         if calc.get('member_r064d',{}).get('status') not in (None, 'NOT_EVALUATED'):
             from rc_fire.integration.report import add_member_evidence_note
             add_member_evidence_note(doc,calc)
