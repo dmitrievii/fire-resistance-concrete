@@ -304,3 +304,103 @@ def render_member_evidence(st, column, existing_result, *,
                 json.dumps(outcome,ensure_ascii=False,indent=2),
                 file_name=f'{cid}_r069c_capacity_history.json',
                 mime='application/json',key=f'r069c_download_{cid}')
+
+    with st.expander('R0.6.9D2 · ТКП EN 1992-1-2 — нелинейное сечение и колонна (диагностика)',
+                     expanded=False):
+        st.caption('Материалы: ТКП EN 1992-1-2-2009 с белорусским национальным '
+                   'приложением. Нагрев пока по приложению К СП 2.02.05-2026 '
+                   '(смешанная, ещё не квалифицированная методика). '
+                   'Никаких повторных пожарных сочетаний N, Mx, My.')
+        cid=column.get('id','c')
+        route=st.selectbox('Способ изготовления продольной арматуры S500',
+             ('Не установлен','hot_rolled','cold_worked'),
+             key=f'r069d2_route_{cid}',
+             help='Горячекатаная или холоднодеформированная. '
+                  'По одной маркировке S500 выбор запрещён.')
+        duct=st.selectbox('Класс пластичности арматуры',
+             ('Не установлен','A','B','C'),key=f'r069d2_ductility_{cid}',
+             help='Требуется установленный класс A, B или C, не выводится из S500.')
+        allow_tail=st.checkbox(
+            'Только для исследования: обнулить бетон 1100–1200 °C',
+            value=False,key=f'r069d2_hot_tail_{cid}',
+            help='В таблице 3.1 отсутствуют деформации при 1200 °C. '
+                 'Этот режим НЕ подтверждает нормативную прочность.')
+        include_beam=st.checkbox(
+            'Дополнительно: пространственная колонна только при явно определённых N и q',
+            value=False,key=f'r069d2_member_{cid}',
+            help='Нужны схема закрепления и распределённые нагрузки из R0.6.7. '
+                 'Моменты из отдельного сечения не преобразуются в q.')
+        time_step=st.number_input('Шаг времени для ТКП, мин',
+            min_value=1.,max_value=120.,value=30.,step=1.,
+            key=f'r069d2_tstep_{cid}')
+        st.warning('Результаты механики — диагностические. '
+                   'Незаданная технология арматуры, неполная диаграмма бетона '
+                   'при 1100–1200 °C и отсутствие достоверной схемы колонны '
+                   'не заменяются предположениями. Время R(t) пока не установлено.')
+        settings=(route,duct,bool(allow_tail),bool(include_beam),float(time_step))
+        if st.button('Проверить нагретое сечение по ТКП в заданный момент',
+                     key=f'r069d2_now_btn_{cid}'):
+            from .r069d2 import evaluate_tkp_fire_mechanics_at_time
+            with st.spinner('Нелинейные волокна ТКП и температурные собственные деформации'):
+                d=evaluate_tkp_fire_mechanics_at_time(
+                    column,production_route=None if route=='Не установлен' else route,
+                    ductility_class=None if duct=='Не установлен' else duct,
+                    high_temperature_tail='zero_tail_diagnostic' if allow_tail else 'reject',
+                    grid=12,max_factor=1.,factor_step=1.,max_bisection=0,
+                    include_member=bool(include_beam))
+            st.session_state[f'r069d2_now_cache_{cid}']={
+                'signature':_signature(column),'settings':settings,'result':d}
+        if st.button('Построить историю деформаций по ТКП',
+                     key=f'r069d2_history_btn_{cid}'):
+            from .r069d2 import evaluate_tkp_fire_mechanics_history
+            try:
+                with st.spinner('Независимые расчёты температуры и механики по времени'):
+                    d=evaluate_tkp_fire_mechanics_history(
+                        column,production_route=None if route=='Не установлен' else route,
+                        ductility_class=None if duct=='Не установлен' else duct,
+                        high_temperature_tail='zero_tail_diagnostic' if allow_tail else 'reject',
+                        step_minutes=float(time_step),grid=12,
+                        include_member=bool(include_beam))
+                st.session_state[f'r069d2_history_cache_{cid}']={
+                    'signature':_signature(column),'settings':settings,'result':d}
+            except (ValueError,TypeError,KeyError) as exc:
+                st.error('ТКП, история: '+str(exc))
+        for kind in ('now','history'):
+            cache=st.session_state.get(f'r069d2_{kind}_cache_{cid}')
+            if (cache is None or cache.get('signature')!=_signature(column) or
+                cache.get('settings')!=settings):
+                st.session_state.pop(f'r069d2_{kind}_cache_{cid}',None)
+                continue
+            result=cache['result']
+            st.write('Расчёт ТКП ('+('один момент' if kind=='now' else 'история')+'):',
+                     result.get('status'))
+            if kind=='now':
+                st.write('Температура у арматуры, °C:',
+                         result.get('bar_temperatures_C'))
+                st.write('Максимум на границе бетона, °C:',
+                         result.get('boundary_temperature_max_C'))
+                if result.get('reason'):st.warning(result['reason'])
+                if result.get('sections'):
+                    st.dataframe([{
+                        'Сечение':s['id'],
+                        'N, кН':s['entered_fire_design_actions']['N_kN'],
+                        'Mx, кНм':s['entered_fire_design_actions']['Mx_kNm'],
+                        'My, кНм':s['entered_fire_design_actions']['My_kNm'],
+                        'Состояние':s['reference_at_lambda_1']['classification'],
+                        'Численная причина':s['reference_at_lambda_1'].get('reason')}
+                        for s in result['sections']],hide_index=True,use_container_width=True)
+            else:
+                st.dataframe([{
+                    't, мин':s['time_minutes'],
+                    'Статус':s['status'],
+                    'N+M':s['reference_classification'],
+                    'T поверхности, °C':s.get('hot_boundary_C'),
+                    'Модель колонны':s.get('member_status'),
+                    'Причина':s.get('reason')}
+                    for s in result['samples']],hide_index=True,use_container_width=True)
+            st.caption('R(t) = не установлен. Нельзя утверждать R90 по этому '
+                       'предварительному численному решению.')
+            st.download_button('Скачать аудит ТКП '+kind+' (JSON)',
+                json.dumps(result,ensure_ascii=False,indent=2,default=str),
+                file_name=f'{cid}_r069d2_{kind}.json',
+                mime='application/json',key=f'r069d2_dl_{kind}_{cid}')
