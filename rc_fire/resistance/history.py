@@ -61,6 +61,7 @@ def evaluate_station(column,minutes,*,grid=12,policy="reject",with_member=False)
         "thermal_warnings":note,
         "material_policy":policy,"section_solver_status":None,
         "section_results":{},"member_status":None,
+        "strain_limit_ratio_diagnostic":None,"controlling_section_id":None,
     }
     if status_th not in ("evaluated","evaluated_with_scope_warnings"):
         record["state"]=SCOPE
@@ -76,6 +77,27 @@ def evaluate_station(column,minutes,*,grid=12,policy="reject",with_member=False)
            "relative_residual":v.get("relative_residual")}
         for k,v in recs.items()
     }
+    # Reproduce the same explicit section limit checks as R0.6.3.
+    # max(εc/εcu2, -εs/εs,lim) is a diagnostic strain usage, NOT
+    # a normative N-Mx-My strength utilisation ratio.
+    strain_ratios={}
+    for sid,val in recs.items():
+        if not val.get("equilibrium"):continue
+        d=val.get("details") or {}
+        try:
+            eps=float(d["eps_cu2"])
+            steel_lim=float(d["steel_tension_limit"])
+            compression=float(d["max_concrete_compression"])
+            steel=float(d["min_steel_strain"])
+            ratio=max(0.,compression/eps,-steel/steel_lim)
+            if math.isfinite(ratio):
+                strain_ratios[sid]=float(ratio)
+        except (KeyError,TypeError,ValueError,ZeroDivisionError):
+            continue
+    if strain_ratios:
+        critical=max(strain_ratios,key=strain_ratios.get)
+        record["strain_limit_ratio_diagnostic"]=strain_ratios[critical]
+        record["controlling_section_id"]=critical
     expected=len(column.get("sections") or [])
     if not expected or any(any(s.get(k) is None for k in ("N_kN","Mx_kNm","My_kNm"))
                            for s in column.get("sections",[])):
