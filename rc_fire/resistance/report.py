@@ -25,6 +25,11 @@ def add_resistance_history_note(doc,calc):
         a,b=r["diagnostic_limit_bracket_min"]
         add_text(doc,"Только диагностический интервал превышения деформаций: "+
             number(a,2)+"–"+number(b,2)+" мин. Не нормативный предел R.")
+    if r.get("member_diagnostic_limit_bracket_min"):
+        m0,m1=r["member_diagnostic_limit_bracket_min"]
+        add_text(doc,"Колонна R0.6.7 (узлы/точки Гаусса): диагностическое "
+            "превышение предельных деформаций наблюдалось между "+
+            number(m0,2)+" и "+number(m1,2)+" мин. Нормативная R(t) не определена.")
     if r.get("high_temperature_policy")=="zero_strength_diagnostic":
         add_text(doc,"ИССЛЕДОВАТЕЛЬСКИЙ РЕЖИМ: прочность T>800 °C "
             "принята нулевой без нормативного обоснования.",bold=True)
