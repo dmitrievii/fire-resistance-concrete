@@ -24,6 +24,7 @@ if _cached_model is not None:
     _stale |= not callable(getattr(_cached_model, "update_spalling", None))
     _stale |= not callable(getattr(_cached_model, "update_thermal_spec", None))
     _stale |= getattr(_cached_model, "R065_MODEL_RELEASE", None) != "r065-center-sections-load-transfer-20261107"
+    _stale |= getattr(_cached_model, "R067_MODEL_RELEASE", None) != "r067-unified-preflight-member-20261107"
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:
@@ -50,7 +51,8 @@ if _cached_mechanics is not None:
 
 # R064D_HOT_RELOAD_GUARD: prevent mixing old member/bridge modules.
 for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-diagnostic-v1"),
-                        ("rc_fire.integration.r064d", "R0.6.4D-repository-integration-v1")):
+                        ("rc_fire.integration.r064d", "R0.6.4D-repository-integration-v1"),
+                         ("rc_fire.integration.r067", "R0.6.7-uniform-longitudinal-thermal-member-diagnostic-v1")):
     _existing = sys.modules.get(_name)
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version

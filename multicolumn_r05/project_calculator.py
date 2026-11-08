@@ -25,9 +25,12 @@ def _evaluate_column_pre_r064d(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
     spalling=spalling_assessment(c.get('spalling'))
-    normative_preflight=audit_column(c)  # R0.6.0: immutable, never a PASS
     material_preflight=resolve_materials(c)
     thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
+    # R0.6.7: single authoritative provenance adjudication using the resolved
+    # material and thermal inputs; R90 remains hard-blocked.
+    normative_preflight=audit_column(c,material_result=material_preflight,
+                                     thermal_result=thermal_normative)
     # R0.6.3 is a separate first-order SECTION diagnostic, never the fire
     # resistance verdict. Keep it even if the R0.4 mechanics cannot run.
     try:
