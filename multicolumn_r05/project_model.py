@@ -151,6 +151,11 @@ def update_material_spec(project,cid,fields):
             elif key=='product_type' and value not in ('weldable_bar','corrosion_resistant_bar','wire_or_heat_treated'):
                 raise ValueError('Неизвестный вид арматуры')
             dest[key]=value
+    # New UI does not author fine_grained. On normal material save, discard
+    # the old Boolean; the calculation derives the kind from documented mix
+    # content and flags unresolved or contradictory composition.
+    if 'concrete' in fields and 'fine_grained' not in fields['concrete']:
+        out.setdefault('concrete',{}).pop('fine_grained',None)
     # Enforce schema; combination admissibility is reported in material preflight.
     ConcreteMix(strength_class=col['concrete'],**out.get('concrete',{}))
     Reinforcement(grade=col['steel_grade'],**out.get('steel',{}))
