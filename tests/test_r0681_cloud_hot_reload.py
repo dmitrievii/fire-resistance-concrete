@@ -16,24 +16,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class CloudMaterialHotReloadRegression(unittest.TestCase):
     def _run_isolated(self, initial):
-        body = textwrap.dedent(f"""
-            import importlib
-            from pathlib import Path
-            from streamlit.testing.v1 import AppTest
-
-            {initial}
-            path = Path('K18_Streamlit_GitHub_MVP_R0.5') / 'streamlit_app.py'
-            app = AppTest.from_file(str(path), default_timeout=90).run()
-            assert not app.exception, 'Cloud startup failed: ' + repr([
-                x.message for x in app.exception])
-            assert not app.error, 'Cloud Streamlit error: ' + repr([
-                x.message for x in app.error])
-            materials = importlib.import_module('rc_fire.materials.normative')
-            assert callable(getattr(materials, 'classify_fine_grained', None))
-            ui = importlib.import_module('multicolumn_r05.r056_ui')
-            assert ui.R068_BELARUS_UI_RELEASE == 'r0681-belarus-only-ui'
-            print('CLOUD_STALE_IMPORT_RECOVERY_OK')
-        """)
+        body = ("import importlib\n"
+                "from pathlib import Path\n"
+                "from streamlit.testing.v1 import AppTest\n\n"
+                + textwrap.dedent(initial).strip() + "\n\n"
+                + textwrap.dedent("""
+                    path = Path('K18_Streamlit_GitHub_MVP_R0.5') / 'streamlit_app.py'
+                    app = AppTest.from_file(str(path), default_timeout=90).run()
+                    assert not app.exception, 'Cloud startup failed: ' + repr([
+                        x.message for x in app.exception])
+                    assert not app.error, 'Cloud Streamlit error: ' + repr([
+                        x.message for x in app.error])
+                    materials = importlib.import_module('rc_fire.materials.normative')
+                    assert callable(getattr(materials, 'classify_fine_grained', None))
+                    ui = importlib.import_module('multicolumn_r05.r056_ui')
+                    assert ui.R068_BELARUS_UI_RELEASE == 'r0681-belarus-only-ui'
+                    print('CLOUD_STALE_IMPORT_RECOVERY_OK')
+                """))
         result = subprocess.run(
             [sys.executable, '-c', body],
             cwd=str(ROOT), capture_output=True, text=True, timeout=150,
