@@ -94,7 +94,7 @@ class R069TimeHistoryTests(unittest.TestCase):
 
     def test_time_grid_and_first_800_scope_is_never_tR(self):
         c=example()['columns'][0]
-        r=evaluate_resistance_history(c,step_minutes=30.,grid=8)
+        r=evaluate_resistance_history(c,step_minutes=30.,grid=12)
         self.assertEqual([x['time_min'] for x in r['samples']],[0.,30.,60.,90.])
         self.assertIsNone(r['computed_exact_R_min'])
         self.assertIsNone(r['normative_class_approved'])
@@ -109,7 +109,7 @@ class R069TimeHistoryTests(unittest.TestCase):
         def model(col,t,**kw):
             return dummy(t,GOOD if t==0 else 'UNRESOLVED_NUMERICAL_EVIDENCE')
         with patch('rc_fire.resistance.history.evaluate_station',side_effect=model):
-            r=evaluate_resistance_history(c,step_minutes=15.,grid=8)
+            r=evaluate_resistance_history(c,step_minutes=15.,grid=12)
         self.assertIsNone(r['diagnostic_limit_bracket_min'])
         self.assertIsNone(r['computed_exact_R_min'])
         self.assertEqual(r['status'],'INCOMPLETE_EVIDENCE')
@@ -118,7 +118,7 @@ class R069TimeHistoryTests(unittest.TestCase):
         c=example(minutes=30.)['columns'][0]
         def model(col,t,**kw):return dummy(t,GOOD if t<20 else EXCEEDED)
         with patch('rc_fire.resistance.history.evaluate_station',side_effect=model):
-            r=evaluate_resistance_history(c,step_minutes=15.,grid=8,refine_passes=2)
+            r=evaluate_resistance_history(c,step_minutes=15.,grid=12,refine_passes=2)
         self.assertEqual(r['status'],'DIAGNOSTIC_LIMIT_BRACKETED')
         self.assertEqual(r['diagnostic_limit_bracket_min'],[18.75,22.5])
         self.assertIsNone(r['computed_exact_R_min'])
@@ -130,12 +130,12 @@ class R069TimeHistoryTests(unittest.TestCase):
             return dummy(t,GOOD if t==0 else
                       'UNRESOLVED_NUMERICAL_EVIDENCE' if t==15 else EXCEEDED)
         with patch('rc_fire.resistance.history.evaluate_station',side_effect=model):
-            r=evaluate_resistance_history(c,step_minutes=15.,grid=8)
+            r=evaluate_resistance_history(c,step_minutes=15.,grid=12)
         self.assertIsNone(r['diagnostic_limit_bracket_min'])
 
     def test_requested_member_branch_never_invents_supports_or_load_diagram(self):
         c=example(minutes=10.)['columns'][0]
-        row=evaluate_station(c,0.,grid=8,with_member=True)
+        row=evaluate_station(c,0.,grid=12,with_member=True)
         self.assertEqual(row['member_status'],'BLOCKED_INPUT')
         self.assertFalse(row['member_normative_claim'])
         # A member model is not inferred from a single section's Mx/My.
@@ -150,7 +150,7 @@ class R069TimeHistoryTests(unittest.TestCase):
             'support_provenance':'explicit idealized hinge-hinge member',
             'load_mode':'uniform_transverse_load',
             'q_x_kNpm':0.0,'q_y_kNpm':0.0,'node_count':2}
-        row=evaluate_station(c,0.,grid=8,with_member=True)
+        row=evaluate_station(c,0.,grid=12,with_member=True)
         self.assertIsNotNone(row['member_status'],row)
         self.assertFalse(row['member_normative_claim'])
 
@@ -172,7 +172,7 @@ class R069TimeHistoryTests(unittest.TestCase):
 
     def test_word_annotation_only_diagnostic(self):
         c=example(minutes=15.)['columns'][0]
-        h=evaluate_resistance_history(c,step_minutes=15.,grid=8)
+        h=evaluate_resistance_history(c,step_minutes=15.,grid=12)
         doc=Document()
         add_resistance_history_note(doc,{'resistance_r069':h})
         text=' '.join(x.text for x in doc.paragraphs)
