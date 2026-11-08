@@ -15,6 +15,7 @@ from rc_fire.materials.normative import concrete_thermal_strain_coefficients
 from rc_fire.thermal.normative import property_K1
 
 VERSION="R0.6.8-BY-annex-L-source-first-v1"
+DEFAULT_SAND_POLICY="R0.6.8.2-traceable-positive-default-v1"
 SOURCE="СП 2.02.05-2026, приложение Л, с. 150–151, Л.1–Л.6"
 ALPHA_F=1.16e-2
 BETA=0.6
