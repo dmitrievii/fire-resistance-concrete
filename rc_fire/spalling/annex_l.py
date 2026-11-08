@@ -35,7 +35,7 @@ TABLE_L2={
 EXTRA_FIELDS={
     "natural_sand_confirmed","coarse_aggregate_volume_pct","max_aggregate_mm",
     "cement_kg_m3","water_cement_ratio","relative_humidity_pct",
-    "measured_Wc_kg_kg","moisture_measurement_source",
+    "measured_Wc_kg_kg","moisture_measurement_source","moisture_mode",
 }
 LEGACY_INPUTS={
     "aggregate_pct":"coarse_aggregate_volume_pct",
@@ -85,11 +85,14 @@ def physical_inputs(column):
             old_used.append("natural_sand_confirmed")
     tp=column.get("thermal_spec") or {}
     mat=(column.get("material_spec") or {}).get("concrete") or {}
+    from rc_fire.materials.normative import classify_fine_grained
+    classification=classify_fine_grained(column)
     return {
         **explicit,
         "dry_density_kg_m3":tp.get("dry_density_kg_m3"),
         "aggregate_family":tp.get("concrete_family") or mat.get("aggregate_family"),
-        "fine_grained":mat.get("fine_grained"),
+        "fine_grained":classification.get("fine_grained"),
+        "fine_grained_classification":classification,
         "concrete_strength_class":column.get("concrete"),
         "explicit_thermal_moisture_mass_pct":tp.get("moisture_mass_pct"),
         "legacy_user_input_fields":old_used,
@@ -115,20 +118,68 @@ def coefficient_K1c(family,coarse_pct,max_size_mm):
                       "interpolation":"Л.1, примечание 3" if pct not in (35,50) else "таблица Л.1"}
 
 
-def moisture_wc(cement,humidity,measured=None,measurement_source=None):
+def _bracket(x, values):
+    if x<values[0] or x>values[-1]:
+        raise AnnexLError("Интерполяция Л.2: значение вне табличного диапазона")
+    for lo,hi in zip(values,values[1:]):
+        if lo<=x<=hi:return lo,hi
+    return values[-1],values[-1]
+
+
+def moisture_wc(cement,humidity,measured=None,measurement_source=None, *,
+                water_cement_ratio=None,mode="auto"):
+    """Belarus Annex L.2 exact; L.5 explicit unit caveat; interpolated only opt-in.
+
+    L.5 literally computes values of order 1–5 for typical mixes, whereas its
+    textual symbol Wc is 'kg/kg' and L.2 tabulates Wc×10^2. The implied
+    % to kg/kg conversion is made explicit and flagged as not independently
+    qualified. There is NO silent interpolation or silent percent conversion.
+    """
     if measured is not None:
         if not measurement_source:
             raise AnnexLError("Укажите источник измеренной массовой влажности Wc")
         w=_positive_number(measured,"Измеренная влажность Wc")
         if not 0<w<1:raise AnnexLError("Wc должна быть долей кг/кг")
-        return w,"documented_measurement",{"measurement_source":measurement_source}
+        return w,"documented_measurement",{"measurement_source":measurement_source,
+                   "interpretation_requires_review":False}
     c=_positive_number(cement,"Расход цемента")
     rh=_positive_number(humidity,"Относительная влажность воздуха")
-    if c not in TABLE_L2 or rh not in TABLE_L2[c]:
-        raise AnnexLError("Таблица Л.2: указанная пара цемент/RH не табулирована. "
-            "Интерполяция в Л.2 не предписана; требуется подтверждённая влажность Wc "
-            "либо отдельное нормативное разрешение неоднозначности единиц формулы Л.5")
-    return TABLE_L2[c][rh]*1e-2,"table_L2_exact",{"cement_kg_m3":c,"rh_pct":rh}
+    if mode not in ("auto","formula_L5","linear_L2_exploratory"):
+        raise AnnexLError("Неизвестный способ определения влажности")
+    if mode=="auto" and c in TABLE_L2 and rh in TABLE_L2[c]:
+        return TABLE_L2[c][rh]*1e-2,"table_L2_exact",{
+            "cement_kg_m3":c,"rh_pct":rh,"interpretation_requires_review":False}
+    if not 200<=c<=700 or not 15<=rh<=75:
+        raise AnnexLError("Для автоматического применения Л.5/Л.2 принят "
+                           "табличный диапазон C=200–700 кг/м³, RH=15–75 %")
+    if mode in ("auto","formula_L5"):
+        ratio=_positive_number(water_cement_ratio,"В/Ц для формулы Л.5")
+        water=c*ratio  # formula L.5: В denotes water in kg/m3, NOT W/C.
+        raw=0.00027*rh*c**0.2*water**0.73
+        # Empirical L.5 output matches percent scale, contrary to 'kg/kg' in
+        # the printed variable definition: this is a documented interpretation.
+        kgkg=raw/100.
+        if not 0<kgkg<1:raise AnnexLError("Л.5: неправдоподобная массовая влажность")
+        return kgkg,"formula_L5_unit_interpretation",{
+            "cement_kg_m3":c,"rh_pct":rh,"water_kg_m3":water,
+            "raw_L5_numeric":raw,"raw_L5_interpreted_as":"percent",
+            "Wc_kg_kg":kgkg,"conversion":"percent / 100",
+            "interpretation_requires_review":True,
+            "source":"СП 2.02.05-2026, приложение Л, формула Л.5"}
+    # Explicit engineering option only: not prescribed by Annex L.2.
+    cs=sorted(TABLE_L2)
+    rhs=sorted(next(iter(TABLE_L2.values())))
+    c0,c1=_bracket(c,cs)
+    r0,r1=_bracket(rh,rhs)
+    def interp(v0,v1,x,x0,x1):
+        return v0 if x0==x1 else v0+(v1-v0)*(x-x0)/(x1-x0)
+    lo=interp(TABLE_L2[c0][r0],TABLE_L2[c0][r1],rh,r0,r1)
+    hi=interp(TABLE_L2[c1][r0],TABLE_L2[c1][r1],rh,r0,r1)
+    numeric=interp(lo,hi,c,c0,c1)
+    return numeric/100.,"linear_L2_engineering_not_normative",{
+        "C_bracket":[c0,c1],"RH_bracket":[r0,r1],
+        "interpretation_requires_review":True,
+        "source":"engineering bilinear interpolation; NOT prescribed by Annex L.2"}
 
 
 def porosity_np(cement,wc_ratio):
@@ -148,6 +199,10 @@ def evaluate_annex_l(column,*,material_result=None):
         out["resolved_inputs"]=x
         if x["natural_sand_confirmed"] is not True:
             raise AnnexLError("Таблица Л.1: подтвердите наличие природного песка")
+        classification=x["fine_grained_classification"]
+        if classification["status"]!="resolved":
+            raise AnnexLError("Тип бетона по составу смеси не определён: "+
+                              str(classification.get("reason","недостающие данные")))
         if x["fine_grained"] is True:
             raise AnnexLError("Мелкозернистый бетон: таблица Л.1 для крупного заполнителя неприменима")
         fam=x["aggregate_family"]
@@ -164,7 +219,8 @@ def evaluate_annex_l(column,*,material_result=None):
         n,por_src=porosity_np(cement,ratio)
         if n<=0:raise AnnexLError("Л.2/Л.3: нулевая или отрицательная пористость")
         wc,moist_src,moist_note=moisture_wc(cement,x.get("relative_humidity_pct"),
-                x.get("measured_Wc_kg_kg"),x.get("moisture_measurement_source"))
+                x.get("measured_Wc_kg_kg"),x.get("moisture_measurement_source"),
+                water_cement_ratio=ratio,mode=x.get("moisture_mode") or "auto")
         matres=material_result or resolve_materials(column)
         E=(matres.get("concrete") or {}).get("E_cm_GPa")
         if E is None or matres.get("status")!="resolved_for_property_lookup":
@@ -185,6 +241,7 @@ def evaluate_annex_l(column,*,material_result=None):
         out.update({"status":"calculated_method_scope","F":value,
             "classification":("F_le_4" if value<=4 else "F_4_to_6" if value<=6 else "F_gt_6"),
             "protection_required":value>4,
+            "moisture_method_qualified":not moist_note.get("interpretation_requires_review",False),
             "formula":"Л.1","temperature_range_C":[200,300],
             "temperature_profile":profiles,"critical_temperature_C":maximum["temperature_C"],
             "coefficients":{"alpha_F":ALPHA_F,"beta":BETA,"Ec_MPa":E_MPa,
