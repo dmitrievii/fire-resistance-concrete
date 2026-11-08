@@ -2,6 +2,10 @@
 from multicolumn_r05.parametric_report import add_heading,add_text,add_table,number
 
 
+def _display(value,places):
+    return "не определено" if value is None else number(value,places)
+
+
 def add_resistance_history_note(doc,calc):
     r=calc.get("resistance_r069") or {}
     if not r or not r.get("samples"):return
@@ -27,9 +31,9 @@ def add_resistance_history_note(doc,calc):
     add_table(doc,["t, мин","Tmax, °C","Tmax армат., °C","A500, м²",
                    "Состояние"],[
         (number(s["time_min"],1),
-         number(s["temperature_max_C"],1),
-         number(s["bar_temperature_max_C"],1),
-         number(s["area_after_critical_isotherm_m2"],5),
+         _display(s["temperature_max_C"],1),
+         _display(s["bar_temperature_max_C"],1),
+         _display(s["area_after_critical_isotherm_m2"],5),
          str(s["state"]))
         for s in r["samples"]])
     tab=r.get("table3") or {}
