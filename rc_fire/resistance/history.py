@@ -44,8 +44,10 @@ def _times(horizon,step):
 
 def evaluate_station(column,minutes,*,grid=12,policy="reject",with_member=False):
     """One immutable snapshot at t, with all original fire-design loads."""
+    if type(grid) is not int or not 12<=grid<=48:
+        raise ValueError("Temporal section/member grid must be 12..48")
     c=copy.deepcopy(column)
-    c["fire_minutes"]=float(minutes)
+    c["fire_minutes"]=_float(minutes,"time",max_v=240.)
     thermal=evaluate_rectangular_column(c,grid=grid)
     note=list(thermal.get("issues") or [])
     status_th=thermal.get("status")
@@ -130,11 +132,12 @@ def evaluate_resistance_history(column,*,horizon_minutes=None,step_minutes=15.,
     # A gap is not a failure; never interpolate through missing or undefined
     # numerical states. First observed (pass,exceeded) adjacent interval only.
     pair=None
-    if policy=="reject":
-        for prev,curr in zip(evaluated,evaluated[1:]):
-            if prev["state"]==GOOD and curr["state"]==EXCEEDED:
-                pair=[prev,curr]
-                break
+    state_good=GOOD if policy=="reject" else "RESEARCH_"+GOOD
+    state_exceeded=EXCEEDED if policy=="reject" else "RESEARCH_"+EXCEEDED
+    for prev,curr in zip(evaluated,evaluated[1:]):
+        if prev["state"]==state_good and curr["state"]==state_exceeded:
+            pair=[prev,curr]
+            break
     refined=[]
     if pair and refine_passes:
         left,right=pair
@@ -143,22 +146,39 @@ def evaluate_resistance_history(column,*,horizon_minutes=None,step_minutes=15.,
             r=evaluate_station(column,midpoint,grid=grid,policy=policy,
                                with_member=with_member)
             refined.append(r)
-            if r["state"]==GOOD:left=r
-            elif r["state"]==EXCEEDED:right=r
+            if r["state"]==state_good:left=r
+            elif r["state"]==state_exceeded:right=r
             else:
                 pair=None
                 break
         else:pair=[left,right]
     trace=sorted(evaluated+refined,key=lambda x:x["time_min"])
     observed=([pair[0]["time_min"],pair[1]["time_min"]] if pair else None)
-    first_outside=next((r["time_min"] for r in trace if r["state"]==SCOPE),None)
-    first_unresolved=next((r["time_min"] for r in trace if r["state"] in (UNKNOWN,MISSING)),None)
-    first_exceeded=next((r["time_min"] for r in trace if r["state"]==EXCEEDED),None)
+    first_outside=next((r["time_min"] for r in trace if r["state"] in
+                        (SCOPE,"RESEARCH_"+SCOPE)),None)
+    first_unresolved=next((r["time_min"] for r in trace if r["state"] in
+                          (UNKNOWN,MISSING,"RESEARCH_"+UNKNOWN,"RESEARCH_"+MISSING)),None)
+    first_exceeded=next((r["time_min"] for r in trace if r["state"]==state_exceeded),None)
+    # Independent full member sampled ULS: do not turn a Gauss/node limit
+    # into a certified member failure time or interpolate through gaps.
+    member_pair=None
+    if with_member:
+        pass_m="SAMPLED_STRAINS_WITHIN_LIMITS_NOT_NORMATIVE_ULS"
+        fail_m="DIAGNOSTIC_STRAIN_LIMIT_EXCEEDED"
+        for prev,curr in zip(evaluated,evaluated[1:]):
+            if prev.get("member_uls_status")==pass_m and curr.get("member_uls_status")==fail_m:
+                member_pair=[prev["time_min"],curr["time_min"]]
+                break
+    member_first=next((r["time_min"] for r in trace if
+                       r.get("member_uls_status")=="DIAGNOSTIC_STRAIN_LIMIT_EXCEEDED"),None)
     tabular=evaluate_table3_class(column)
     return {
-        "version":VERSION,"status":("DIAGNOSTIC_LIMIT_BRACKETED" if observed
+        "version":VERSION,"status":(
+                   "RESEARCH_LIMIT_BRACKETED" if observed and policy=="zero_strength_diagnostic"
+                   else "DIAGNOSTIC_LIMIT_BRACKETED" if observed
                    else "CENSORED_AT_MODEL_SCOPE" if first_outside is not None
                    else "INCOMPLETE_EVIDENCE" if first_unresolved is not None
+                   else "RESEARCH_ONLY_UNQUALIFIED" if policy=="zero_strength_diagnostic"
                    else "NO_DIAGNOSTIC_LIMIT_OBSERVED"),
         "time_horizon_min":h,"time_step_min":dt,"grid":grid,
         "high_temperature_policy":policy,"with_member":with_member,
@@ -168,6 +188,8 @@ def evaluate_resistance_history(column,*,horizon_minutes=None,step_minutes=15.,
         "first_unresolved_min":first_unresolved,
         "first_observed_strain_exceedance_min":first_exceeded,
         "diagnostic_limit_bracket_min":observed,
+        "member_diagnostic_limit_bracket_min":member_pair,
+        "member_first_observed_strain_limit_min":member_first,
         "table3":tabular,
         "computed_exact_R_min":None,
         "normative_class_approved":None,
