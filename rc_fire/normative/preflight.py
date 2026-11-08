@@ -118,7 +118,8 @@ def evaluate_tabular_column_scope(column: dict) -> dict:
 
 def audit_column(column: dict, route: str = "general_member", *,
                  material_result: dict | None = None,
-                 thermal_result: dict | None = None) -> dict:
+                 thermal_result: dict | None = None,
+                 annex_l_result: dict | None = None) -> dict:
     """Build the frozen calculation contract and its blockers for one column.
 
     Only data proven by explicit input may satisfy a preflight input. The
@@ -187,16 +188,21 @@ def audit_column(column: dict, route: str = "general_member", *,
         add("FIRE_ACTION_COMBINATION_NOT_QUALIFIED",
             "Источник усилий указан, но нормативное пожарное сочетание не квалифицировано.",
             "СП 2.02.05-2026, 8.2.17; СН 2.01.03-2019, 4.3")
-    s = column.get("spalling") or {}
-    if s.get("method") in ("sp468", "manual_k18", None):
-        add("ANNEX_L_NOT_EVALUATED", "СП 468 и ручной К18 не заменяют приложение Л СП 2026.",
+    # Only Belarus Annex L is authoritative for the active spalling check.
+    # Russian legacy fields may remain in historical JSON but have no
+    # normative weight and never override this result.
+    if annex_l_result is None:
+        from rc_fire.spalling import evaluate_annex_l
+        annex_l_result=evaluate_annex_l(column,material_result=material_result)
+    if annex_l_result.get("status")!="calculated_method_scope":
+        add("ANNEX_L_NOT_EVALUATED",
+            "Критерий F по приложению Л не рассчитан: "+
+            str(annex_l_result.get("reason","недостаточно данных")),
             "СП 2.02.05-2026, приложение Л")
-    elif s.get("method") != "by2026_annex_l":
-        add("UNKNOWN_SPALLING_METHOD", "Неизвестный метод оценки хрупкого разрушения.",
-            "СП 2.02.05-2026, приложение Л")
-    else:
-        add("ANNEX_L_UNQUALIFIED", "Алгоритм приложения Л не квалифицирован в R0.6.0.",
-            "СП 2.02.05-2026, приложение Л")
+    elif annex_l_result.get("protection_required"):
+        add("ANNEX_L_PROTECTION_REQUIRED",
+            "По приложению Л при F>4 необходимы меры защиты от хрупкого разрушения.",
+            "СП 2.02.05-2026, Л.6")
     if not column.get("member_support_model") and not (
         member.get("left_support") and member.get("right_support") and member.get("support_provenance")):
         add("SUPPORTS_NOT_VERIFIED", "Задание типов опор без подтверждения не обосновывает второй порядок.",
