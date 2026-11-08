@@ -66,6 +66,32 @@ def audit_rc_fire_project_column(column, *, grid=12, test_high_temp_model=True,
         'moisture_provenance':(annex_l.get('provenance') or {}).get('Wc'),
         'Wc_kg_kg':(annex_l.get('coefficients') or {}).get('Wc_kg_kg'),
         'reason':annex_l.get('reason')}
+    # Independently quantify the method-selection sensitivity for actual Annex
+    # L.2 tabular ranges. Bilinear interpolation is NOT specified in the standard:
+    # report separately as exploratory evidence, not a replacement for L.5.
+    if annex_l.get('status')=='calculated_method_scope':
+        from rc_fire.spalling.annex_l import TABLE_L2
+        lspec=column.get('annex_l_spec') or {}
+        cement=lspec.get('cement_kg_m3')
+        rh=lspec.get('relative_humidity_pct')
+        try:
+            cc=float(cement)
+            rr=float(rh)
+        except (ValueError,TypeError):
+            cc=rr=math.nan
+        if (200.<=cc<=700. and 15.<=rr<=75. and
+            math.isfinite(cc) and math.isfinite(rr)):
+            alternative=copy.deepcopy(column)
+            alternative.setdefault('annex_l_spec',{})[
+                'moisture_mode']='linear_L2_exploratory'
+            alt=evaluate_annex_l(alternative,material_result=material)
+            if alt.get('status')=='calculated_method_scope':
+                details['annex_L']['exploratory_L2_interpolation_not_normative']={
+                    'status':alt['status'],'F':alt['F'],
+                    'Wc_kg_kg':(alt.get('coefficients') or {}).get('Wc_kg_kg'),
+                    'moisture_source':(alt.get('provenance') or {}).get('Wc'),
+                    'alternative_F_le_4':alt['F']<=4.,
+                    'is_normative_confirmation':False}
     if annex_l['status']=='blocked_input_or_scope':
         issues.append(_issue('ANNEX_L_INPUT_OR_SCOPE_BLOCKED','missing_or_conflicting_input',
             'Приложение Л не вычислено по фактическим входам.',
