@@ -144,6 +144,18 @@ class BelarusAnnexLTests(unittest.TestCase):
         self.assertNotIn('ANNEX_L_NOT_EVALUATED',codes)
         self.assertEqual(out['normative_preflight']['status'],'NOT_QUALIFIED')
         self.assertFalse(out['normative_claim'])
+        self.assertNotIn('spalling',out['provenance'])
+        self.assertIn('СП 2.02.05-2026',out['provenance']['annex_l'])
+
+    def test_explicit_belarus_save_migrates_and_clears_duplicate_legacy_card(self):
+        p=prepared_project()
+        c=p['columns'][0]
+        c['spalling']={'method':'sp468','F':2.3903,
+            'aggregate_pct':45.,'cement_kg_m3':500.}
+        update_annex_l_spec(p,'c1',{'coarse_aggregate_volume_pct':47.})
+        self.assertEqual(c['spalling'],{})
+        self.assertAlmostEqual(c['annex_l_spec']['coarse_aggregate_volume_pct'],47.)
+        self.assertNotIn('F',physical_inputs(c))
 
     def test_word_report_displays_Belarus_F_only(self):
         p=prepared_project()
