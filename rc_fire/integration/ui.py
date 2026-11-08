@@ -172,3 +172,67 @@ def render_member_evidence(st, column, existing_result, *,
             st.json({'normative_claim':False,
                      'fire_resistance_status':'not_demonstrated',
                      'blockers':result.get('uls',{}).get('blockers',result.get('blockers',[]))})
+
+    with st.expander('R0.6.9B · Критическая изотерма §8.2.21 (не нормативный R(t))',expanded=False):
+        st.caption('Аналитическая площадь остаточного сечения — по формуле К.27, '
+                   'только для квадратной колонны с четырёхсторонним нагревом. '
+                   'Применимость в расчёте прочности отдельно проверяется по §8.2.21: '
+                   'одноосный изгиб в плоскости симметрии и две симметричные крайние '
+                   'арматурные зоны. Произвольный двухосный изгиб не допускается.')
+        from rc_fire.mechanics.critical_isotherm import (
+            evaluate_critical_isotherm_section, evaluate_critical_isotherm_history)
+        colid=column.get('id','c')
+        if st.button('Проверить изотерму и область применения',
+                     key=f"r069b_now_{colid}"):
+            result=evaluate_critical_isotherm_section(column,grid=40)
+            st.session_state[f"r069b_now_{colid}"]={'result':result,'signature':_signature(column)}
+        cached_now=st.session_state.get(f"r069b_now_{colid}")
+        if cached_now is not None and cached_now.get('signature') != _signature(column):
+            st.session_state.pop(f"r069b_now_{colid}",None)
+            cached_now=None
+        if cached_now is not None:
+            result=cached_now['result']
+            st.write('Статус:',result['status'])
+            st.write('Площадь по К.27, м²:',result['remaining_area_m2'])
+            if result.get('N_optimistic_upper_kN') is not None:
+                st.write('Только оптимистичная верхняя оценка осевой силы, кН:',
+                         result['N_optimistic_upper_kN'])
+                st.warning('Это НЕ N_Rd и НЕ проверка N–Mx–My. '
+                           'Превышение верхней оценки является диагностическим '
+                           'нарушением необходимого условия, но отсутствие '
+                           'превышения НЕ подтверждает несущую способность.')
+            if result.get('blockers'):
+                st.warning('Неподтверждённые условия: '+', '.join(result['blockers']))
+            st.download_button('Скачать проверку изотермы (JSON)',
+                json.dumps(result,ensure_ascii=False,indent=2),
+                file_name=f'{colid}_r069b_isotherm.json',
+                mime='application/json',key=f"r069b_json_{colid}")
+        st.divider()
+        step=st.number_input('Шаг проверки изотермы во времени, мин',
+            min_value=1.,max_value=120.,value=10.,step=1.,
+            help='На каждом шаге повторно считается температура по приложению К; '
+                 'нормативное время отказа не выдаётся.',
+            key=f"r069b_step_{colid}")
+        if st.button('Построить временную историю остаточной площади (диагностика)',
+                     key=f"r069b_scan_{colid}"):
+            try:
+                with st.spinner('Пересчёт приложения К на каждом временном шаге'):
+                    scan=evaluate_critical_isotherm_history(column,step_minutes=float(step),grid=40)
+                st.session_state[f"r069b_scan_result_{colid}"]={
+                    'result':scan,'signature':_signature(column)}
+            except (ValueError,TypeError) as exc:
+                st.error(f'R0.6.9B: {exc}')
+        cached_scan=st.session_state.get(f"r069b_scan_result_{colid}")
+        if cached_scan is not None and cached_scan.get('signature') != _signature(column):
+            st.session_state.pop(f"r069b_scan_result_{colid}",None)
+            cached_scan=None
+        if cached_scan is not None:
+            scan=cached_scan['result']
+            st.dataframe(scan['samples'],use_container_width=True,hide_index=True)
+            st.caption('R(t) не установлен: флаг normative_claim=False. '
+                       'Отсутствие численного превышения верхнего осевого предела '
+                       'не означает соответствие R90.')
+            st.download_button('Скачать историю критической изотермы (JSON)',
+                json.dumps(scan,ensure_ascii=False,indent=2),
+                file_name=f'{colid}_r069b_history.json',
+                mime='application/json',key=f"r069b_history_json_{colid}")
