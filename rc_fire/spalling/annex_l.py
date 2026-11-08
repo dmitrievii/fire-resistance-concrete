@@ -75,10 +75,12 @@ def physical_inputs(column):
     if explicit.get("natural_sand_confirmed") is None:
         # Only explicitly selected physical composition can substantiate
         # 'natural sand' under Table L.1; never infer this from silica family.
-        if legacy.get("aggregate_type") in (
-            "natural_sand_granite","natural_sand_siliceous",
-            "natural_sand_calcareous","natural_sand_limestone",
-            "natural_sand_expanded_clay"):
+        legacy_type=legacy.get("aggregate_type")
+        fam=(column.get("thermal_spec") or {}).get("concrete_family") or (
+            (column.get("material_spec") or {}).get("concrete") or {}).get("aggregate_family")
+        if ((legacy_type=="granite" and fam=="siliceous")
+                or (legacy_type=="limestone_gravel" and fam=="calcareous")
+                or (legacy_type=="expanded_clay" and fam=="expanded_clay")):
             explicit["natural_sand_confirmed"]=True
             old_used.append("natural_sand_confirmed")
     tp=column.get("thermal_spec") or {}
