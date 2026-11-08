@@ -439,12 +439,17 @@ def render_member_evidence(st, column, existing_result, *,
             value=False,key=f'r069d3_member_{cid}',
             help='Только при явно заданных N, qx, qy, опорах и принятом '
                  'одинаковом прогреве вдоль длины. Моменты не конвертируются в q.')
+        refine_t=st.checkbox('Уточнять первый наблюдаемый переход предельной деформации',
+            value=False,key=f'r069d4_refine_{cid}',
+            help='Повторный интегральный прогрев от исходного состояния '
+                 'для каждого уточняемого времени. Только диагностический '
+                 'интервал; не определяет нормативное R(t).')
         st.warning('Опорный тепловой расчёт ещё требует проверки по EN 1991-1-2, '
                    'экспериментам и сеточной сходимости. Статус R(t) остаётся '
                    '«не установлен». Выбор процента влажности здесь — '
                    'исходный параметр сценария, а не измеренное значение.')
         settings=(float(moisture),int(mesh),float(maxdt),float(timestep),
-                  sr,sd,bool(member3))
+                  sr,sd,bool(member3),bool(refine_t))
         cache_key=f'r069d3_cache_{cid}'
         if st.button('Выполнить полный тепловой и механический расчёт D3',
                      key=f'r069d3_run_{cid}'):
@@ -459,7 +464,9 @@ def render_member_evidence(st, column, existing_result, *,
                         production_route=None if sr=='Не установлена' else sr,
                         ductility_class=None if sd=='Не установлен' else sd,
                         max_factor=1.,factor_step=1.,max_bisection=0,
-                        include_member=bool(member3))
+                        include_member=bool(member3),
+                        refine_strain_transition=bool(refine_t),
+                        max_time_refinements=4)
                 st.session_state[cache_key]={
                     'result':r,'signature':_signature(column),'settings':settings}
             except (ValueError,TypeError,ArithmeticError) as exc:
@@ -485,6 +492,19 @@ def render_member_evidence(st, column, existing_result, *,
                 'Пространственная модель':(
                     (s.get('member') or {}).get('status'))
             } for s in out['samples']],use_container_width=True,hide_index=True)
+            strain=out.get('observed_section_strain_transition') or {}
+            if strain.get('observed_within_to_exceeded_intervals'):
+                st.write('Наблюдаемые интервалы превышения деформаций сечения:',
+                         strain['observed_within_to_exceeded_intervals'])
+            if strain.get('refined_first_diagnostic_interval'):
+                st.write('Уточнённый диагностический интервал:',
+                         strain['refined_first_diagnostic_interval'])
+            if strain.get('unknown_time_points_minutes'):
+                st.warning('Неопределённые состояния при t, мин: '
+                           +str(strain['unknown_time_points_minutes']))
+            st.caption('Превышение деформаций в расчётных волокнах не равно '
+                       'утрате несущей способности всей колонны. '
+                       'Время физического отказа R(t) не установлено.')
             st.json({'R_t_minutes':None,'normative_claim':False,
                      'mesh_time_convergence_still_required':True,
                      'source_gas_temperature_C':out[

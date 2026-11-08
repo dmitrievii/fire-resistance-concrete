@@ -28,6 +28,8 @@ from rc_fire.member.coupled import CoupledMemberError,EndSupport,solve_coupled_b
 from rc_fire.member.uls import audit_heated_member_uls
 from rc_fire.member.time_scan import timeline_points
 from rc_fire.materials.tkp_en1992_fire import EurocodeFireMaterialError
+from rc_fire.integration.r069d4_first_crossing import (
+    summarize_observed_strain_history, refine_observed_interval)
 
 VERSION="R0.6.9D3-consistent-TKP-thermal-to-mechanics-v1"
 NOT_DEMONSTRATED="not_demonstrated"
@@ -141,7 +143,8 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
             production_route=None,ductility_class=None,
             cell_count=12,max_step_minutes=5.,step_minutes=30.,
             fibre_grid=None,include_member=False,
-            max_factor=1.,factor_step=1.,max_bisection=0):
+            max_factor=1.,factor_step=1.,max_bisection=0,
+            refine_strain_transition=False,max_time_refinements=4):
     """One independent heat solve; no rerun/mismatch across mechanical times."""
     if not isinstance(column,dict):
         raise TypeError('column must be a dictionary')
@@ -208,8 +211,46 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
                 'MESH_TIME_CONVERGENCE_NOT_YET_PROVED',
                 'FULL_SPALLING_TRANSIENT_CREEP_NOT_QUALIFIED'],
             'normative_claim':False})
+    if refine_strain_transition:
+        def _evaluate_midpoint(t_minutes):
+            # A midpoint has its OWN heat integration from the physical
+            # initial state. Never time-interpolate a coarse grid result or
+            # borrow a previous nonlinear equilibrium root.
+            c=copy.deepcopy(column)
+            c['fire_minutes']=float(t_minutes)
+            th=solve_tkp_2d_heat(c,boundary=boundary,
+                cell_count_x=cell_count,cell_count_y=cell_count,
+                max_step_minutes=max_step_minutes,
+                sample_times_minutes=[t_minutes])
+            snapshot=select_tkp_snapshot(th,t_minutes)
+            if production_route not in ('hot_rolled','cold_worked') or (
+                ductility_class not in ('A','B','C')):
+                return {'reference_classification':UNKNOWN,
+                    'reason':'steel production route/ductility unknown'}
+            try:
+                prep=prepare_tkp_fibres(c,snapshot,grid=fibre_grid,
+                    production_route=production_route,
+                    ductility_class=ductility_class,
+                    high_temperature_tail='reject')
+                classes=[prep.solve_actions(s['N_kN'],s['Mx_kNm'],s['My_kNm'])[
+                    'classification'] for s in actions]
+                state=(EXCEEDED if EXCEEDED in classes else
+                       WITHIN if classes and all(q==WITHIN for q in classes)
+                       else UNKNOWN)
+                return {'reference_classification':state,
+                        'reason':'Independent thermomechanical time sample; not R(t)'}
+            except (ValueError,KeyError,ArithmeticError,TKPHeatError,
+                    EurocodeFireMaterialError,TKPFibreInputError) as exc:
+                return {'reference_classification':UNKNOWN,'reason':str(exc)}
+        first=summarize_observed_strain_history(rows)
+        first=refine_observed_interval(rows,_evaluate_midpoint,
+             max_refinements=max_time_refinements,
+             tolerance_minutes=1.)
+    else:
+        first=summarize_observed_strain_history(rows)
     return _no_rating({
         'version':VERSION,'status':'TKP_THERMAL_MECHANICAL_HISTORY_DIAGNOSTIC',
+        'observed_section_strain_transition':first,
         'column_id':column.get('id'),'time_points':len(rows),
         'fire_time_minutes':column['fire_minutes'],
         'reference_standard_fire_gas_at_end_C':20+345*math.log10(
