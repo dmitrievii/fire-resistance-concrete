@@ -98,8 +98,8 @@ class R069ATimeHistoryTests(unittest.TestCase):
         def fake_member(column, *, thermal, member_spec):
             seen.append(('member', column['fire_minutes'], thermal['fire_minutes']))
             return evidence('within')
-        with patch('rc_fire.integration.r069.evaluate_rectangular_column', side_effect=fake_thermal), \\
-             patch('rc_fire.integration.r069.evaluate_uniform_fire_member', side_effect=fake_member):
+        with (patch('rc_fire.integration.r069.evaluate_rectangular_column', side_effect=fake_thermal),
+              patch('rc_fire.integration.r069.evaluate_uniform_fire_member', side_effect=fake_member)):
             result = evaluate_uniform_fire_time_history(c, step_minutes=10)
         self.assertEqual(result['sample_count'], 3)
         self.assertEqual([x[1] for x in seen if x[0] == 'thermal'], [1., 10., 20.])
