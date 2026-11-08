@@ -243,15 +243,61 @@ def steel_thermal_expansion(theta_C:float):
             'source':'СП 2.02.05-2026 §8.2.19, eq. (6)'}
 
 
+
+def classify_fine_grained(column:dict):
+    """Derive concrete kind from *actual* coarse aggregate specification.
+
+    Belarus SP 5.03.01-2020 §6.1.2.1 distinguishes fine-grained concrete
+    separately; class C, dry density and siliceous family do NOT identify it.
+    The old 'fine_grained' GUI switch is intentionally never authoritative.
+    """
+    m=(column.get('material_spec') or {}).get('concrete') or {}
+    l=column.get('annex_l_spec') or {}
+    old=column.get('spalling') or {}
+    amount=l.get('coarse_aggregate_volume_pct')
+    source='annex_l_spec.coarse_aggregate_volume_pct'
+    if amount is None and old.get('aggregate_pct') is not None:
+        amount=old['aggregate_pct']
+        source='archived_user_mix.aggregate_pct'
+    if amount is not None:
+        try:q=float(amount)
+        except (TypeError,ValueError):
+            return {'status':'invalid','fine_grained':None,
+                    'reason':'Некорректное содержание крупного заполнителя'}
+        if not math.isfinite(q) or q<0 or q>100:
+            return {'status':'invalid','fine_grained':None,
+                    'reason':'Содержание крупного заполнителя должно быть 0–100 %'}
+        if q==0 and m.get('modulus_aggregate')=='gravel_granite_upto40':
+            return {'status':'conflict','fine_grained':None,
+                    'reason':'В составе указано 0 % крупного заполнителя, но для Ecm выбран гранитный щебень'}
+        return {'status':'resolved','fine_grained':q==0,'source':source,
+                'explanation':('Крупного заполнителя нет' if q==0
+                               else 'Крупный заполнитель указан в составе смеси')}
+    if m.get('modulus_aggregate')=='gravel_granite_upto40':
+        return {'status':'resolved','fine_grained':False,
+                'source':'material_spec.concrete.modulus_aggregate',
+                'explanation':'Указан крупный заполнитель: гравий/гранитный щебень до 40 мм'}
+    return {'status':'unknown','fine_grained':None,
+            'reason':'Требуется фактический состав заполнителя, без предположений по C и плотности'}
+
+
 def resolve_materials(column:dict):
     """Pure preflight: never fabricate missing composition or approve the R-limit."""
     profile=column.get('material_spec') or {}
     concrete_spec=profile.get('concrete') or {}
     steel_spec=profile.get('steel') or {}
     issues=[]
+    classification=classify_fine_grained(column)
     try:
-        c=ConcreteMix(strength_class=column['concrete'],**concrete_spec)
+        # Derived physical type overrides the obsolete manually stored switch.
+        effective={k:v for k,v in concrete_spec.items() if k!='fine_grained'}
+        effective['fine_grained']=classification['fine_grained']
+        c=ConcreteMix(strength_class=column['concrete'],**effective)
         normal=normal_concrete(c)
+        if classification['status'] in ('invalid','conflict'):
+            normal['E_cm_GPa']=None
+            normal['modulus_source']='unresolved_mix_conflict'
+            issues.append(classification['reason'])
         if normal['E_cm_GPa'] is None:
             issues.extend(normal['missing'] or normal['notes'])
         # Regardless of Ecm selection, the fire-table family must be explicit.
@@ -267,5 +313,6 @@ def resolve_materials(column:dict):
         steel=None;issues.append(str(exc))
     return {'status':'resolved_for_property_lookup' if not issues else 'incomplete',
             'concrete':normal,'steel':steel,'fire_family':family,
+            'fine_grained_classification':classification,
             'issues':issues,'source_documents':[RC_SOURCE,FIRE_SOURCE],
             'numeric_engine_qualified':False,'release':VERSION}
