@@ -26,6 +26,7 @@ if _cached_model is not None:
     _stale |= getattr(_cached_model, "R065_MODEL_RELEASE", None) != "r065-center-sections-load-transfer-20261107"
     _stale |= getattr(_cached_model, "R067_MODEL_RELEASE", None) != "r067-unified-preflight-member-20261107"
     _stale |= getattr(_cached_model, "R068_MODEL_RELEASE", None) != "r068-belarus-annex-l-unified-20261108"
+    _stale |= getattr(_cached_model, "R069_MODEL_RELEASE", None) != "r069-temporal-resistance-20261108"
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:
@@ -64,6 +65,13 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     _existing = sys.modules.get(_name)
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
+
+# Do not retain old R(t) and Table 3 APIs across Cloud hot reload.
+for _name, _version in (("rc_fire.resistance.history","R0.6.9-temporal-evidence-v1"),
+                       ("rc_fire.resistance.table3","R0.6.9-BY-table3-scoped-v1")):
+    _existing=sys.modules.get(_name)
+    if _existing is not None:
+        _stale |= getattr(_existing,"VERSION",None) != _version
 
 # R0.6.8.3: a cached normative/member module predating the project-wide
 # fire-design-action convention must not survive Streamlit Cloud hot reload.
@@ -118,7 +126,8 @@ if _stale:
              or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")
              or _name == "rc_fire.member" or _name.startswith("rc_fire.member.")
              or _name == "rc_fire.integration" or _name.startswith("rc_fire.integration.")
-             or _name == "rc_fire.spalling" or _name.startswith("rc_fire.spalling.")):
+             or _name == "rc_fire.spalling" or _name.startswith("rc_fire.spalling.")
+             or _name == "rc_fire.resistance" or _name.startswith("rc_fire.resistance.")):
             sys.modules.pop(_name,None)
     importlib.invalidate_caches()
     # Never mix a cached old UI/calculation facade with new material tables.
