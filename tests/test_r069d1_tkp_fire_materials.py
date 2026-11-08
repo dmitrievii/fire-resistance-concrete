@@ -8,6 +8,8 @@ from rc_fire.materials.tkp_en1992_fire import (
     EurocodeFireMaterialError, concrete_parameters, concrete_stress,
     reinforcement_parameters, reinforcement_stress,
     concrete_free_thermal_strain,rebar_free_thermal_strain,qualification,
+    concrete_thermal_conductivity,concrete_specific_heat,concrete_density_ratio,
+    concrete_density,
 )
 
 
@@ -169,6 +171,35 @@ class BelarusFireSourceTests(unittest.TestCase):
         self.assertAlmostEqual(rebar_free_thermal_strain(750),.011,delta=.00002)
         self.assertAlmostEqual(rebar_free_thermal_strain(860),.011)
         self.assertAlmostEqual(rebar_free_thermal_strain(1200),.0178)
+
+    def test_belarus_lower_conductivity_exact_formula(self):
+        self.assertAlmostEqual(concrete_thermal_conductivity(20),1.333028,places=7)
+        self.assertAlmostEqual(concrete_thermal_conductivity(600),.7492,places=7)
+        self.assertAlmostEqual(concrete_thermal_conductivity(1200),.5488,places=7)
+
+    def test_heat_capacity_0_and_3pct_moisture_sources(self):
+        self.assertAlmostEqual(concrete_specific_heat(20,mass_moisture_pct=3.),900.)
+        self.assertAlmostEqual(concrete_specific_heat(110,mass_moisture_pct=3.),2020.)
+        self.assertAlmostEqual(concrete_specific_heat(115,mass_moisture_pct=1.5),1470.)
+        self.assertAlmostEqual(concrete_specific_heat(200,mass_moisture_pct=3.),1000.)
+        self.assertAlmostEqual(concrete_specific_heat(300,mass_moisture_pct=0.),1050.)
+        self.assertAlmostEqual(concrete_specific_heat(400,mass_moisture_pct=3.),1100.)
+        self.assertAlmostEqual(concrete_specific_heat(1000,mass_moisture_pct=3.),1100.)
+        self.assertAlmostEqual(concrete_specific_heat(150,mass_moisture_pct=0.),950.)
+
+    def test_heat_capacity_2_146pct_interpolated_peak_without_fabrication(self):
+        moisture=2.146
+        expected=1470+(2020-1470)*(moisture-1.5)/1.5
+        self.assertAlmostEqual(concrete_specific_heat(110,mass_moisture_pct=moisture),expected)
+        with self.assertRaises(EurocodeFireMaterialError):
+            concrete_specific_heat(110,mass_moisture_pct=3.01)
+
+    def test_density_reduction_is_piecewise_source_exact(self):
+        for temp,ratio in ((20,1.),(115,1.),(200,.98),(400,.95),(1200,.88)):
+            self.assertAlmostEqual(concrete_density_ratio(temp),ratio)
+        self.assertAlmostEqual(concrete_density(1200,ambient_density_kg_m3=2200),1936.)
+        with self.assertRaises(EurocodeFireMaterialError):
+            concrete_density(500,ambient_density_kg_m3=None)
 
     def test_bad_values_and_unknown_aggregate_fail_closed(self):
         for bad in (-1,0,math.nan,math.inf,True,None):
