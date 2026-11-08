@@ -14,10 +14,11 @@ from multicolumn_r05.project_model import (new_project,set_count,update_column,u
     add_section,remove_section,replace_bars,reset_auto_bars,get_column,
     overview_rows,section_overview_rows,update_from_overview,update_from_section_overview,
     export_json,load_json,load_state,CONCRETE,update_material_spec,update_thermal_spec,
-    update_member_spec)
+    update_member_spec,update_annex_l_spec)
 from multicolumn_r05.project_calculator import evaluate_project
 from multicolumn_r05.project_reports import make_exports
-from multicolumn_r05.r056_ui import render_spalling_inputs, render_r056_results, render_r056_overview
+from multicolumn_r05.r056_ui import render_r056_results, render_r056_overview
+from rc_fire.spalling.ui import render_annex_l_inputs
 from multicolumn_r05.section_preview import make_section_figure
 from rc_fire.materials.ui import render_material_inputs
 from rc_fire.thermal.ui import render_thermal_inputs, render_thermal_results, render_thermal_overview
@@ -221,7 +222,7 @@ def column_page(cid):
         st.caption('Температурные коэффициенты ядра относятся к S500.')
     render_material_inputs(st,project,c,safe_change,update_material_spec)
     render_thermal_inputs(st,project,c,safe_change,update_thermal_spec)
-    render_spalling_inputs(st,project,c,safe_change)
+    render_annex_l_inputs(st,project,c,safe_change,update_annex_l_spec)
     st.subheader('Схема арматуры')
     drawing_left,drawing_right=st.columns(2)
     with drawing_left:
@@ -291,15 +292,15 @@ def column_page(cid):
     render_member_evidence(st,c,calculation,
         project=project,safe_change=safe_change,update_member_spec=update_member_spec)
     render_r056_results(st,calculation)
-    st.caption('Численное совместное равновесие N–Mx–My и критерий F (при наличии данных) '
-               'рассчитываются в R0.5.6. Это ещё не независимое нормативное подтверждение R90.')
+    st.caption('Диагностическое равновесие N–Mx–My и расчёт критерия F по '
+               'приложению Л СП 2.02.05-2026 не являются нормативным подтверждением R90.')
 
 with st.sidebar:
     st.header('ЖБ колонны')
     choices=['Обзор проекта']+[c['id'] for c in project['columns']]
     selected=st.radio('Разделы',choices,format_func=lambda x:'Обзор проекта' if x=='Обзор проекта' else get_column(project,x)['name'])
     st.divider()
-    st.caption('R0.5.6 · СП 468 (таблицы 9.1–9.6) · сборка 2026-11-05')
+    st.caption('СП 2.02.05-2026 · СП 5.03.01-2020 · приложение Л')
 
 with st.spinner('Расчёт введённых усилий'):
     calculations=evaluate_project(project,grid=48)
