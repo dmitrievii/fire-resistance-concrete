@@ -125,8 +125,10 @@ def _volumetric_capacity(T,moist,rho20):
 
 def _conductivity(T):
     arr=np.asarray(T,dtype=float)
+    if np.any(arr<20.-1e-6) or np.any(arr>1200.+1e-6):
+        raise TKPHeatError('source conductivity temperature outside 20..1200 C')
     return np.asarray([concrete_thermal_conductivity(float(v))
-            for v in arr.ravel()]).reshape(arr.shape)
+            for v in np.clip(arr,20.,1200.).ravel()]).reshape(arr.shape)
 
 
 def _surface_exchange(Tcell,k,d_half,T_gas,hc,emissivity):
@@ -206,8 +208,12 @@ def _heat_step(Told,*,dt_seconds,dx,dy,rho20,moist,hc,eps,Tgas,
         nxt=np.asarray(spsolve(mat,rhs),dtype=float).reshape(ny,nx)
         if not np.all(np.isfinite(nxt)):
             raise TKPHeatError("nonlinear thermal matrix solve failed")
-        if np.min(nxt)<19.999 or np.max(nxt)>max(Tgas,20.)+1e-5:
+        if np.min(nxt)<20.-1e-6 or np.max(nxt)>max(Tgas,20.)+1e-5:
             raise TKPHeatError("heat equation maximum principle violated")
+        # A linear solve of a perfectly adiabatic 20 °C section may round
+        # to 19.99999999999999. Remove ONLY floating noise (<=1e-6 C);
+        # do not accept genuinely below-source-temperature field values.
+        nxt=np.maximum(nxt,20.)
         delta=float(np.max(np.abs(nxt-guess)))
         guess=nxt
         last=boundary_terms
