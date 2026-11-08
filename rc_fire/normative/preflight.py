@@ -176,10 +176,15 @@ def audit_column(column: dict, route: str = "general_member", *,
     elif not material_result and not column.get("concrete_consistency_class") and not column.get("tested_Ecm_source"):
         add("E_CM_NOT_PROVEN", "Нельзя принимать Ecm из одного класса прочности.",
             "СП 5.03.01-2020, таблица 6.3")
-    if mix.get("fine_grained") is True and mix.get("modulus_aggregate")=="gravel_granite_upto40":
-        add("MATERIAL_DESCRIPTION_REQUIRES_REVIEW",
-            "Мелкозернистый бетон и заполнитель до 40 мм требуют проверки совместимости описаний.",
-            "СП 5.03.01-2020, таблица 6.3",severity="WARNING")
+    # Concrete kind now derives from the *documented mixture*, never the
+    # deprecated independent Boolean switch (which remains only in old JSON).
+    cls=material_result.get("fine_grained_classification") or {}
+    if cls.get("status")=="conflict":
+        add("MATERIAL_MIX_CONFLICT",str(cls.get("reason")),
+            "СП 5.03.01-2020, 6.1.2.1; таблица 6.3")
+    elif cls.get("status")=="unknown":
+        add("MATERIAL_KIND_NOT_RESOLVED",str(cls.get("reason")),
+            "СП 5.03.01-2020, 6.1.2.1; таблица 6.3")
     fire_action_source=column.get("fire_action_provenance") or member.get("fire_actions_source")
     if not fire_action_source:
         add("NO_FIRE_LOAD_SOURCE", "Происхождение пожарного сочетания усилий не подтверждено.",
@@ -199,10 +204,16 @@ def audit_column(column: dict, route: str = "general_member", *,
             "Критерий F по приложению Л не рассчитан: "+
             str(annex_l_result.get("reason","недостаточно данных")),
             "СП 2.02.05-2026, приложение Л")
-    elif annex_l_result.get("protection_required"):
-        add("ANNEX_L_PROTECTION_REQUIRED",
-            "По приложению Л при F>4 необходимы меры защиты от хрупкого разрушения.",
-            "СП 2.02.05-2026, Л.6")
+    else:
+        if not annex_l_result.get("moisture_method_qualified",True):
+            add("ANNEX_L_MOISTURE_METHOD_UNQUALIFIED",
+                "Влажность рассчитана по формуле Л.5 с явно принятой интерпретацией единиц "
+                "или инженерной интерполяцией Л.2; это требует независимого нормативного обоснования.",
+                "СП 2.02.05-2026, Л.4–Л.5, таблица Л.2")
+        if annex_l_result.get("protection_required"):
+            add("ANNEX_L_PROTECTION_REQUIRED",
+                "По приложению Л при F>4 необходимы меры защиты от хрупкого разрушения.",
+                "СП 2.02.05-2026, Л.6")
     if not column.get("member_support_model") and not (
         member.get("left_support") and member.get("right_support") and member.get("support_provenance")):
         add("SUPPORTS_NOT_VERIFIED", "Задание типов опор без подтверждения не обосновывает второй порядок.",
