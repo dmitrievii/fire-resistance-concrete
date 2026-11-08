@@ -24,9 +24,9 @@ MAX_CACHE=60
 def _evaluate_column_pre_r064d(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
-    # Preserve archived data for old report comparisons; do not use the
-    # foreign spalling index for current Belarus fire-resistance decisions.
-    spalling=spalling_assessment(c.get('spalling'))
+    # Historical foreign-method spalling fields are archival input only.
+    # The current calculator NEVER evaluates SP468 or historical K18 F.
+    spalling={'status':'archived_legacy_inactive','F':None,'source':'not_used_in_current_calculation'}
     material_preflight=resolve_materials(c)
     thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
     from rc_fire.spalling import evaluate_annex_l
