@@ -125,6 +125,47 @@ class R0682SandEcmCouplingTests(unittest.TestCase):
         self.assertIn('ANNEX_L_MOISTURE_METHOD_UNQUALIFIED',codes)
         self.assertFalse(r['normative_claim'])
 
+    def test_all_annex_L_fields_expose_belarus_range_tooltips(self):
+        # Unlike the old SP468 form, these help texts must follow the
+        # Belarus Annex L tables AND the current physical-input validator.
+        import ast
+        import inspect
+        import textwrap
+        from rc_fire.spalling import ui
+        self.assertEqual(ui.RANGE_HINTS_RELEASE,
+                         "r0682-belarus-input-range-tooltips-v1")
+        source=ast.parse(textwrap.dedent(inspect.getsource(
+            ui.render_annex_l_inputs)))
+        calls={}
+        for node in ast.walk(source):
+            if not isinstance(node,ast.Call) or not isinstance(node.func,ast.Attribute):
+                continue
+            if node.func.attr not in ('text_input','selectbox'):
+                continue
+            if not node.args or not isinstance(node.args[0],ast.Constant):
+                continue
+            calls[node.args[0].value]=node
+        required=(
+            'Объём крупного заполнителя, % (0–100)',
+            'Расход цемента, кг/м³',
+            'Максимальная крупность заполнителя, мм',
+            'Водоцементное отношение В/Ц',
+            'Относительная влажность воздуха RH, %',
+            'Измеренная Wc, кг/кг (необязательно)',
+            'Источник измеренной Wc (если указана)',
+            'Метод определения влажности Wc',
+        )
+        for label in required:
+            self.assertIn(label,calls,label)
+            self.assertIn('help',{kw.arg for kw in calls[label].keywords},
+                          label+' lost its tooltip')
+        self.assertIn('35–50 %',ui.RANGE_HINTS['coarse_aggregate_volume_pct'])
+        self.assertIn('0–100 %',ui.RANGE_HINTS['coarse_aggregate_volume_pct'])
+        self.assertIn('100 кг/м³',ui.RANGE_HINTS['cement_kg_m3'])
+        self.assertIn('15, 25, 50, 75',ui.RANGE_HINTS['relative_humidity_pct'])
+        self.assertIn('0 < Wc < 1',ui.RANGE_HINTS['measured_Wc_kg_kg'])
+        self.assertNotIn('СП 468',' '.join(ui.RANGE_HINTS.values()))
+
     def test_streamlit_checkbox_checked_by_default_without_silent_confirmation(self):
         try:
             from streamlit.testing.v1 import AppTest
