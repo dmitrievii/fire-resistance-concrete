@@ -133,6 +133,27 @@ class R069TimeHistoryTests(unittest.TestCase):
             r=evaluate_resistance_history(c,step_minutes=15.,grid=8)
         self.assertIsNone(r['diagnostic_limit_bracket_min'])
 
+    def test_requested_member_branch_never_invents_supports_or_load_diagram(self):
+        c=example(minutes=10.)['columns'][0]
+        row=evaluate_station(c,0.,grid=8,with_member=True)
+        self.assertEqual(row['member_status'],'BLOCKED_INPUT')
+        self.assertFalse(row['member_normative_claim'])
+        # A member model is not inferred from a single section's Mx/My.
+        self.assertEqual(c['member_spec']['thermal_longitudinal_mode'],'explicit_only')
+
+    def test_explicit_member_model_runs_in_temporal_station(self):
+        c=example(minutes=10.)['columns'][0]
+        c['member_spec']={
+            'thermal_longitudinal_mode':'uniform_assumed',
+            'uniform_fire_basis':'same fire exposure in all longitudinal planes',
+            'left_support':'pinned','right_support':'pinned',
+            'support_provenance':'explicit idealized hinge-hinge member',
+            'load_mode':'uniform_transverse_load',
+            'q_x_kNpm':0.0,'q_y_kNpm':0.0,'node_count':2}
+        row=evaluate_station(c,0.,grid=8,with_member=True)
+        self.assertIsNotNone(row['member_status'],row)
+        self.assertFalse(row['member_normative_claim'])
+
     def test_invalid_options_and_61_point_guard(self):
         c=example()['columns'][0]
         for kw in ({'step_minutes':0},{'grid':5},{'policy':'extrapolate'},
