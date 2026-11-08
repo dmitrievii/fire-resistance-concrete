@@ -20,6 +20,20 @@ VERSION = 'R0.6.4C-ULS-evidence-audit-v1'
 
 
 def _summarize_state(st:dict):
+    if st.get('critical_mechanical_strain_ratio') is not None:
+        # Temperature-dependent eps_cu(theta) varies by fibre under TKP.
+        # The R0.6.3 single ambient eps_cu2 is invalid for TKP hot concrete.
+        # A gap in the Table 3.1 law *cannot* produce positive ULS evidence.
+        if st.get('constitutive_domain_qualified') is not True:
+            return {'limit_check':'unavailable','ratio_concrete':None,
+                    'ratio_steel':None,'maximum_ratio':None}
+        try: ratio=float(st['critical_mechanical_strain_ratio'])
+        except (TypeError,ValueError):ratio=math.nan
+        if not math.isfinite(ratio) or ratio<0:
+            return {'limit_check':'invalid','ratio_concrete':None,
+                    'ratio_steel':None,'maximum_ratio':None}
+        return {'limit_check':'exceeded' if ratio>1.+1e-8 else 'within_diagnostic_limits',
+                'ratio_concrete':None,'ratio_steel':None,'maximum_ratio':ratio}
     ec = st.get('max_concrete_compressive_strain')
     es = st.get('max_steel_tensile_strain')
     limc = st.get('eps_cu2')
@@ -126,7 +140,9 @@ def audit_heated_member_uls(result:dict,z_m,N_kN:float,*,
                     'eps_cu2':meta.get('eps_cu2'),
                     'tensile_steel_limit':meta.get('tensile_steel_limit'),
                     'section_model':meta.get('model'),
-                    'corner_eigenstrain_explicit':meta.get('corner_eigenstrain_explicit')}
+                    'corner_eigenstrain_explicit':meta.get('corner_eigenstrain_explicit'),
+                    'critical_mechanical_strain_ratio':meta.get('critical_mechanical_strain_ratio'),
+                    'constitutive_domain_qualified':meta.get('constitutive_domain_qualified')}
                 sampled.append({**_summarize_state(st),'location':'node',
                   'z_m':float(z[i]),'side':side,'moments_kNm':np.asarray(M).tolist(),
                   'strength_reference':meta.get('reference_strength_mode'),

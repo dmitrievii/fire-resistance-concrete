@@ -302,7 +302,9 @@ def _beam_assembly(z,N,law_at_gauss,displacements,imperfection,q,point_forces):
                            'corner_eigenstrain_explicit':meta.get('corner_eigenstrain_explicit'),
                            'bar_temperature_min_C':meta.get('bar_temperature_min_C'),
                            'max_boundary_temperature_C':meta.get('max_boundary_temperature_C'),
-                           'reference_strength_mode':meta.get('reference_strength_mode')})
+                           'reference_strength_mode':meta.get('reference_strength_mode'),
+                            'critical_mechanical_strain_ratio':meta.get('critical_mechanical_strain_ratio'),
+                            'constitutive_domain_qualified':meta.get('constitutive_domain_qualified')})
     return fint,K,G,F,states
 
 
