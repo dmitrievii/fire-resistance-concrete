@@ -75,7 +75,7 @@ class SP468Tests(unittest.TestCase):
 
     def test_project_save_load_and_isolated_columns(self):
         p=new_project(2)
-        self.assertEqual(p['columns'][0]['spalling']['method'],'sp468')
+        self.assertEqual(p['columns'][0]['spalling'],{})  # no foreign method by default
         update_spalling(p,'c1',mixture())
         sp=evaluate_column(p['columns'][0])['spalling']
         self.assertEqual(sp['status'],'index_at_or_below_threshold')
