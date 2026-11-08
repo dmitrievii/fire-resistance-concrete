@@ -234,10 +234,17 @@ def update_annex_l_spec(project,cid,fields):
             out[key]=value
         elif key=="moisture_measurement_source":
             out[key]=str(value).strip()
+        elif key=="moisture_mode":
+            if value not in ("auto","formula_L5","linear_L2_exploratory"):
+                raise ValueError("Неизвестный метод определения влажности")
+            out[key]=value
         else:
             if isinstance(value,bool):raise ValueError(key+": неверное число")
             x=float(value)
-            if not math.isfinite(x) or x<=0:raise ValueError(key+": требуется положительное число")
+            if not math.isfinite(x) or (x<0 if key=="coarse_aggregate_volume_pct" else x<=0):
+                raise ValueError(key+": требуется допустимое неотрицательное число")
+            if key=="coarse_aggregate_volume_pct" and x>100:
+                raise ValueError("Доля крупного заполнителя не больше 100 %")
             if key=="relative_humidity_pct" and x>100:raise ValueError("RH не больше 100%")
             if key=="measured_Wc_kg_kg" and x>=1:raise ValueError("Wc должна быть меньше 1 кг/кг")
             out[key]=x
@@ -387,6 +394,15 @@ def validate_column(c):
                 if type(v) is not bool:issues.append(k+": требуется bool")
             elif k=="moisture_measurement_source":
                 if not isinstance(v,str):issues.append(k+": ожидается текст")
+            elif k=="moisture_mode":
+                if v not in ("auto","formula_L5","linear_L2_exploratory"):
+                    issues.append("Недопустимый метод определения Wc")
+            elif k=="coarse_aggregate_volume_pct":
+                try:
+                    q=float(v)
+                    if not math.isfinite(q) or not 0<=q<=100:raise ValueError()
+                except (ValueError,TypeError):
+                    issues.append("Содержание крупного заполнителя должно быть 0–100 %")
             elif v is not None:
                 _number(v,k,issues,strict_positive=True)
 
