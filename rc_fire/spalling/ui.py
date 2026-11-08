@@ -29,6 +29,14 @@ def render_annex_l_inputs(st,project,column,safe_change,update_annex_l_spec):
                                    for k,v in shown]),hide_index=True,use_container_width=True)
         st.caption("Общие свойства изменяются выше в разделах R0.6.1 и R0.6.2 — "
                    "второй экземпляр плотности или типа заполнителя отсутствует.")
+        kind=inputs.get("fine_grained_classification") or {}
+        if kind.get("status")=="resolved":
+            st.caption("Тип бетона определён автоматически: "+
+                ("мелкозернистый" if kind.get("fine_grained") else "с крупным заполнителем")+
+                " ("+str(kind.get("source"))+").")
+        else:
+            st.warning("Тип бетона пока не определён из состава: "+
+                       str(kind.get("reason","нет сведений о заполнителе")))
         if inputs.get("legacy_user_input_fields"):
             st.info("Ранее введённые физические данные смеси доступны для переноса: "+
                 ", ".join(inputs["legacy_user_input_fields"])+". "
@@ -38,7 +46,7 @@ def render_annex_l_inputs(st,project,column,safe_change,update_annex_l_spec):
                 value=inputs.get("natural_sand_confirmed") is True)
             c1,c2,c3=st.columns(3)
             with c1:
-                coarse=st.text_input("Объём крупного заполнителя, % (35–50)",
+                coarse=st.text_input("Объём крупного заполнителя, % (0–100)",
                     value=_float_text(inputs.get("coarse_aggregate_volume_pct")))
                 cement=st.text_input("Расход цемента, кг/м³",
                     value=_float_text(inputs.get("cement_kg_m3")))
@@ -50,15 +58,26 @@ def render_annex_l_inputs(st,project,column,safe_change,update_annex_l_spec):
             with c3:
                 rh=st.text_input("Относительная влажность воздуха RH, %",
                     value=_float_text(inputs.get("relative_humidity_pct")),
-                    help="Таблица Л.2 содержит RH 15, 25, 50, 75 %. Неэксплицированную интерполяцию не выполняем.")
+                    help="Таблица Л.2: RH 15, 25, 50, 75 %; Л.5 позволяет расчёт для промежуточных RH.")
                 measured=st.text_input("Измеренная Wc, кг/кг (необязательно)",
                     value=_float_text(inputs.get("measured_Wc_kg_kg")),
                     help="Не заменяет нормативную таблицу Л.2; требует подтверждения происхождения.")
             moisture_source=st.text_input("Источник измеренной Wc (если указана)",
                 value=inputs.get("moisture_measurement_source") or "")
-            st.caption("При RH между узлами таблицы Л.2 требуется нормативное уточнение "
-                       "способа применения формулы Л.5; программа не вводит скрытый коэффициент "
-                       "перевода процентов в доли.")
+            methods=("auto","formula_L5","linear_L2_exploratory")
+            mode=st.selectbox("Метод определения влажности Wc",
+                methods,index=methods.index(inputs.get("moisture_mode")
+                                              if inputs.get("moisture_mode") in methods else "auto"),
+                format_func=lambda x:{
+                    "auto":"Таблица Л.2 в точных узлах; иначе формула Л.5",
+                    "formula_L5":"Формула Л.5 (с явной интерпретацией единиц)",
+                    "linear_L2_exploratory":"Линейная интерполяция Л.2 (исследовательская)"}[x])
+            st.caption("Для Л.5 вводятся расходы цемента Ц и воды В=Ц·(В/Ц), кг/м³. "
+                       "Численный результат Л.5 находится в масштабе процентов; "
+                       "перевод в кг/кг (/100) обозначен как интерпретация единиц, "
+                       "не подтверждённая независимым нормативным разъяснением. "
+                       "Интерполяция таблицы Л.2 прямо не предписана. "
+                       "Оба нетабличных маршрута сохраняют предупреждение в Preflight.")
             if st.form_submit_button("Сохранить недостающие характеристики смеси по приложению Л"):
                 def convert(x,title):
                     if not x.strip():return None
@@ -74,6 +93,7 @@ def render_annex_l_inputs(st,project,column,safe_change,update_annex_l_spec):
                         "relative_humidity_pct":convert(rh,"RH"),
                         "measured_Wc_kg_kg":convert(measured,"Wc"),
                         "moisture_measurement_source":moisture_source.strip() or None,
+                        "moisture_mode":mode,
                     }
                 except ValueError as exc:
                     st.error(str(exc))
@@ -92,6 +112,14 @@ def render_annex_l_results(st,calc):
     if F<=4:st.caption("F ≤ 4: хрупкое разрушение по критерию не прогнозируется.")
     elif F<=6:st.warning("4 < F ≤ 6: потенциально опасный диапазон; по Л.6 меры защиты нужны уже при F>4.")
     else:st.error("F > 6: прогнозируется хрупкое разрушение; по Л.6 требуются защитные мероприятия.")
+    m=(r.get("provenance") or {}).get("Wc") or ""
+    w=(r.get("coefficients") or {}).get("Wc_kg_kg")
+    st.caption("Источник Wc: "+str(m)+
+        ("; Wc="+f"{w:.5f}"+" кг/кг" if w is not None else "")+".")
+    if not r.get("moisture_method_qualified",True):
+        st.warning("Метод определения Wc требует дополнительного нормативного обоснования: "
+                   "либо Л.5 с явной интерпретацией единиц, либо инженерная интерполяция Л.2. "
+                   "Результат F диагностический, не нормативное подтверждение.")
     st.caption("Вычислено для температур 200, 250, 300 °C; показано наибольшее F. "
                "Данные и формулы взяты только из белорусских СП. "
                "Критерий F не подтверждает огнестойкость R90.")
