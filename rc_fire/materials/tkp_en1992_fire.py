@@ -275,10 +275,65 @@ def rebar_free_thermal_strain(theta_C):
     return -6.2e-3+2e-5*theta
 
 
+def concrete_thermal_conductivity(theta_C):
+    """§3.3.3(2): LOWER of two curves mandated by Belarus NA 3.3.3(1)."""
+    theta=_temperature(theta_C)
+    q=theta/100.
+    return 1.36-.136*q+.0057*q*q
+
+
+def concrete_specific_heat(theta_C, *, mass_moisture_pct):
+    """§3.3.2(1)(2) cp, moisture peak at 100–115 °C.
+
+    A 0% dry sample uses the literal dry curve. For >0% moisture use the
+    tabulated 0/1.5/3% peak values, interpolation only. >3% is outside the
+    source peak table and is not extrapolated.
+    """
+    theta=_temperature(theta_C)
+    if isinstance(mass_moisture_pct,bool):
+        raise EurocodeFireMaterialError("moisture percentage must be numeric")
+    try: moist=float(mass_moisture_pct)
+    except (ValueError,TypeError) as exc:
+        raise EurocodeFireMaterialError("moisture percentage must be numeric") from exc
+    if not math.isfinite(moist) or not 0<=moist<=3:
+        raise EurocodeFireMaterialError("peak cp data only tabulated for 0..3% mass moisture")
+    if theta<=100:
+        return 900.
+    if moist==0:
+        if theta<=200:return 900.+(theta-100)
+        if theta<=400:return 1000.+.5*(theta-200)
+        return 1100.
+    peak=_linear(moist,(0.,1.5,3.),(900.,1470.,2020.))
+    if theta<=115:
+        return peak
+    if theta<=200:
+        return peak+(1000.-peak)*(theta-115)/85.
+    if theta<=400:
+        return 1000.+.5*(theta-200)
+    return 1100.
+
+
+def concrete_density_ratio(theta_C):
+    """§3.3.2(3): rho(theta) / rho(20 °C)."""
+    theta=_temperature(theta_C)
+    if theta<=115:return 1.
+    if theta<=200:return 1.-.02*(theta-115)/85.
+    if theta<=400:return .98-.03*(theta-200)/200.
+    return .95-.07*(theta-400)/800.
+
+
+def concrete_density(theta_C,*,ambient_density_kg_m3):
+    """§3.3.2(3); ambient density must be supplied, never inferred."""
+    return _positive_finite(ambient_density_kg_m3,"ambient density")*concrete_density_ratio(theta_C)
+
+
 def qualification():
     """Explicit immutable source choices, not a claim about whole-member ULS."""
     return {
-        "version":VERSION,"source":SOURCE,"national_annex":NA,
+        "version":VERSION,
+        "surface_concrete_emissivity":0.7,
+        "mass_moisture_cp_domain_pct":[0,3],
+        "calibrated_heating_rate_range_K_min":[2,50],"source":SOURCE,"national_annex":NA,
         "gamma_M_fi":GAMMA_M_FI,"rebar_class":REBAR_FIRE_CLASS,
         "normal_concrete_thermal_conductivity":CONDUCTIVITY_NORMAL,
         "temperature_domain_C":[20,1200],
