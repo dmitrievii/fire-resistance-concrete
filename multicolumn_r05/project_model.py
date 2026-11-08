@@ -242,6 +242,10 @@ def update_annex_l_spec(project,cid,fields):
             if key=="measured_Wc_kg_kg" and x>=1:raise ValueError("Wc должна быть меньше 1 кг/кг")
             out[key]=x
     c["annex_l_spec"]=out
+    # Explicit save to the Belarus Annex L card completes one-way migration
+    # of previously user-entered physical mix values. Do not retain a second,
+    # potentially contradictory historical spalling source in the new project.
+    c["spalling"]={}
     project["revision"]+=1
 
 
