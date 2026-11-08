@@ -334,7 +334,7 @@ def solve_tkp_2d_heat(column,*,boundary,
             surfaces=evidence['surface_temperature_C']
         snapshots.append(_snapshot(T,surfaces,target,b=b,h=h,exposed=faces))
     actual_energy=float(np.sum(_enthalpy(T,moist,rho20)-
-               _enthalpy(np.full_like(T,initial),moist,rho20))*dx*dy))
+               _enthalpy(np.full_like(T,initial),moist,rho20))*dx*dy)
     global_error=abs(actual_energy-total_in)/max(1.,abs(actual_energy),abs(total_in))
     if global_error>3e-4:
         raise TKPHeatError("cumulative heat balance does not close")
