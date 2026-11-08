@@ -192,6 +192,26 @@ class TKPConservativeHeatTests(unittest.TestCase):
         self.assertFalse(r['samples'][-1]['member'][
             'entered_section_moment_diagram_reconciled'])
 
+    def test_actual_K1_90minute_full_TKP_thermal_reaches_within_material_domain(self):
+        c=k1(90.)
+        solution=solve_tkp_2d_heat(c,boundary=self.bc,
+             cell_count_x=8,cell_count_y=8,max_step_minutes=5.)
+        snapshot=select_tkp_snapshot(solution,90.)
+        self.assertGreater(solution['last_boundary_max_C'],20.)
+        self.assertLessEqual(solution['last_boundary_max_C'],
+                             standard_fire_gas_temperature(90.)+1.e-6)
+        self.assertLess(solution['last_boundary_max_C'],1100.)
+        self.assertLess(solution['energy_balance']['relative_cumulative_residual'],3e-4)
+        p=prepare_tkp_fibres(c,snapshot,grid=8,
+            production_route='hot_rolled',ductility_class='B',
+            high_temperature_tail='reject')
+        self.assertFalse(p.boundary_gap)
+        self.assertEqual(p.hot_fibre_count,0)
+        self.assertLess(float(np.max(p.bar_theta_C)) if hasattr(p,'bar_theta_C')
+                        else float(np.max(p.theta_s)),1100.)
+        self.assertEqual(p.source['thermal'],
+                        'ТКП EN 1992-1-2-2009 §4.3.2 (2D implicit FVM)')
+
     def test_quick_spatial_temporal_refinement_reports_differences(self):
         c=k1(4.)
         r=compare_tkp_thermal_refinement(c,boundary=self.bc,
