@@ -63,3 +63,14 @@ The public repository includes `templates/RC_Fire_Report_Master.docx` (sanitized
 Under **5 · Word report**, select **Generate Word report** without uploading anything; the app loads the bundled master. The advanced override accepts only the SHA-256-verified sanitized or original K18 document. Missing or modified templates fail closed. K18 calculation reproduction and experimental parametric report generation remain separate calculation provenance internally.
 
 The sanitized master SHA-256 is `12b2a9b290ea8ef6652a048c3aab09f6685b44fb955ad2985a8538fad15bcb5a`.
+
+## R0.6.9 — Time-dependent member checks
+
+Column pages now include an on-demand fire-time calculation from t=0 with
+fresh Annex K/member solves, refinement of the first observed limit, and
+separate handling of strain events, equilibrated instability, model-domain
+stops and unresolved numerical solutions. Results and source inputs export
+to JSON/CSV and the Word/ZIP reports. Source edits invalidate old histories.
+The inherited material/member model remains diagnostic; a temperature-domain
+stop or Newton failure is not reported as fire failure. See
+[R069_TIME_HISTORY.md](R069_TIME_HISTORY.md) for scope and verification.

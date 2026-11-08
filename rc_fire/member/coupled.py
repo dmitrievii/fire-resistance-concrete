@@ -377,11 +377,17 @@ def solve_coupled_beam(z_m:Sequence[float], N_kN:float, *,
         tangent=K-N*G+np.diag(springs)
         T=tangent[np.ix_(free,free)];r=residual[free]
         eig=float(np.linalg.eigvalsh((T+T.T)/2)[0])
-        if eig<=max(1e-9,1e-12*max(1.,float(np.linalg.eigvalsh(T)[-1]))):
-            return {'status':'critical_or_nonpositive_tangent','iteration':it,
-                    'tangent_min_eigenvalue':eig,'normative_claim':False,
-                    'fire_resistance_status':'not_demonstrated'}
         scale=max(1.,np.linalg.norm(F[free]),np.linalg.norm(fi[free]))
+        relative_residual=float(np.linalg.norm(r)/scale)
+        threshold=max(1e-9,1e-12*max(1.,float(np.linalg.eigvalsh(T)[-1])))
+        if eig<=threshold:
+            return {'status':'critical_or_nonpositive_tangent','iteration':it,
+                    'tangent_min_eigenvalue':eig,
+                    'tangent_positivity_threshold':threshold,
+                    'relative_equilibrium_residual':relative_residual,
+                    'equilibrium_at_instability':relative_residual<tolerance,
+                    'normative_claim':False,
+                    'fire_resistance_status':'not_demonstrated'}
         if np.linalg.norm(r)/scale<tolerance:
             crossed=any(s['strain_limits_satisfied'] is False for s in states)
             return {'status':'strain_limits_exceeded_diagnostic' if crossed else 'evaluated_diagnostic','iterations':it,
@@ -392,6 +398,7 @@ def solve_coupled_beam(z_m:Sequence[float], N_kN:float, *,
                     'integration_stations':states,
                     'any_strain_limit_exceeded':crossed,
                     'tangent_min_eigenvalue':eig,
+                    'tangent_positivity_threshold':threshold,
                     'relative_equilibrium_residual':float(np.linalg.norm(r)/scale),
                     'normative_claim':False,'fire_resistance_status':'not_demonstrated',
                     'missing_qualification':['fire constitutive law','ULS interaction',

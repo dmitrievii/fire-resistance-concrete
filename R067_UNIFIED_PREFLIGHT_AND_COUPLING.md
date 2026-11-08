@@ -90,9 +90,10 @@ computed stations via the original R0.6.4D JSON workflow.
 - A column with varying N(z), unsupported end constraints, unequal
   heating along z, unknown load geometry or a nonuniform transverse
   load requires a separately authored model.
-- The separate Annex L spalling route, fire load combination according
-  to the governing Belarus code, full R(t) and continuous member ULS
-  remain unqualified.
+- The separate Annex L spalling route, heated material/member response and
+  continuous member ULS remain unqualified. R0.6.9 adds a diagnostic time
+  driver and event refinement; it does not qualify normative R(t). Entered
+  actions are already fire-design values under the R0.6.8.3 project contract.
 - The historical R0.5.6 diagnostic utilization is not a member fire
   resistance factor.
 

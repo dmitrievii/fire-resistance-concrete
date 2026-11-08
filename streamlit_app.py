@@ -26,6 +26,7 @@ if _cached_model is not None:
     _stale |= getattr(_cached_model, "R065_MODEL_RELEASE", None) != "r065-center-sections-load-transfer-20261107"
     _stale |= getattr(_cached_model, "R067_MODEL_RELEASE", None) != "r067-unified-preflight-member-20261107"
     _stale |= getattr(_cached_model, "R068_MODEL_RELEASE", None) != "r068-belarus-annex-l-unified-20261108"
+    _stale |= getattr(_cached_model, "R069_MODEL_RELEASE", None) != "r069-fire-time-history-20261108"
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:
@@ -64,6 +65,10 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     _existing = sys.modules.get(_name)
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
+
+_cached_history = sys.modules.get("rc_fire.member.time_history")
+if _cached_history is not None:
+    _stale |= getattr(_cached_history, "VERSION", None) != "R0.6.9-fire-time-history-v1"
 
 # R0.6.8.3: a cached normative/member module predating the project-wide
 # fire-design-action convention must not survive Streamlit Cloud hot reload.

@@ -14,6 +14,7 @@ SCHEMA = 'k18-multi-column-project-r05'
 R065_MODEL_RELEASE = 'r065-center-sections-load-transfer-20261107'
 R067_MODEL_RELEASE = 'r067-unified-preflight-member-20261107'
 R068_MODEL_RELEASE = 'r068-belarus-annex-l-unified-20261108'
+R069_MODEL_RELEASE = 'r069-fire-time-history-20261108'
 CONCRETE = {'C20/25': (20.0, 25.0), 'C25/30': (25.0, 27.0), 'C30/37': (30.0, 29.0), 'C35/45': (35.0, 31.0), 'C40/50': (40.0, 33.0)}
 COLUMN_EDITABLE = ('name','b_mm','h_mm','length_m','concrete','steel_grade','f_y_MPa', 'cover_mm','stirrup_mm','bar_diameter_mm','mu_x','mu_y','fire_minutes')
 LOAD_EDITABLE=('z_m','N_kN','Mx_kNm','My_kNm')

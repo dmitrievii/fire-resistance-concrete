@@ -116,6 +116,8 @@ def show_overview():
     st.dataframe(pd.DataFrame(resultrows),hide_index=True,use_container_width=True)
     render_thermal_overview(st,project,calculations)
     render_mechanics_overview(st,project,calculations)
+    from rc_fire.integration.time_ui import render_fire_history_overview
+    render_fire_history_overview(st,project,calculations)
     render_r056_overview(st,project,calculations)
     st.caption('* Условная диагностическая величина max(MEd/MRd) по двум независимым плоскостям и рассчитанным сечениям. Не выполняет нормативную двухосную проверку.')
     if any(x['issues'] for x in calculations.values()):
@@ -291,6 +293,8 @@ def column_page(cid):
     from rc_fire.integration.ui import render_member_evidence
     render_member_evidence(st,c,calculation,
         project=project,safe_change=safe_change,update_member_spec=update_member_spec)
+    from rc_fire.integration.time_ui import render_fire_history
+    render_fire_history(st,c,calculation)
     render_r056_results(st,calculation)
     st.caption('Диагностическое равновесие N–Mx–My и расчёт критерия F по '
                'приложению Л СП 2.02.05-2026 не являются нормативным подтверждением R90.')
@@ -313,5 +317,7 @@ for _column in project['columns']:
         calculations[_column['id']]['member_r064d']=_saved['result']
     elif _saved is not None:
         st.session_state.pop(_key,None)
+from rc_fire.integration.time_ui import restore_history_results
+restore_history_results(st.session_state,project['columns'],calculations)
 if selected=='Обзор проекта':show_overview()
 else:column_page(selected)
