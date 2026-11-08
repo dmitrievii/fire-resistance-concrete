@@ -200,7 +200,15 @@ def evaluate_critical_isotherm_section(column, *, grid=40, thermal=None):
         return result
     # No material coefficients are assigned outside Tables 9/10. For the
     # ceiling we require all REAL bar temperatures within 20..800 C.
-    mat=resolve_materials(column)
+    try:
+        mat=resolve_materials(column)
+    except (ValueError,TypeError,KeyError) as exc:
+        return {**result,'status':'K27_GEOMETRY_ONLY_STRENGTH_UNRESOLVED',
+                'blockers':['MATERIAL_CATALOG_NOT_RESOLVED'],'reason':str(exc)}
+    if mat.get('status')!='resolved_for_property_lookup' or mat.get('fire_family')!=family:
+        return {**result,'status':'K27_GEOMETRY_ONLY_STRENGTH_UNRESOLVED',
+                'blockers':['MATERIAL_CATALOG_OR_AGGREGATE_NOT_QUALIFIED'],
+                'reason':str(mat.get('issues') or mat.get('status'))}
     concrete=mat.get('concrete') or {}
     steel=mat.get('steel') or {}
     try:
