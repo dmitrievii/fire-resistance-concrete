@@ -75,13 +75,14 @@ class SP468Tests(unittest.TestCase):
 
     def test_project_save_load_and_isolated_columns(self):
         p=new_project(2)
-        self.assertEqual(p['columns'][0]['spalling']['method'],'sp468')
+        self.assertEqual(p['columns'][0]['spalling'],{})  # no foreign method by default
         update_spalling(p,'c1',mixture())
-        sp=evaluate_column(p['columns'][0])['spalling']
+        sp=spalling_assessment(p['columns'][0]['spalling'])
         self.assertEqual(sp['status'],'index_at_or_below_threshold')
-        self.assertEqual(evaluate_column(p['columns'][1])['spalling']['status'],'not_evaluated')
+        self.assertEqual(evaluate_column(p['columns'][0])['spalling']['status'],'archived_legacy_inactive')
+        self.assertIsNone(evaluate_column(p['columns'][0])['spalling']['F'])
         loaded=load_json(export_json(p))
-        self.assertAlmostEqual(evaluate_column(loaded['columns'][0])['spalling']['F'],sp['F'])
+        self.assertAlmostEqual(spalling_assessment(loaded['columns'][0]['spalling'])['F'],sp['F'])
         self.assertFalse(evaluate_column(loaded['columns'][0])['normative_claim'])
 
     def test_manual_legacy_lambda_first_power_and_percent_fraction(self):

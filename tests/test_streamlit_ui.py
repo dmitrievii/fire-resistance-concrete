@@ -83,9 +83,10 @@ class StreamlitAppTests(unittest.TestCase):
         page = next(r for r in app.radio if r.label == 'Разделы')
         page.set_value('c1').run()
         self.assertFalse(app.exception, f'Column page crashed: {list(app.exception)}')
-        self.assertIn('Метод проверки', [r.label for r in app.radio])
-        method = next(r for r in app.radio if r.label == 'Метод проверки')
-        self.assertEqual(method.value, 'sp468')
+        self.assertNotIn('Метод проверки', [r.label for r in app.radio])
+        self.assertTrue(any('приложение Л СП 2.02.05-2026' in x.label for x in app.expander))
+        self.assertFalse(any('Класс бетона B по СП 468'==x.label for x in app.selectbox))
+        self.assertFalse(any('Плотность сухого бетона, кг/м³'==x.label for x in app.text_input))
 
     def test_cloud_hot_reload_replaces_old_pre_sp468_ui(self):
         """A cached pre-SP468 r056_ui must never survive Cloud hot reload."""
@@ -105,7 +106,8 @@ class StreamlitAppTests(unittest.TestCase):
             page = next(r for r in app.radio if r.label == 'Разделы')
             page.set_value('c1').run()
             self.assertFalse(app.exception)
-            self.assertIn('Метод проверки', [r.label for r in app.radio])
+            self.assertNotIn('Метод проверки', [r.label for r in app.radio])
+            self.assertTrue(any('приложение Л СП 2.02.05-2026' in x.label for x in app.expander))
         finally:
             old_ui.R056_SP468_RELEASE = saved
 

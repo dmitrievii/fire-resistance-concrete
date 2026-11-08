@@ -24,13 +24,15 @@ MAX_CACHE=60
 def _evaluate_column_pre_r064d(c,grid=48):
     issues=validate_column(c)
     states={s['id']:load_state(s) for s in c['sections']}
-    spalling=spalling_assessment(c.get('spalling'))
+    # Historical foreign-method spalling fields are archival input only.
+    # The current calculator NEVER evaluates SP468 or historical K18 F.
+    spalling={'status':'archived_legacy_inactive','F':None,'source':'not_used_in_current_calculation'}
     material_preflight=resolve_materials(c)
     thermal_normative=evaluate_rectangular_column(c,grid=min(40,max(8,int(grid))))
-    # R0.6.7: single authoritative provenance adjudication using the resolved
-    # material and thermal inputs; R90 remains hard-blocked.
+    from rc_fire.spalling import evaluate_annex_l
+    annex_l=evaluate_annex_l(c,material_result=material_preflight)
     normative_preflight=audit_column(c,material_result=material_preflight,
-                                     thermal_result=thermal_normative)
+        thermal_result=thermal_normative,annex_l_result=annex_l)
     # R0.6.3 is a separate first-order SECTION diagnostic, never the fire
     # resistance verdict. Keep it even if the R0.4 mechanics cannot run.
     try:
@@ -45,12 +47,16 @@ def _evaluate_column_pre_r064d(c,grid=48):
         'issues':issues,'section_statuses':states,'results':{},'worst':None,
         'engine_inputs':None,'normative_claim':False,
         'model':'K18-derived temperature + R0.4 fiber / R0.5.6 diagnostics',
-        'grid':grid,'spalling':spalling,'normative_preflight':normative_preflight,
+        'grid':grid,'spalling':spalling,'annex_l':annex_l,
+        'normative_preflight':normative_preflight,
         'material_preflight':material_preflight,
         'thermal_normative':thermal_normative,
         'mechanics_r063':mechanics_r063,
         'member':{'status':'not_evaluated'},
-        'biaxial':{'status':'not_evaluated'},'provenance':check_provenance(),
+        'biaxial':{'status':'not_evaluated'},
+        'provenance':{**{k:v for k,v in check_provenance().items()
+                         if k!='spalling'},
+                      'annex_l':'СП 2.02.05-2026, приложение Л'},
         'fire_resistance_status':'not_demonstrated',
         'load_summary':{'ready':sum(v=='ready' for v in states.values()),
                         'empty':sum(v=='empty' for v in states.values()),

@@ -25,6 +25,7 @@ if _cached_model is not None:
     _stale |= not callable(getattr(_cached_model, "update_thermal_spec", None))
     _stale |= getattr(_cached_model, "R065_MODEL_RELEASE", None) != "r065-center-sections-load-transfer-20261107"
     _stale |= getattr(_cached_model, "R067_MODEL_RELEASE", None) != "r067-unified-preflight-member-20261107"
+    _stale |= getattr(_cached_model, "R068_MODEL_RELEASE", None) != "r068-belarus-annex-l-unified-20261108"
     _stale |= not _actual or Path(_actual).resolve() != _expected
 
 for _suffix in _EXPECTED_MODULES:
@@ -57,12 +58,17 @@ for _name, _version in (("rc_fire.member.coupled", "R0.6.4C-member-uls-audited-d
     if _existing is not None:
         _stale |= getattr(_existing, "VERSION", None) != _version
 
+_old_annex=sys.modules.get("rc_fire.spalling.annex_l")
+if _old_annex is not None:
+    _stale |= getattr(_old_annex,"VERSION",None) != "R0.6.8-BY-annex-L-source-first-v1"
+
 if _stale:
     for _name in tuple(sys.modules):
         if (_name == "rc_fire.mechanics" or _name.startswith("rc_fire.mechanics.")
              or _name == "rc_fire.thermal" or _name.startswith("rc_fire.thermal.")
              or _name == "rc_fire.member" or _name.startswith("rc_fire.member.")
-             or _name == "rc_fire.integration" or _name.startswith("rc_fire.integration.")):
+             or _name == "rc_fire.integration" or _name.startswith("rc_fire.integration.")
+             or _name == "rc_fire.spalling" or _name.startswith("rc_fire.spalling.")):
             sys.modules.pop(_name,None)
     importlib.invalidate_caches()
     # Never mix a cached old UI/calculation facade with new material tables.

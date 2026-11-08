@@ -8,7 +8,6 @@ CONSISTENCY={None:'— не задан —','V3_V4':'V3–V4 (Ж3–Ж4)','V1_V2
 CURING={None:'— не задан —','natural':'Естественное твердение','heat':'Тепловая обработка'}
 MODULUS_AGG={None:'— не задан —','gravel_granite_upto40':'Гравий / гранитный щебень до 40 мм',
              'other':'Другой заполнитель (нужны испытания Ecm)'}
-TRISTATE={None:'— не задано —',True:'Да',False:'Нет'}
 STEEL_TYPES={None:'— не задан —','weldable_bar':'Свариваемая стержневая арматура',
              'corrosion_resistant_bar':'Коррозионно-стойкая',
              'wire_or_heat_treated':'Проволока / термически упрочнённая'}
@@ -36,7 +35,6 @@ def render_material_inputs(st, project, column, safe_change, update_material_spe
                 values['concrete']['modulus_aggregate']=choice(st,'Заполнитель для Ecm',MODULUS_AGG,cm.get('modulus_aggregate'))
             with cols[1]:
                 st.markdown('**Дополнительные свойства**')
-                values['concrete']['fine_grained']=choice(st,'Мелкозернистый бетон',TRISTATE,cm.get('fine_grained'))
                 values['steel']['product_type']=choice(st,'Вид арматуры по таблице 10',STEEL_TYPES,sm.get('product_type'))
                 val=cm.get('independently_measured_Ecm_GPa')
                 s=st.text_input('Ecm из испытаний, ГПа (необязательно)',value='' if val is None else str(val))
@@ -48,6 +46,18 @@ def render_material_inputs(st, project, column, safe_change, update_material_spe
             if submitted:safe_change(update_material_spec,project,cid,values)
         data=resolve_materials(column)
         st.write('Статус каталога: **'+data['status']+'**')
+        classified=data.get('fine_grained_classification') or {}
+        kind=classified.get('fine_grained')
+        if classified.get('status')=='resolved':
+            st.caption(('Тип бетона: мелкозернистый' if kind else
+                        'Тип бетона: с крупным заполнителем')+
+                       ' · автоматически по составу смеси ('+
+                       str(classified.get('source',''))+').')
+        else:
+            st.warning('Тип бетона не определён по документированному составу: '+
+                       str(classified.get('reason','неполные исходные данные'))+
+                       '. Ручной переключатель удалён; Ecm без этого признака '
+                       'не назначается автоматически.')
         if data['issues']:st.info('Для полного разрешения свойств: '+ '; '.join(data['issues']))
         conc=data.get('concrete')
         steel=data.get('steel')
@@ -57,7 +67,9 @@ def render_material_inputs(st, project, column, safe_change, update_material_spe
         if steel:st.write('Арматура: '+steel['group']+'; '+('Es='+str(steel['E_s_GPa'])+' ГПа'))
         if data['status']=='resolved_for_property_lookup':
             profile=column['material_spec']
-            concrete=ConcreteMix(strength_class=column['concrete'],**profile['concrete'])
+            mix={k:v for k,v in profile['concrete'].items() if k!='fine_grained'}
+            mix['fine_grained']=kind
+            concrete=ConcreteMix(strength_class=column['concrete'],**mix)
             rebar=Reinforcement(grade=column['steel_grade'],**profile['steel'])
             values=[]
             for t in (20.,200.,400.,500.,600.,800.):

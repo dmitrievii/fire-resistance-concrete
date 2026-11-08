@@ -8,8 +8,8 @@ def add_r056_diagnostics(doc,c,calc):
     add_thermal_section(doc,c,calc)
     add_mechanics_section(doc,c,calc)
     add_heading(doc,'R0.5.6 — совместные и дополнительные диагностические проверки',2)
-    add_text(doc,'Воспроизведение Mathcad K18 и параметрическая волоконная модель имеют разный методический статус. '
-             'Ниже приведён вычислительный контроль, а не нормативное подтверждение предела R90.')
+    add_text(doc,'Численная механика R0.5.6 является диагностической. '
+             'Ниже приведён вычислительный контроль, а не нормативное подтверждение R90.')
     material=calc.get('material_preflight')
     if material:
         add_heading(doc,'R0.6.1 — нормативные свойства бетона и арматуры',2)
@@ -36,8 +36,8 @@ def add_r056_diagnostics(doc,c,calc):
         add_text(doc,'СП 2.02.05-2026 + СП 5.03.01-2020; статус '+contract['status']+
                  '; версия '+contract['contract_version']+
                  '; SHA-256 '+contract['contract_sha256']+'.')
-        add_text(doc,'Mathcad К18 воспроизводится исторически, СП 468 — только сравнение. '
-                 'Ни один нормативный метод R0.6.0 ещё не прошёл численную квалификацию.')
+        add_text(doc,'Нормативные источники: СП 2.02.05-2026 и СП 5.03.01-2020. '
+                 'Проверка предела R90 пока не квалифицирована.')
         add_table(doc,['Код блокировки','Нормативный источник','Причина'],[
             (x['code'],x['clause'],x['message']) for x in contract['issues']])
     member=calc.get('member',{})
@@ -71,35 +71,41 @@ def add_r056_diagnostics(doc,c,calc):
             for sid,r in biax['sections'].items()])
     else:
         add_text(doc,'Совместное равновесие не рассчитано: '+str(biax.get('reason','нет полных нагрузок')))
-    sp=calc.get('spalling',{})
-    is_sp=sp.get('source_type')=='SP468_reference'
-    add_heading(doc,'Хрупкое разрушение F — '+('СП 468, п. 9.7' if is_sp else 'ввод коэффициентов К18'),2)
-    if is_sp:
-        add_equation(doc,'', ['F = (a·αbt·Ebt·ρ·Wэ) / (K′1·λ·Π)'])
-        add_text(doc,'Источник: СП 468.1325800.2019 (изм. № 1, 2023); таблицы 9.1–9.6; '
-                 'Π, Wэ вводятся в формулу как объёмные доли. Бетонный класс B задаётся отдельно. '
-                 'Нормативная применимость в Республике Беларусь не установлена.')
+    # Only the actual Belarus Annex L criterion belongs in current reports.
+    annex=calc.get('annex_l') or {}
+    add_heading(doc,'Хрупкое разрушение бетона — приложение Л СП 2.02.05-2026',2)
+    add_equation(doc,'', ['F = (αF·αbt·β·Ec·ρ0·Wэ)/(K1c·λк·np)'])
+    add_text(doc,'Источник: СП 2.02.05-2026, приложение Л, Л.1–Л.6, таблицы Л.1–Л.2. '
+             'Плотность, заполнители, Ec и теплофизические свойства взяты из '
+             'единого набора исходных данных материала.')
+    if annex.get('status')=='calculated_method_scope':
+        val=annex['F']
+        label=('F ≤ 4: хрупкое разрушение по критерию не прогнозируется.'
+               if val<=4 else
+               '4 < F ≤ 6: потенциально опасный интервал, защита требуется по Л.6.'
+               if val<=6 else
+               'F > 6: прогнозируется хрупкое разрушение, необходима защита по Л.6.')
+        add_text(doc,'F = '+number(val,4)+'. '+label)
+        moist=(annex.get('provenance') or {}).get('Wc','не определён')
+        mass=(annex.get('coefficients') or {}).get('Wc_kg_kg')
+        add_text(doc,'Влажность Wc: '+str(moist)+
+            ('; '+number(mass,6)+' кг/кг.' if mass is not None else '.'))
+        if not annex.get('moisture_method_qualified',True):
+            add_text(doc,'ОГРАНИЧЕНИЕ: для влажности использована формула Л.5 с явно принятой '
+                'интерпретацией процентов либо инженерная интерполяция таблицы Л.2. '
+                'Нормативная квалификация этого способа не завершена. '
+                'Результат F — только диагностический.')
+        add_table(doc,['T, °C','αbt, 1/°C','λ, Вт/(м·°C)','F'],[
+            (number(x['temperature_C'],1),
+             number(x['alpha_bt_1_C'],9),
+             number(x['lambda_W_mC'],5),number(x['F'],4))
+            for x in annex['temperature_profile']])
+        add_text(doc,'Для оценки показан максимум по точкам 200, 250, 300 °C. '
+                 'Результат не является доказательством предела огнестойкости.')
     else:
-        add_equation(doc,'', ['F = (αF·αbt·β·Ec·ρ·Wэ) / (K1C·λ·(np/100))'])
-        add_text(doc,'Ручные коэффициенты исходного К18: λ в первой степени; np введён в % и переводится в долю.')
-    if sp.get('status')=='not_evaluated':
-        add_text(doc,'Расчёт F не выполнен: отсутствуют либо не табулированы параметры '+
-                 ', '.join(sp.get('missing',[]))+'. Отсутствующие значения не заменялись нулём.')
-    elif sp.get('status')=='invalid':
-        add_text(doc,'Исходные данные F некорректны: '+sp.get('error','неизвестная ошибка'))
-    else:
-        classification=({'index_at_or_below_threshold':'F ≤ 4: низкий риск по критерию СП 468.',
-                         'requires_structural_check':'4 < F < 6: требуется дополнительная проверка по п. 9.9 СП 468.',
-                         'protection_required':'F ≥ 6: требуются защитные мероприятия по СП 468.'}
-                        if is_sp else
-                        {'index_at_or_below_threshold':'F ≤ 4: критерий К18 выполнен.',
-                         'protection_required':'F > 4: согласно К18 нужны меры защиты.'})
-        add_text(doc,'F = '+number(sp.get('F'),4)+'. '+classification.get(sp.get('status'),'Неизвестный статус.'))
-        if is_sp and sp.get('coefficients'):
-            add_table(doc,['Величина (СП 468)','Автоматически определённое значение'],[
-                (key, f'{float(val):.7g}') for key,val in sp['coefficients'].items()])
-            add_text(doc,'Табличные значения допускают только указанную интерполяцию; '
-                     'расчёт выполнен по составу бетона и условиям эксплуатации, введённым пользователем.')
+        add_text(doc,'Оценка F по приложению Л не выполнена: '+
+                 annex.get('reason','исходные данные отсутствуют')+
+                 '. Неизвестные значения не подменялись допущениями.')
     add_text(doc,'Итог: нормативное заключение R90 по этому выпуску не формируется — '
              'экспериментальные проверки и методика оценки общей работы колонны не прошли '
              'полную нормативную квалификацию.',bold=True)

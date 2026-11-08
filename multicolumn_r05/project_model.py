@@ -13,6 +13,7 @@ from pathlib import Path
 SCHEMA = 'k18-multi-column-project-r05'
 R065_MODEL_RELEASE = 'r065-center-sections-load-transfer-20261107'
 R067_MODEL_RELEASE = 'r067-unified-preflight-member-20261107'
+R068_MODEL_RELEASE = 'r068-belarus-annex-l-unified-20261108'
 CONCRETE = {'C20/25': (20.0, 25.0), 'C25/30': (25.0, 27.0), 'C30/37': (30.0, 29.0), 'C35/45': (35.0, 31.0), 'C40/50': (40.0, 33.0)}
 COLUMN_EDITABLE = ('name','b_mm','h_mm','length_m','concrete','steel_grade','f_y_MPa', 'cover_mm','stirrup_mm','bar_diameter_mm','mu_x','mu_y','fire_minutes')
 LOAD_EDITABLE=('z_m','N_kN','Mx_kNm','My_kNm')
@@ -34,7 +35,8 @@ def new_column(idx):
                     'auto_midspan':True,
                     'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
-    c['spalling']={'method':'sp468'}  # no assumed mix data
+    c['spalling']={}  # archived legacy compatibility only, never an active source
+    c['annex_l_spec']={}  # Belarus Annex L: source-specific missing mix quantities only
     c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
     c['thermal_spec']={'a_red_mode':'table_K1',
                        'exposed_faces':['left','right','bottom','top']}
@@ -149,6 +151,11 @@ def update_material_spec(project,cid,fields):
             elif key=='product_type' and value not in ('weldable_bar','corrosion_resistant_bar','wire_or_heat_treated'):
                 raise ValueError('Неизвестный вид арматуры')
             dest[key]=value
+    # New UI does not author fine_grained. On normal material save, discard
+    # the old Boolean; the calculation derives the kind from documented mix
+    # content and flags unresolved or contradictory composition.
+    if 'concrete' in fields and 'fine_grained' not in fields['concrete']:
+        out.setdefault('concrete',{}).pop('fine_grained',None)
     # Enforce schema; combination admissibility is reported in material preflight.
     ConcreteMix(strength_class=col['concrete'],**out.get('concrete',{}))
     Reinforcement(grade=col['steel_grade'],**out.get('steel',{}))
@@ -215,6 +222,43 @@ def update_member_spec(project,cid,fields):
         else:new[key]=val
     c['member_spec']=validate_member_spec(new)
     project['revision']+=1
+
+
+def update_annex_l_spec(project,cid,fields):
+    """One Belarus material source: only mix data not held in R0.6.1/R0.6.2."""
+    from rc_fire.spalling.annex_l import EXTRA_FIELDS
+    if not isinstance(fields,dict) or set(fields)-EXTRA_FIELDS:
+        raise ValueError("Неизвестное поле приложения Л")
+    c=get_column(project,cid)
+    out=dict(c.get("annex_l_spec") or {})
+    for key,value in fields.items():
+        if value is None or (isinstance(value,str) and not value.strip()):
+            out.pop(key,None)
+        elif key=="natural_sand_confirmed":
+            if type(value) is not bool:raise ValueError(key+": требуется булево значение")
+            out[key]=value
+        elif key=="moisture_measurement_source":
+            out[key]=str(value).strip()
+        elif key=="moisture_mode":
+            if value not in ("auto","formula_L5","linear_L2_exploratory"):
+                raise ValueError("Неизвестный метод определения влажности")
+            out[key]=value
+        else:
+            if isinstance(value,bool):raise ValueError(key+": неверное число")
+            x=float(value)
+            if not math.isfinite(x) or (x<0 if key=="coarse_aggregate_volume_pct" else x<=0):
+                raise ValueError(key+": требуется допустимое неотрицательное число")
+            if key=="coarse_aggregate_volume_pct" and x>100:
+                raise ValueError("Доля крупного заполнителя не больше 100 %")
+            if key=="relative_humidity_pct" and x>100:raise ValueError("RH не больше 100%")
+            if key=="measured_Wc_kg_kg" and x>=1:raise ValueError("Wc должна быть меньше 1 кг/кг")
+            out[key]=x
+    c["annex_l_spec"]=out
+    # Explicit save to the Belarus Annex L card completes one-way migration
+    # of previously user-entered physical mix values. Do not retain a second,
+    # potentially contradictory historical spalling source in the new project.
+    c["spalling"]={}
+    project["revision"]+=1
 
 
 def update_spalling(project,cid,fields):
@@ -342,6 +386,30 @@ def validate_column(c):
                         if not lower<=x<=upper:raise ValueError()
                     if key=='n_p_percent' and not 0<x<=100:raise ValueError()
                 except (ValueError,TypeError):issues.append('Некорректный параметр F: '+key)
+
+    # Independent supplementary mix fields; rho, concrete class and
+    # aggregate family must remain in their canonical existing card.
+    from rc_fire.spalling.annex_l import EXTRA_FIELDS
+    extra=c.get("annex_l_spec") or {}
+    if not isinstance(extra,dict) or set(extra)-EXTRA_FIELDS:
+        issues.append("Неверная спецификация приложения Л")
+    else:
+        for k,v in extra.items():
+            if k=="natural_sand_confirmed":
+                if type(v) is not bool:issues.append(k+": требуется bool")
+            elif k=="moisture_measurement_source":
+                if not isinstance(v,str):issues.append(k+": ожидается текст")
+            elif k=="moisture_mode":
+                if v not in ("auto","formula_L5","linear_L2_exploratory"):
+                    issues.append("Недопустимый метод определения Wc")
+            elif k=="coarse_aggregate_volume_pct":
+                try:
+                    q=float(v)
+                    if not math.isfinite(q) or not 0<=q<=100:raise ValueError()
+                except (ValueError,TypeError):
+                    issues.append("Содержание крупного заполнителя должно быть 0–100 %")
+            elif v is not None:
+                _number(v,k,issues,strict_positive=True)
 
     thermal=c.get('thermal_spec')
     if thermal is not None:
