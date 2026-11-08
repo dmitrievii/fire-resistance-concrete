@@ -155,7 +155,8 @@ class TKPPreparedFibres:
             'boundary_above_full_concrete_curve':self.boundary_gap,
             'zero_tail_diagnostic':self.high_temperature_tail=='zero_tail_diagnostic',
             'hot_concrete_fibres_without_curve':self.hot_fibre_count,
-            'strain_limits_satisfied':bool(max_ratio<=1.),
+            'strain_limits_satisfied':None if (self.boundary_gap or self.hot_fibre_count) else bool(max_ratio<=1.),
+            'model_only_strain_limits_satisfied':bool(max_ratio<=1.),
             'source':self.source,
         }
         if include_maps:
@@ -194,7 +195,10 @@ class TKPPreparedFibres:
                 if best is None or error<best[0]:
                     best=(error,x.copy())
                 if error<1e-6:
-                    return {'classification':WITHIN if meta['strain_limits_satisfied'] else EXCEEDED,
+                    model_only=WITHIN if meta['model_only_strain_limits_satisfied'] else EXCEEDED
+                    classification=UNKNOWN if meta['strain_limits_satisfied'] is None else model_only
+                    return {'classification':classification,
+                        'model_only_classification':model_only,
                         'model_status':'equilibrated_fibre_section_diagnostic',
                         'unknowns':x.tolist(),
                         'forces_kN_kNm':F.tolist(),
@@ -202,6 +206,7 @@ class TKPPreparedFibres:
                         'relative_residual':error,
                         'critical_ratio':meta['critical_mechanical_strain_ratio'],
                         'scope':meta,
+                        'reason':'Unresolved concrete Table 3.1 hot-boundary or tail law' if classification==UNKNOWN else '',
                         'normative_claim':False}
                 try:delta=np.linalg.solve(J,(-target+F)*-1.)
                 except np.linalg.LinAlgError:break
@@ -282,6 +287,8 @@ class TKPBeamSectionLaw:
                     meta={'model':VERSION,'source':TKP_SOURCE,
                         'reference_strength_mode':'tkp_EN1992_fire_gamma_M_fi_1',
                         'strain_limits_satisfied':m['strain_limits_satisfied'],
+                        'critical_mechanical_strain_ratio':m['critical_mechanical_strain_ratio'],
+                        'constitutive_domain_qualified':not (self.p.boundary_gap or self.p.hot_fibre_count),
                         'max_concrete_compressive_strain':m['max_concrete_mechanical_compression'],
                         'max_steel_tensile_strain':m['max_steel_mechanical_strain_abs'],
                         'eps_cu2':None,'tensile_steel_limit':None,
