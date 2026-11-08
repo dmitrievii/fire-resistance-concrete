@@ -316,5 +316,15 @@ for _column in project['columns']:
         calculations[_column['id']]['member_r064d']=_saved['result']
     elif _saved is not None:
         st.session_state.pop(_key,None)
+# The time sweep is opt-in, so only reattach evidence with identical
+# authored column inputs; the full column signature covers table3 evidence.
+from rc_fire.resistance.ui import history_signature as _r069_signature
+for _column in project['columns']:
+    _key='r069_result_'+str(_column['id'])
+    _saved=st.session_state.get(_key)
+    if _saved is not None and _saved.get('signature')==_r069_signature(_column):
+        calculations[_column['id']]['resistance_r069']=_saved['result']
+    elif _saved is not None:
+        st.session_state.pop(_key,None)
 if selected=='Обзор проекта':show_overview()
 else:column_page(selected)
