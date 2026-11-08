@@ -34,7 +34,8 @@ def new_column(idx):
                     'auto_midspan':True,
                     'N_kN':None,'Mx_kNm':None,'My_kNm':None}]}
     c['bars']=default_bars(c)
-    c['spalling']={'method':'sp468'}  # no assumed mix data
+    c['spalling']={}  # archived legacy compatibility only, never an active source
+    c['annex_l_spec']={}  # Belarus Annex L: source-specific missing mix quantities only
     c['material_spec']={'concrete':{},'steel':{}}  # R0.6.1: no fabricated composition
     c['thermal_spec']={'a_red_mode':'table_K1',
                        'exposed_faces':['left','right','bottom','top']}
@@ -217,6 +218,32 @@ def update_member_spec(project,cid,fields):
     project['revision']+=1
 
 
+def update_annex_l_spec(project,cid,fields):
+    """One Belarus material source: only mix data not held in R0.6.1/R0.6.2."""
+    from rc_fire.spalling.annex_l import EXTRA_FIELDS
+    if not isinstance(fields,dict) or set(fields)-EXTRA_FIELDS:
+        raise ValueError("Неизвестное поле приложения Л")
+    c=get_column(project,cid)
+    out=dict(c.get("annex_l_spec") or {})
+    for key,value in fields.items():
+        if value is None or (isinstance(value,str) and not value.strip()):
+            out.pop(key,None)
+        elif key=="natural_sand_confirmed":
+            if type(value) is not bool:raise ValueError(key+": требуется булево значение")
+            out[key]=value
+        elif key=="moisture_measurement_source":
+            out[key]=str(value).strip()
+        else:
+            if isinstance(value,bool):raise ValueError(key+": неверное число")
+            x=float(value)
+            if not math.isfinite(x) or x<=0:raise ValueError(key+": требуется положительное число")
+            if key=="relative_humidity_pct" and x>100:raise ValueError("RH не больше 100%")
+            if key=="measured_Wc_kg_kg" and x>=1:raise ValueError("Wc должна быть меньше 1 кг/кг")
+            out[key]=x
+    c["annex_l_spec"]=out
+    project["revision"]+=1
+
+
 def update_spalling(project,cid,fields):
     """Switch SP468/manual methods; validate source and units without false defaults."""
     from multicolumn_r05.r056_engine import SPALLING_FIELDS
@@ -342,6 +369,21 @@ def validate_column(c):
                         if not lower<=x<=upper:raise ValueError()
                     if key=='n_p_percent' and not 0<x<=100:raise ValueError()
                 except (ValueError,TypeError):issues.append('Некорректный параметр F: '+key)
+
+    # Independent supplementary mix fields; rho, concrete class and
+    # aggregate family must remain in their canonical existing card.
+    from rc_fire.spalling.annex_l import EXTRA_FIELDS
+    extra=c.get("annex_l_spec") or {}
+    if not isinstance(extra,dict) or set(extra)-EXTRA_FIELDS:
+        issues.append("Неверная спецификация приложения Л")
+    else:
+        for k,v in extra.items():
+            if k=="natural_sand_confirmed":
+                if type(v) is not bool:issues.append(k+": требуется bool")
+            elif k=="moisture_measurement_source":
+                if not isinstance(v,str):issues.append(k+": ожидается текст")
+            elif v is not None:
+                _number(v,k,issues,strict_positive=True)
 
     thermal=c.get('thermal_spec')
     if thermal is not None:
