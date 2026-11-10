@@ -22,7 +22,7 @@ from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
 from rc_fire.mechanics.action_capacity import WITHIN, EXCEEDED, UNKNOWN
 from rc_fire.spalling.annex_l import evaluate_annex_l
 
-VERSION="R0.7-public-fire-workflow-v1"
+VERSION="R0.7-public-fire-workflow-v2"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
