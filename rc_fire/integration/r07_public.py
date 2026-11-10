@@ -22,7 +22,7 @@ from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
 from rc_fire.mechanics.action_capacity import WITHIN, EXCEEDED, UNKNOWN
 from rc_fire.spalling.annex_l import evaluate_annex_l
 
-VERSION="R0.7-public-fire-workflow-v4"
+VERSION="R0.7-public-fire-workflow-v5"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -226,6 +226,16 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "to source material strain limit; NOT structural load utilization, "
           "strength capacity or verified failure time",
       "sampled_section_reserve_at_required_time":at.get("sampled_section_load_evidence"),
+      "section_interaction_utilisation_bound_at_required_time":
+          at.get("section_utilization_bound"),
+      "definite_section_overload_at_required_time":
+          (at.get("section_utilization_bound") or {}).get(
+              "definite_section_overload_in_source_model",False),
+      "utilisation_basis":
+          "Rigorous minimum possible N-Mx-My section utilization from a "
+          "stress-relaxed interaction envelope; actual section/member "
+          "utilization remains unknown. Over 100% is a proven overload "
+          "within source strength envelopes.",
       "capacity_scope":"Only a first-order section under discrete N-Mx-My scaling; "
                        "not verified whole-column capacity or fire-resistance R(t)",
       "numerical_section_all_times_within":all_observed_within,
@@ -246,6 +256,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "timeline":[{
           "minute":p["time_minutes"],
           "design_action_strain_demand_pct":_strain_demand(p),
+          "section_minimum_possible_utilisation_pct":(
+              (p.get("section_utilization_bound") or {}).get(
+                  "section_utilization_lower_bound_pct")),
+          "section_stress_envelope_overload":(
+              (p.get("section_utilization_bound") or {}).get(
+                  "definite_section_overload_in_source_model",False)),
           "N_kN":(column.get("sections") or [{}])[0].get("N_kN"),
           "Mx_kNm":(column.get("sections") or [{}])[0].get("Mx_kNm"),
           "My_kNm":(column.get("sections") or [{}])[0].get("My_kNm"),

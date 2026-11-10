@@ -120,6 +120,12 @@ class PublicCalculatorScreen(unittest.TestCase):
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
                             for x in app.get("metric")))
+        self.assertTrue(any("Нижняя граница использования сечения U(t)"
+                            in x.value for x in app.subheader))
+        self.assertTrue(any("Использование сечения не менее" in x.label
+                            for x in app.get("metric")))
+        self.assertFalse(any("Отношение приложенных усилий к наибольшему проверенному"
+                            in x.value for x in app.markdown))
         extended=next(x for x in app.checkbox
                       if x.label.startswith("Показывать дополнительно период"))
         self.assertFalse(extended.value)
