@@ -88,6 +88,30 @@ class PublicCalculatorScreen(unittest.TestCase):
                       "Mxᶠⁱ, кН·м","Требуемая огнестойкость"):
             self.assertIn('"'+label+'":',script)
 
+    def test_real_public_results_render_rod_temperatures_and_strength_sections(self):
+        # UI smoke for the actual result path, which the static input tests
+        # cannot cover. R30 is the shortest supported fire duration.
+        app=AppTest.from_file(str(ROOT/"streamlit_app.py"),
+                              default_timeout=180).run()
+        self.assertFalse(app.exception)
+        def set_text(label,value):
+            next(x for x in app.text_input if x.label==label).set_value(value)
+        set_text("Nᶠⁱ, кН (сжатие положительно)","50")
+        set_text("Mxᶠⁱ, кН·м","2")
+        set_text("Myᶠⁱ, кН·м","0")
+        next(x for x in app.selectbox if
+             x.label=="Требуемая огнестойкость").set_value(30)
+        next(x for x in app.button if
+             x.label=="Рассчитать огнестойкость").click().run()
+        self.assertFalse(app.exception,repr(list(app.exception)))
+        self.assertFalse(app.error,repr(list(app.error)))
+        self.assertTrue(any("Изменение прочности и проверенный запас сечения"
+                            in x.value for x in app.subheader))
+        self.assertTrue(any("Температуры бетона и арматуры во времени"
+                            in x.value for x in app.markdown))
+        self.assertTrue(any("Сохранение прочности бетона" in x.label
+                            for x in app.get("metric")))
+
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
         buttons=[b for b in app.button if "Рассчитать огнестойкость" in b.label]
