@@ -71,6 +71,20 @@ class CleanPhysicalInputsTest(unittest.TestCase):
             'independently_measured_Ecm_GPa'],35.)
         self.assertIsNone(c['material_spec']['concrete']['modulus_aggregate'])
 
+    def test_default_steel_material_is_explicitly_unconfirmed(self):
+        d=user_inputs()
+        c=make_column(d)
+        steel=c['material_spec']['steel']
+        self.assertEqual(steel['production_route'],'hot_rolled')
+        self.assertEqual(steel['ductility_class'],'B')
+        self.assertFalse(steel['selection_confirmed'])
+        self.assertEqual(steel['selection_provenance'],
+                         'user_visible_demonstration_defaults_unconfirmed')
+        d['steel_material_confirmed']=True
+        confirmed=make_column(d)['material_spec']['steel']
+        self.assertTrue(confirmed['selection_confirmed'])
+        self.assertEqual(confirmed['selection_provenance'],'user_documented')
+
     def test_variable_bar_counts_and_validation(self):
         d=user_inputs();d['bars_horizontal']=4;d['bars_vertical']=4
         c=make_column(d)
@@ -143,6 +157,17 @@ class OneFireResultTest(unittest.TestCase):
         if sp['status']=='calculated_method_scope':
             self.assertGreaterEqual(sp['F'],0.)
             self.assertEqual(sp['normative_claim'],False)
+
+    def test_default_steel_scenario_calculates_without_claiming_certification(self):
+        r=self.r
+        self.assertFalse(r['steel_material_confirmed'])
+        self.assertTrue(r['numerical_scenario_only'])
+        self.assertEqual(r['steel_material_provenance'],
+                         'user_visible_demonstration_defaults_unconfirmed')
+        self.assertIn('STEEL_S500_PRODUCTION_AND_DUCTILITY_NOT_DOCUMENTED',
+                      r['remaining_normative_blockers'])
+        self.assertGreater(r['required_time_temperatures']['gas_C'],20.)
+        self.assertIsNone(r['R_t_minutes'])
 
     def test_missing_steel_and_outside_engine_scope_fail_before_heat(self):
         with self.assertRaises(PublicFireInputError):
