@@ -140,16 +140,27 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
         field.text_input("Класс арматуры",value="S500",disabled=True,
             help="В этой версии нормативная библиотека допускает S500.")
         steel_route=field.selectbox("Изготовление арматуры",
-            ("Не установлено","hot_rolled","cold_worked"),
-            format_func=lambda x:{"Не установлено":"Выберите по паспорту",
-                "hot_rolled":"Горячекатаная","cold_worked":"Холоднодеформированная"}[x],
-            help="Разные температурные диаграммы по ТКП EN 1992-1-2.")
+            ("hot_rolled","cold_worked"),index=0,
+            format_func=lambda x:{"hot_rolled":"Горячекатаная (пример)",
+                "cold_worked":"Холоднодеформированная"}[x],
+            help="По умолчанию горячекатаная S500 — ТОЛЬКО демонстрационное допущение. "
+                 "Для действительной конструкции проверьте паспорт арматуры.")
         duct=field.selectbox("Класс пластичности",
-            ("Не установлен","A","B","C"))
+            ("B","A","C"),index=0,
+            help="По умолчанию B — ТОЛЬКО демонстрационное допущение. "
+                 "Необходимо подтверждение по сертификату.")
+        steel_confirmed=field.checkbox(
+            "Технология изготовления и класс пластичности подтверждены документами",
+            value=False,
+            help="Без подтверждения результаты считаются исследовательским сценарием, "
+                 "а не проверкой фактической арматуры.")
         moisture=field.number_input("Массовая влажность бетона, %",min_value=0.,
             max_value=3.,value=1.5,step=.1,
             help="1,5% — исходное значение для демонстрационного сценария, "
                  "НЕ измеренное значение для вашей колонны.")
+        if not steel_confirmed:
+            st.caption("Для демонстрации выбраны горячекатаная S500, класс B. "
+                       "Уточните по паспорту; значения расчёта будут помечены как допущение.")
         st.caption("Тип арматуры и влажность должны соответствовать фактическим данным.")
     with c3:
         coarse_pct=field.number_input("Объёмная доля крупного заполнителя, %",
@@ -219,7 +230,9 @@ if run:
             "dry_density_kg_m3":density,"consistency":consistency,
             "curing":curing,"modulus_aggregate":ecm_basis,
             "measured_Ecm_GPa":measured_ecm,"steel_route":steel_route,
-            "ductility_class":duct,"moisture_mass_pct":moisture,
+            "ductility_class":duct,
+            "steel_material_confirmed":bool(steel_confirmed),
+            "moisture_mass_pct":moisture,
             "coarse_aggregate_pct":coarse_pct,
             "max_aggregate_mm":grain,"cement_kg_m3":cement,
             "water_cement_ratio":wc,
@@ -303,6 +316,11 @@ if record:
             {"Стержень":key,"Температура, °C":round(float(t),1)}
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
+    if not r.get("steel_material_confirmed"):
+        st.warning("Арматура S500: технология изготовления и класс пластичности "
+                   "приняты для демонстрационного расчёта и не подтверждены "
+                   "документацией. Для проверки реальной конструкции уточните "
+                   "эти характеристики.")
     st.markdown("**Риск хрупкого разрушения бетона · приложение Л СП 2.02.05-2026**")
     sp=r.get("spalling_annex_L") or {}
     if sp.get("status")=="calculated_method_scope":
