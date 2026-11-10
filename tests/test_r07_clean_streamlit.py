@@ -41,5 +41,5 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertEqual(len(buttons),1)
         buttons[0].click().run()
         self.assertFalse(app.exception,f"Missing-load submit exception: {list(app.exception)}")
-        self.assertTrue(any("Введите N" in e.message for e in app.error))
+        self.assertTrue(any("Введите N" in str(getattr(e,"body",getattr(e,"value",""))) for e in app.error))
         self.assertFalse(any("R90 подтверждено" in t.value for t in app.markdown))
