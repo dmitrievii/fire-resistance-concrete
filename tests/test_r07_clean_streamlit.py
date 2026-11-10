@@ -77,6 +77,11 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertEqual(next(x for x in app.selectbox
             if x.label=="Класс пластичности").value,"B")
 
+    def test_original_normative_material_comments_are_still_exposed(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        self.assertTrue(any("Нормативные пояснения к диапазонам материалов"
+                            in x.label for x in app.expander))
+
     def test_recommended_example_help_mapping_is_present_for_all_major_inputs(self):
         script=(ROOT/"multicolumn_r05"/"simple_app.py").read_text(
             encoding="utf-8")
@@ -107,10 +112,21 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertFalse(app.error,repr(list(app.error)))
         self.assertTrue(any("Изменение прочности и проверенный запас сечения"
                             in x.value for x in app.subheader))
-        self.assertTrue(any("Температуры бетона и арматуры во времени"
+        self.assertTrue(any("Температурное поле сечения"
+                            in x.value for x in app.subheader))
+        self.assertTrue(any("Нормативные пояснения к диапазонам материалов"
+                            in x.label for x in app.expander))
+        self.assertTrue(any("Температура продольной арматуры"
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
                             for x in app.get("metric")))
+        extended=next(x for x in app.checkbox
+                      if x.label.startswith("Показывать дополнительно период"))
+        self.assertFalse(extended.value)
+        extended.set_value(True).run()
+        self.assertFalse(app.exception,repr(list(app.exception)))
+        self.assertTrue(any("Показан также прогрев после требуемого R"
+                            in x.value for x in app.get("caption")))
         # Reproduce the user's exact failure: a previous deployment kept a
         # valid calculation in Streamlit session_state whose timeline had
         # no bars_C and no strength-percent fields. A rerun must not raise.
@@ -126,7 +142,9 @@ class PublicCalculatorScreen(unittest.TestCase):
                          "Historical calculation must not raise KeyError: "+
                          repr(list(app.exception)))
         self.assertFalse(app.error,repr(list(app.error)))
-        self.assertTrue(any("Температуры бетона и арматуры" in x.value
+        self.assertTrue(any("Температура продольной арматуры" in x.value
+                            for x in app.markdown))
+        self.assertTrue(any("Механический ответ при заданных N–Mx–My" in x.value
                             for x in app.markdown))
 
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):

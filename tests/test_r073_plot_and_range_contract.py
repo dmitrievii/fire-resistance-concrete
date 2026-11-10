@@ -82,37 +82,47 @@ class HistoricalPlotContractTests(unittest.TestCase):
 
 
 class TooltipRangeTests(unittest.TestCase):
-    def test_actual_control_limits_and_example_rendered_not_just_generic_text(self):
+    def test_one_short_range_only_for_width(self):
         txt=engineering_input_help(
             "Ширина b, мм","number_input",
             {"min_value":250.,"max_value":2000.,"value":600.,"step":25.},
-            "Выберите фактическую ширину прямоугольного сечения.")
-        self.assertIn("250–2000",txt)
-        self.assertIn("Начальное значение: 600",txt)
-        self.assertIn("Шаг ввода: 25",txt)
-        self.assertIn("не универсальная нормативная рекомендация",txt)
+            "Старый многословный комментарий о примере К1.")
+        self.assertEqual(txt,"Диапазон значений: 250–2000 мм.")
+        self.assertEqual(len(txt.splitlines()),1)
+        for unwanted in ("Пример","Шаг ввода","Начальное значение"):
+            self.assertNotIn(unwanted,txt)
 
-    def test_moisture_limits_source_are_visible_with_decimal_comma(self):
+    def test_moisture_shows_only_range_without_step_or_default(self):
         txt=engineering_input_help("Массовая влажность бетона, %",
               "number_input",{"min_value":0.,"max_value":3.,
               "value":1.5,"step":0.1},"Измерять по массе сухого бетона.")
-        self.assertIn("0–3",txt)
-        self.assertIn("1,5",txt)
-        self.assertIn("0,1",txt)
+        self.assertEqual(txt,"Диапазон значений: 0–3 %.")
 
-    def test_selectors_report_actual_available_choices(self):
+    def test_selectors_show_only_available_values(self):
         txt=engineering_input_help("Класс пластичности","selectbox",
             {"_options_for_tooltip":("B","A","C"),"index":0},"Класс по сертификату.")
-        self.assertIn("Доступные значения: B, A, C",txt)
-        self.assertIn("Выбрано по умолчанию: B",txt)
+        self.assertEqual(txt,"Диапазон значений: B, A, C.")
 
-    def test_source_options_show_human_readable_values(self):
+    def test_source_choices_are_human_readable_in_one_line(self):
         txt=engineering_input_help("Тип заполнителя","selectbox",
             {"_options_for_tooltip":("siliceous","calcareous"),
              "format_func":lambda x:{"siliceous":"Силикатный",
                                     "calcareous":"Карбонатный"}[x]},
             "Тепловые свойства по ТКП.")
-        self.assertIn("Силикатный, Карбонатный",txt)
+        self.assertEqual(txt,"Диапазон значений: Силикатный, Карбонатный.")
+
+    def test_original_Belarus_annex_L_comments_are_recovered_not_deleted(self):
+        from rc_fire.spalling.ui import RANGE_HINTS,RANGE_HINTS_RELEASE
+        self.assertIn("r0682",RANGE_HINTS_RELEASE)
+        self.assertIn("35–50 %",RANGE_HINTS["coarse_aggregate_volume_pct"])
+        self.assertIn("Л.5",RANGE_HINTS["cement_kg_m3"])
+        self.assertIn("Л.2",RANGE_HINTS["relative_humidity_pct"])
+
+    def test_load_range_is_one_line(self):
+        self.assertEqual(engineering_input_help("Nᶠⁱ, кН (сжатие положительно)",
+            "text_input",{}, "more old text"),
+            "Диапазон значений: N > 0 кН (сжатие).")
+
 
 
 if __name__=="__main__":

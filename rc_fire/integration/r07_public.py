@@ -22,7 +22,7 @@ from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
 from rc_fire.mechanics.action_capacity import WITHIN, EXCEEDED, UNKNOWN
 from rc_fire.spalling.annex_l import evaluate_annex_l
 
-VERSION="R0.7-public-fire-workflow-v2"
+VERSION="R0.7-public-fire-workflow-v4"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -133,7 +133,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
         # This is section equilibrium evidence, NOT column capacity.
         max_factor=2.,factor_step=.5,max_bisection=0,
         include_member=bool(assess_member),
-        refine_strain_transition=False)
+        refine_strain_transition=False,
+        thermal_curve_step_minutes=5.)
     points=history.get("samples") or []
     exact=[p for p in points if abs(p["time_minutes"]-required)<1e-7]
     if len(exact)!=1:
@@ -174,6 +175,36 @@ def fire_assessment(column:dict,*,required_minutes:float,
     if not assess_member or member.get("status")!="MEMBER_DIAGNOSTIC_EQUILIBRATED":
         blockers.append("FULL_MEMBER_EQUILIBRIUM_NOT_SOLVED")
     if any_unknown:blockers.append("UNKNOWN_SAMPLED_MECHANICAL_STATES")
+    # Actual fixed-action strain demand is load-dependent, unlike the
+    # thermal field and temperature-reduction material coefficients.
+    def _strain_demand(row):
+        if row.get("reference_classification") not in (WITHIN,EXCEEDED):
+            return None
+        reports=row.get("sections") or []
+        if not reports:
+            return None
+        ratios=[]
+        for report in reports:
+            state=report.get("at_lambda_1") or {}
+            if state.get("classification") not in (WITHIN,EXCEEDED):
+                return None
+            try: ratio=float(state.get("critical_ratio"))
+            except (ValueError,TypeError):return None
+            if not math.isfinite(ratio) or ratio<0:
+                return None
+            ratios.append(ratio)
+        return 100.*max(ratios) if ratios else None
+    thermal_rows=history.get("thermal_curve_samples") or []
+    thermal_timeline=[{
+        "minute":row["time_minutes"],
+        "gas_C":row.get("T_gas_C"),
+        "concrete_surface_C":row.get("T_concrete_boundary_max_C"),
+        "concrete_centre_C":row.get("T_concrete_center_C"),
+        "bars_C":row.get("T_reinforcement_C") or {},
+        "grid_temperature_C":row.get("grid_temperature_C"),
+        "surface_temperature_C":row.get("surface_temperature_C"),
+        "temperature_source":row.get("temperature_source"),
+    } for row in thermal_rows]
     report={
       "release":VERSION,"status":"NUMERICAL_CALCULATION_COMPLETE",
       "required_rating_minutes":required,
@@ -189,6 +220,11 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "numerical_section_at_required_time":at.get("reference_classification",UNKNOWN),
       "numerical_section_status_at_required_time":at.get("status"),
       "material_strength_at_required_time":at.get("material_strength_retention"),
+      "design_action_strain_demand_pct_at_required_time":_strain_demand(at),
+      "design_action_strain_demand_interpretation":
+          "Load-dependent ratio of maximum calculated mechanical fibre strain "
+          "to source material strain limit; NOT structural load utilization, "
+          "strength capacity or verified failure time",
       "sampled_section_reserve_at_required_time":at.get("sampled_section_load_evidence"),
       "capacity_scope":"Only a first-order section under discrete N-Mx-My scaling; "
                        "not verified whole-column capacity or fire-resistance R(t)",
@@ -204,8 +240,15 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "spalling_annex_L":spalling,
       "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
       "natural_sand_selection_provenance":sand_source,
+      "thermal_timeline":thermal_timeline,
+      "thermal_grid":history.get("thermal_grid"),
+      "thermal_timeline_independent_of_mechanics":bool(thermal_timeline),
       "timeline":[{
           "minute":p["time_minutes"],
+          "design_action_strain_demand_pct":_strain_demand(p),
+          "N_kN":(column.get("sections") or [{}])[0].get("N_kN"),
+          "Mx_kNm":(column.get("sections") or [{}])[0].get("Mx_kNm"),
+          "My_kNm":(column.get("sections") or [{}])[0].get("My_kNm"),
           "gas_C":p.get("T_gas_C"),
           "concrete_surface_C":p.get("T_concrete_boundary_max_C"),
           "concrete_centre_C":p.get("T_concrete_center_C"),

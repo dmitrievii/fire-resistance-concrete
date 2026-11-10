@@ -20,9 +20,11 @@ from rc_fire.integration.r07_inputs import make_column,perimeter_bars
 from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
+from rc_fire.spalling.ui import RANGE_HINTS as BELARUS_ANNEX_L_SOURCE_HELP
+from rc_fire.thermal.tkp_section_plot import make_tkp_section_heatmap
 from rc_fire.integration.r073_plot_contract import (
     prepare_temperature_chart,prepare_optional_percent_chart,
-    engineering_input_help)
+    split_temperature_chart,engineering_input_help)
 
 st.set_page_config(
     page_title="Огнестойкость железобетонной колонны",
@@ -95,24 +97,16 @@ class _Fields:
         fn=getattr(st,widget)
         def keyed(label,*args,**kwargs):
             kwargs.setdefault("key",f"r07_{cid}_{widget}_{label}")
-            description=_INPUT_HELP.get(label,"")
-            previous=kwargs.get("help","")
-            context="\n\n".join(x for x in (description,previous) if x)
             help_settings=dict(kwargs)
             if widget=="selectbox":
                 help_settings["_options_for_tooltip"]=(
                     args[0] if args else kwargs.get("options"))
-            if widget=="text_input" and label in (
-                "Nᶠⁱ, кН (сжатие положительно)",
-                "Mxᶠⁱ, кН·м","Myᶠⁱ, кН·м"):
-                context+=("\n\nДопустимый диапазон: N > 0 кН (сжатие). "
-                          "Максимум зависит от расчётной схемы и не "
-                          "задаётся искусственным пределом ввода."
-                          if label.startswith("Nᶠⁱ") else
-                          "\n\nДопустимый диапазон: любое конечное число "
-                          "кН·м, включая ноль; знак определяет направление.")
+            # Deliberately ONE short range hint per field. The old
+            # Belarus normative input comments are accessible in an
+            # optional materials expander below, not duplicated here.
             kwargs["help"]=engineering_input_help(
-                label,widget,help_settings,context)
+                label,widget,help_settings,
+                _INPUT_HELP.get(label,"") or kwargs.get("help",""))
             return fn(label,*args,**kwargs)
         return keyed
 
@@ -245,6 +239,27 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
         # Keep the provenance of this unverified assumption in source JSON.
         natural_sand=True
 
+    # The original well-sourced comments from R0.6.8.2 have NEVER been
+    # deleted. Keep them readable separately from the single-line (?).
+    with st.expander("Нормативные пояснения к диапазонам материалов",
+                     expanded=False):
+        st.caption("Сохранены исходные пояснения приложения Л СП 2.02.05-2026. "
+                   "Это область применимости формул и таблиц, которая может "
+                   "быть уже диапазона, допускаемого формой ввода.")
+        for heading,source_key in (
+            ("Объёмная доля крупного заполнителя",
+             "coarse_aggregate_volume_pct"),
+            ("Наибольшая крупность заполнителя",
+             "max_aggregate_mm"),
+            ("Расход цемента","cement_kg_m3"),
+            ("Водоцементное отношение В/Ц","water_cement_ratio"),
+            ("Относительная влажность RH","relative_humidity_pct"),
+        ):
+            st.markdown("**"+heading+"**")
+            st.write(BELARUS_ANNEX_L_SOURCE_HELP[source_key])
+        st.caption("Теплотехническое поле ниже рассчитывается по ТКП EN "
+                   "1992-1-2, а не по ранее применявшемуся приложению К.")
+
     st.divider()
     st.subheader("3. Пожар и действующие усилия")
     x,y,z=st.columns(3)
@@ -344,21 +359,53 @@ if record:
                "способности всей колонны. Поэтому фактическое R(t) "
                "и соответствие Rrequired не определены. "
                "Это НЕ означает, что колонна не соответствует требованиям.")
+    show_after_required=st.checkbox(
+        "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
+        value=False,key=f"r074_extended_results_{cid}",
+        help="По умолчанию графики ограничены требуемой продолжительностью "
+             "пожара. Продлённый расчёт выполняется для исследования "
+             "нагрева; он не означает, что конструкция сохраняет несущую "
+             "способность после Rrequired.")
+    max_chart_time=float("inf") if show_after_required else float(
+        r["required_rating_minutes"])
+    if show_after_required:
+        st.caption("Показан также прогрев после требуемого R. "
+                   "Этот период является исследовательским и сам по себе "
+                   "не доказывает несущую способность после Rrequired.")
+    chart_report={
+        **r,
+        "timeline":[x for x in (r.get("timeline") or [])
+                    if float(x["minute"])<=max_chart_time+1.e-9],
+        "thermal_timeline":[x for x in (r.get("thermal_timeline") or [])
+                            if float(x["minute"])<=max_chart_time+1.e-9],
+    }
     col1,col2=st.columns([1.2,1])
     with col1:
-        st.markdown("**Температуры бетона и арматуры во времени**")
-        timeline=pd.DataFrame(r.get("timeline") or [])
+        timeline=pd.DataFrame(chart_report.get("timeline") or [])
         plot,missing_bars,audit_rows=prepare_temperature_chart(
-            r,[bar["id"] for bar in c.get("bars",[])])
-        if not plot.empty:
-            st.line_chart(plot,x_label="Продолжительность пожара, мин",
+            chart_report,[bar["id"] for bar in c.get("bars",[])])
+        concrete_plot,steel_plot=split_temperature_chart(plot)
+        st.markdown("**Газовая среда и температура бетона**")
+        if not concrete_plot.empty:
+            st.line_chart(concrete_plot,
+                          x_label="Продолжительность пожара, мин",
                           y_label="Температура, °C")
-            st.caption("Температуры отдельных стержней S1…Sn показаны на "
-                       "том же графике. Совпадающие кривые соответствуют "
-                       "одинаковому нагреву симметричных стержней.")
         else:
             st.warning("В сохранённом результате нет временных температур. "
                        "Выполните расчёт ещё раз.")
+        st.markdown("**Температура продольной арматуры**")
+        if not steel_plot.empty:
+            st.line_chart(steel_plot,
+                          x_label="Продолжительность пожара, мин",
+                          y_label="Температура арматуры, °C")
+            st.caption("Стержни с одинаковой историей температур объединены "
+                       "в одну кривую. Каждый стержень S1…Sn сохраняется "
+                       "в таблице температур и выгруженном JSON.")
+        if r.get("thermal_timeline_independent_of_mechanics"):
+            st.caption("Температуры рассчитаны через 5 минут, включая "
+                       "начальное состояние t=0 при 20 °C. "
+                       "Механическое равновесие проверяется отдельно "
+                       "в выбранные моменты времени.")
         if audit_rows:
             st.caption("Температуры арматуры восстановлены из сохранённого "
                        "расчётного аудита в те же моменты времени, без интерполяции.")
@@ -377,6 +424,32 @@ if record:
                         f"{i['sampled_strain_exceeded_time_minutes']:g} мин"
                         for i in transition)
                     +". Это не эквивалент разрушения всей колонны.")
+        st.markdown("**Механический ответ при заданных N–Mx–My**")
+        forces=r.get("fire_design_actions") or []
+        if forces:
+            force=forces[0]
+            st.write("Расчётные усилия при пожаре: "
+                     f"N = {force.get('N_kN',0):g} кН; "
+                     f"Mx = {force.get('Mx_kNm',0):g} кН·м; "
+                     f"My = {force.get('My_kNm',0):g} кН·м.")
+        strain_ratio=r.get("design_action_strain_demand_pct_at_required_time")
+        if strain_ratio is not None:
+            st.metric("Отношение расчётной деформации к предельной "
+                      "при Rrequired",f"{strain_ratio:.2f}%")
+        strain_plot=prepare_optional_percent_chart(chart_report,{
+            "design_action_strain_demand_pct":
+                "Максимальная деформация / предельная, %"})
+        if not strain_plot.empty:
+            strain_plot["Предел деформации, 100%"]=100.
+            st.line_chart(strain_plot,
+                x_label="Продолжительность пожара, мин",
+                y_label="Деформационный критерий, %")
+        st.caption("Эти деформации получены из равновесия N–Mx–My "
+                   "при фактических введённых нагрузках. "
+                   "Это нагрузкозависимый показатель расчётной модели "
+                   "сечения, но НЕ процент использования несущей "
+                   "способности всей колонны и НЕ нормативный R(t). "
+                   "Отсутствующее состояние не приравнивается к нулю.")
         st.markdown("**Численное состояние сечения на Rrequired**")
         status_text={
             WITHIN:"Равновесие сечения найдено; в проверенной точке "
@@ -399,6 +472,75 @@ if record:
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
     st.divider()
+    st.subheader("Температурное поле сечения")
+    grid_spec=r.get("thermal_grid")
+    available_frames=[
+        entry for entry in (chart_report.get("thermal_timeline") or [])
+        if isinstance(entry,dict) and
+           isinstance(entry.get("grid_temperature_C"),list)
+    ]
+    if isinstance(grid_spec,dict) and available_frames:
+        time_to_frame={float(x["minute"]):x for x in available_frames}
+        options=sorted(time_to_frame)
+        selected_default=min(options,key=lambda t:abs(
+            t-float(r["required_rating_minutes"])))
+        heat_slider_key=f"r074_heat_section_time_{cid}"
+        if (heat_slider_key in st.session_state and
+            st.session_state[heat_slider_key] not in options):
+            st.session_state.pop(heat_slider_key,None)
+        selected_time=st.select_slider(
+            "Время нагрева сечения, мин",
+            options=options,value=selected_default,
+            format_func=lambda t:f"{t:g} мин",
+            key=heat_slider_key,
+            help="Реальные сохранённые моменты решения ТКП 2D. "
+                 "Температуры между моментами не интерполируются.")
+        frame=time_to_frame[selected_time]
+        cmax=max(25.,*(float(x["gas_C"]) for x in available_frames))
+        show_500=st.checkbox(
+            "Показать изотерму 500 °C",
+            value=True,key=f"r074_isotherm_{cid}",
+            help="Только графическая изотерма. Она не рассчитывает "
+                 "остаточную несущую способность по приложению К.")
+        heat_left,heat_right=st.columns([1.35,1])
+        with heat_left:
+            try:
+                fig=make_tkp_section_heatmap(c,frame,grid_spec,
+                    color_max_C=cmax,draw_isotherm_500=show_500)
+            except (ValueError,TypeError,KeyError) as exc:
+                st.warning("Не удалось визуализировать температурное поле "
+                           "этого расчётного шага: "+str(exc))
+            else:
+                st.plotly_chart(fig,use_container_width=True,
+                    key=f"r074_tkp_section_{cid}")
+        with heat_right:
+            st.metric("Температура газа",f"{frame['gas_C']:.1f} °C")
+            st.metric("Максимальная температура бетона",
+                f"{frame['concrete_surface_C']:.1f} °C")
+            st.metric("Температура в центре",
+                f"{frame['concrete_centre_C']:.1f} °C")
+            bars_now=frame.get("bars_C") or {}
+            st.dataframe(pd.DataFrame([
+                {"Стержень":str(bar["id"]),
+                 "x, мм":float(bar["x_mm"]),
+                 "y, мм":float(bar["y_mm"]),
+                 "T, °C":(round(float(bars_now[str(bar["id"])]),1)
+                          if str(bar["id"]) in bars_now else None)}
+                for bar in c.get("bars",[])
+            ]),hide_index=True,use_container_width=True)
+        st.caption("Восстановленная тепловая карта сечения из исходных "
+                   "расчётных ячеек ТКП EN 1992-1-2 (2D FVM). "
+                   "Сетка: "+str(grid_spec['nx'])+"×"+str(grid_spec['ny'])+
+                   ". Бирюзовые окружности показывают реальные положения "
+                   "стержней; их температуры получены из того же поля. "
+                   "Изотерма 500 °C — только для визуализации, "
+                   "не самостоятельный расчёт R(t).")
+    else:
+        st.info("В сохранённом расчёте нет двухмерного температурного поля. "
+                "Нажмите «Рассчитать огнестойкость» ещё раз, "
+                "чтобы восстановить тепловую карту по ТКП.")
+
+    st.divider()
     st.subheader("Изменение прочности и проверенный запас сечения")
     st.caption("Материальные показатели по ТКП EN 1992-1-2:2009 относятся "
                "только к потере прочности бетона и стали при нагреве. "
@@ -416,7 +558,7 @@ if record:
     strength_columns={
         "concrete_retained_uniaxial_pct":"Бетон: сохранение fck, %",
         "steel_retained_yield_pct":"Арматура: сохранение fyk, %"}
-    strength_history=prepare_optional_percent_chart(r,strength_columns)
+    strength_history=prepare_optional_percent_chart(chart_report,strength_columns)
     if not strength_history.empty and strength_history.notna().any().any():
         st.line_chart(strength_history,
             x_label="Продолжительность пожара, мин",
@@ -443,7 +585,7 @@ if record:
         "discrete_checked_section_extra_load_pct":"Доп. нагрузка, проверенная дискретно, %",
         "ratio_to_max_checked_load_pct_not_utilization":
              "Отношение к проверенному уровню, % (не ULS)"}
-    reserve_history=prepare_optional_percent_chart(r,sample_columns)
+    reserve_history=prepare_optional_percent_chart(chart_report,sample_columns)
     if not reserve_history.empty and reserve_history.notna().any().any():
         st.line_chart(reserve_history,x_label="Продолжительность пожара, мин",
                       y_label="Проверенные доли, %")
