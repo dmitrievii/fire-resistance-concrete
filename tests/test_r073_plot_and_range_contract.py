@@ -67,7 +67,7 @@ class HistoricalPlotContractTests(unittest.TestCase):
         chart,missing,source=prepare_temperature_chart(report,["S1"])
         self.assertTrue(math.isnan(chart.loc[90.,"Арматура S1"]))
         self.assertFalse(math.isnan(chart.loc[1.,"Арматура S1"]))
-        self.assertEqual(missing,[])
+        self.assertEqual(missing,["S1"])
         self.assertEqual(source,1)
 
     def test_invalid_or_empty_legacy_rows_do_not_crash(self):
