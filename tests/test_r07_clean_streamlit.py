@@ -35,6 +35,20 @@ class PublicCalculatorScreen(unittest.TestCase):
     def test_historic_cloud_path_also_opens_clean_public_screen(self):
         self._check(ROOT/"K18_Streamlit_GitHub_MVP_R0.5"/"streamlit_app.py")
 
+    def test_multiple_columns_keep_independent_simple_input_pages(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        count=next(x for x in app.number_input if
+                   x.label=="Количество конструкций")
+        count.set_value(2).run()
+        self.assertFalse(app.exception,f"Resizing constructions: {list(app.exception)}")
+        nav=next(x for x in app.radio if x.label=="Колонна")
+        nav.set_value("c2").run()
+        self.assertFalse(app.exception,f"Second column page: {list(app.exception)}")
+        name=next(x for x in app.text_input if
+                  x.label=="Обозначение колонны")
+        self.assertEqual(name.value,"К2")
+        self.assertFalse(any(x.label=="Разделы" for x in app.radio))
+
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
         buttons=[b for b in app.button if "Рассчитать огнестойкость" in b.label]
