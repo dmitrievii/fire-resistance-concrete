@@ -131,7 +131,7 @@ if _stale:
 # newer fire result engine after Streamlit Cloud redeployment.
 for _name, _release in (
     ("rc_fire.integration.r07_inputs","R0.7-simple-physical-column-inputs-v1"),
-    ("rc_fire.integration.r07_public","R0.7-public-fire-workflow-v6")):
+    ("rc_fire.integration.r07_public","R0.7-public-fire-workflow-v8")):
     _loaded=sys.modules.get(_name)
     if _loaded is not None:
         _cached_path=getattr(_loaded,"__file__",None)
@@ -153,6 +153,8 @@ for _name, _release in (
                     "rc_fire.integration.r075_bounded_utilisation",
                     "rc_fire.materials.sp2026_fire",
                     "rc_fire.mechanics.sp2026_section",
+                    "rc_fire.thermal.sp2026_heat",
+                    "rc_fire.thermal.sp2026_verification",
                     "rc_fire.integration.r073_plot_contract"):
                     sys.modules.pop(_dependency,None)
             importlib.invalidate_caches()
