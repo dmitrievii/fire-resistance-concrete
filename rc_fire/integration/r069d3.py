@@ -28,6 +28,8 @@ from rc_fire.member.coupled import CoupledMemberError,EndSupport,solve_coupled_b
 from rc_fire.member.uls import audit_heated_member_uls
 from rc_fire.member.time_scan import timeline_points
 from rc_fire.materials.tkp_en1992_fire import EurocodeFireMaterialError
+from rc_fire.integration.r072_strength_evidence import (
+    material_strength_retention,sampled_action_reserve)
 from rc_fire.integration.r069d4_first_crossing import (
     summarize_observed_strain_history, refine_observed_interval)
 
@@ -196,6 +198,10 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
                    for k in ('N_kN','Mx_kNm','My_kNm')},
                 'at_lambda_1':scan['design_action_evidence'],
                 'sampled_scale_path':scan})
+        # Independent evidence: temperature-driven material strength and a
+        # discrete proportional load test. These are never whole-member ULS.
+        strength_retention=material_strength_retention(p)
+        checked_reserve=sampled_action_reserve(reports)
         classes=[s['at_lambda_1']['classification'] for s in reports]
         classification=(EXCEEDED if EXCEEDED in classes else
             WITHIN if classes and all(v==WITHIN for v in classes) else UNKNOWN)
@@ -204,7 +210,10 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
                 if include_member else None
         rows.append({'time_minutes':t,'status':'FVM_TKP_FIBRES_NUMERICAL_DIAGNOSTIC',
             'reference_classification':classification,**evidence,
-            'sections':reports,'member':member,'blockers':[
+            'sections':reports,'member':member,
+            'material_strength_retention':strength_retention,
+            'sampled_section_load_evidence':checked_reserve,
+            'blockers':[
                 'TKP_4_3_4_EXPERIMENTAL_VALIDATION_NOT_DONE',
                 'NUMERICAL_FAILURE_IS_NOT_PHYSICAL_FAILURE',
                 'CONTINUOUS_MEMBER_ACTIONS_NOT_VERIFIED',

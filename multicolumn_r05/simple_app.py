@@ -45,11 +45,57 @@ for _field_name,_valid in (
         del st.session_state[_widget_key]
 
 
+# Every ordinary input has a (?) with source/meaning and a K1 example.
+# Example values are NOT automatically normative recommendations.
+_INPUT_HELP={
+    "Обозначение колонны":"По умолчанию К1. Это имя конструкции, не нормативное значение.",
+    "Ширина b, мм":"Пример К1: 600 мм; задайте фактическую ширину сечения.",
+    "Высота сечения h, мм":"Пример К1: 600 мм; задайте фактический размер.",
+    "Длина колонны L, м":"Пример К1: 3 м. Введите реальную длину между узлами.",
+    "Расчётная длина: μx":"Пример: 1,0. Коэффициент определяется схемой закрепления и устойчивости, не автоматически.",
+    "Расчётная длина: μy":"Пример: 1,0. При иной опорной схеме измените согласно проекту.",
+    "Защитный слой до хомута, мм":"Пример: 20 мм до внешней поверхности хомута, НЕ до центра продольного стержня.",
+    "Диаметр хомута, мм":"Пример: Ø10 мм. Укажите фактический хомут.",
+    "Диаметр продольных стержней, мм":"Пример: Ø20 мм, номинальный диаметр.",
+    "Стержней по верхней/нижней грани":"Пример: 3 на грани, включая углы; пересечения углов считаются один раз.",
+    "Стержней по левой/правой грани":"Пример: 3 на грани, включая углы.",
+    "Указать координаты отдельных стержней вместо равномерной схемы":"Включите для произвольного армирования; иначе стержни равномерно размещаются по четырём сторонам.",
+    "Класс бетона":"Пример К1: C30/37. Используйте класс бетона по рабочему проекту.",
+    "Тип крупного заполнителя":"Пример К1: силикатный; влияет на тепловые свойства и диаграммы бетона.",
+    "Сухая плотность, кг/м³":"Пример: 2200 кг/м³. Укажите сухую плотность принятого бетона.",
+    "Консистенция бетонной смеси":"Пример К1: V3–V4. Для выбора Ecm по СП 5.03.01-2020; подтвердите документацией.",
+    "Твердение":"Пример: естественное. Для определения материала по СП.",
+    "Основание для модуля Ecm":"Для силикатного заполнителя пример: табл. 6.3 СП (гравий/гранит до 40 мм); иначе измеренный модуль.",
+    "Измеренный Ecm, ГПа":"Начальное значение 35 ГПа — демонстрационное, впишите подтверждённое испытанием значение.",
+    "Класс арматуры":"Пример S500; в текущей модели используется именно S500.",
+    "Изготовление арматуры":"Пример: горячекатаная S500. Температурные коэффициенты горячекатаной и холоднодеформированной арматуры различаются.",
+    "Класс пластичности":"Пример: B; выбор A/B/C изменяет предельную деформацию и диаграмму.",
+    "Массовая влажность бетона, %":"Пример: 1,5% от массы сухого бетона. Это не относительная влажность воздуха!",
+    "Объёмная доля крупного заполнителя, %":"Пример К1: 40% объёма; параметр приложения Л СП.",
+    "Наибольшая крупность заполнителя, мм":"Пример: 30 мм, фактический размер зерна для приложения Л.",
+    "Расход цемента, кг/м³":"Пример К1: 500 кг/м³; нужен состав бетона.",
+    "Водоцементное отношение В/Ц":"Пример К1: 0,45, безразмерное.",
+    "Относительная влажность среды, %":"Пример: 44%. Нельзя подменять массовую влажность бетона этим значением.",
+    "Nᶠⁱ, кН (сжатие положительно)":"Введите расчётную продольную силу при пожаре, кН. Положительная — сжатие. Пример К1: 50 кН, но нагрузка НЕ задаётся автоматически.",
+    "Mxᶠⁱ, кН·м":"Введите расчётный момент относительно оси x при пожаре. Пример К1: 2 кН·м; 0 вводится явно.",
+    "Myᶠⁱ, кН·м":"Введите расчётный момент относительно оси y при пожаре. Пример К1: 0 кН·м; 0 вводится явно.",
+    "Требуемая огнестойкость":"Пример: R90 = 90 минут стандартного пожара. Нормативное требование берётся из задания.",
+    "Слева":"По умолчанию обогрев слева; укажите реально обогреваемые поверхности.",
+    "Справа":"По умолчанию обогрев справа.",
+    "Снизу":"По умолчанию обогрев нижней грани сечения.",
+    "Сверху":"По умолчанию обогрев верхней грани сечения.",
+}
+
+
 class _Fields:
     def __getattr__(self,widget):
         fn=getattr(st,widget)
         def keyed(label,*args,**kwargs):
             kwargs.setdefault("key",f"r07_{cid}_{widget}_{label}")
+            info=_INPUT_HELP.get(label)
+            if info:
+                previous=kwargs.get("help")
+                kwargs["help"]=(previous+" "+info) if previous else info
             return fn(label,*args,**kwargs)
         return keyed
 
@@ -159,18 +205,13 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
             ("B","A","C"),index=0,
             help="По умолчанию B — ТОЛЬКО демонстрационное допущение. "
                  "Необходимо подтверждение по сертификату.")
-        steel_confirmed=field.checkbox(
-            "Технология изготовления и класс пластичности подтверждены документами",
-            value=False,
-            help="Без подтверждения результаты считаются исследовательским сценарием, "
-                 "а не проверкой фактической арматуры.")
         moisture=field.number_input("Массовая влажность бетона, %",min_value=0.,
             max_value=3.,value=1.5,step=.1,
             help="1,5% — исходное значение для демонстрационного сценария, "
                  "НЕ измеренное значение для вашей колонны.")
-        if not steel_confirmed:
-            st.caption("Для демонстрации выбраны горячекатаная S500, класс B. "
-                       "Уточните по паспорту; значения расчёта будут помечены как допущение.")
+        st.caption("Принятый тип S500 и класс пластичности являются "
+                   "исходными допущениями, пока не подтверждены документацией. "
+                   "Расчёт по ним не считается нормативным заключением.")
         st.caption("Тип арматуры и влажность должны соответствовать фактическим данным.")
     with c3:
         coarse_pct=field.number_input("Объёмная доля крупного заполнителя, %",
@@ -183,9 +224,9 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
             min_value=.1,max_value=1.,value=.45,step=.05)
         relative_humidity=field.number_input("Относительная влажность среды, %",
             min_value=1.,max_value=100.,value=44.,step=1.)
-        natural_sand=field.checkbox(
-            "Природный песок подтверждён",value=False,
-            help="Влияет на оценку хрупкого разрушения по приложению Л.")
+        # User requested natural sand hidden and preset to Yes.
+        # Keep the provenance of this unverified assumption in source JSON.
+        natural_sand=True
 
     st.divider()
     st.subheader("3. Пожар и действующие усилия")
@@ -241,13 +282,13 @@ if run:
             "curing":curing,"modulus_aggregate":ecm_basis,
             "measured_Ecm_GPa":measured_ecm,"steel_route":steel_route,
             "ductility_class":duct,
-            "steel_material_confirmed":bool(steel_confirmed),
             "moisture_mass_pct":moisture,
             "coarse_aggregate_pct":coarse_pct,
             "max_aggregate_mm":grain,"cement_kg_m3":cement,
             "water_cement_ratio":wc,
             "relative_humidity_pct":relative_humidity,
             "natural_sand_confirmed":natural_sand,
+            "natural_sand_provenance":"hidden_default_assumed_natural_unverified",
             "required_minutes":float(required),
             "exposed_faces":faces,
             "N_kN":needed(n_txt,"N"),"Mx_kNm":needed(mx_txt,"Mx"),
@@ -288,14 +329,23 @@ if record:
                "Это НЕ означает, что колонна не соответствует требованиям.")
     col1,col2=st.columns([1.2,1])
     with col1:
-        st.markdown("**Поведение конструкции во времени**")
+        st.markdown("**Температуры бетона и арматуры во времени**")
         timeline=pd.DataFrame(r["timeline"])
         if not timeline.empty:
             plot=timeline.set_index("minute")[[
-                "gas_C","concrete_surface_C","concrete_centre_C"]]
-            st.line_chart(plot)
-            st.caption("Газовая температура, максимальная температура "
-                       "поверхности и температура центра бетона, °C.")
+                "gas_C","concrete_surface_C","concrete_centre_C"]].copy()
+            plot.columns=["Температура газа","Поверхность бетона","Центр бетона"]
+            for bar in c["bars"]:
+                bar_id=str(bar["id"])
+                plot["Арматура "+bar_id]=[
+                    float(record[bar_id]) if isinstance(record,dict) and
+                    bar_id in record else float("nan")
+                    for record in timeline["bars_C"]]
+            st.line_chart(plot,x_label="Продолжительность пожара, мин",
+                          y_label="Температура, °C")
+            st.caption("Температуры всех фактически заданных стержней S1…Sn "
+                       "показаны на одном графике. Совпадающие кривые "
+                       "означают одинаковый нагрев симметричных стержней.")
         transition=r["observed_strain_limit_transition"]
         if transition:
             st.info("Обнаружен численный интервал достижения предельной "
@@ -326,12 +376,71 @@ if record:
             {"Стержень":key,"Температура, °C":round(float(t),1)}
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
+    st.divider()
+    st.subheader("Изменение прочности и проверенный запас сечения")
+    st.caption("Материальные показатели по ТКП EN 1992-1-2:2009 относятся "
+               "только к потере прочности бетона и стали при нагреве. "
+               "Они НЕ являются несущей способностью всей колонны.")
+    strengths=r.get("material_strength_at_required_time") or {}
+    a,b=st.columns(2)
+    with a:
+        if strengths:
+            st.metric("Сохранение прочности бетона при Rrequired",
+                f"{strengths['concrete_uniaxial_strength_retained_pct']:.1f}%")
+    with b:
+        if strengths:
+            st.metric("Сохранение предела текучести арматуры при Rrequired",
+                f"{strengths['steel_yield_strength_retained_pct']:.1f}%")
+    strength_columns={
+        "concrete_retained_uniaxial_pct":"Бетон: сохранение fck, %",
+        "steel_retained_yield_pct":"Арматура: сохранение fyk, %"}
+    strength_history=timeline[["minute",*strength_columns]].rename(
+        columns=strength_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    if not strength_history.empty and strength_history.notna().any().any():
+        st.line_chart(strength_history,
+            x_label="Продолжительность пожара, мин",
+            y_label="Сохранение прочности материала, %")
+    st.caption("Средневзвешенные по площадям коэффициенты прочности отдельных "
+               "материалов: бетон kc(θ), арматура ksy(θ). "
+               "Они не включают изгибно-сжатую работу колонны или устойчивость.")
+    reserve=r.get("sampled_section_reserve_at_required_time") or {}
+    if reserve.get("discrete_extra_load_tested_pct") is not None:
+        lambda_checked=reserve["max_consecutively_checked_load_factor"]
+        st.write("**Исследованный запас по N–Mx–My на Rrequired:** "
+                 f"при λ = {lambda_checked:.2f} равновесие проверено; "
+                 f"дополнительные {reserve['discrete_extra_load_tested_pct']:.0f}% "
+                 "заданных усилий проверены в дискретных точках модели.")
+        st.write("Отношение приложенных усилий к наибольшему проверенному "
+                 f"уровню = {reserve['ratio_to_max_checked_load_pct']:.1f}%. "
+                 "**Это НЕ нормативный коэффициент использования колонны.**")
+    else:
+        st.info("Запас и процент использования по N–Mx–My не могут быть "
+                "численно определены из доступных проверенных точек "
+                "нелинейного равновесия. Нельзя заменять их отношением "
+                "деформаций или считать несходимость потерей прочности.")
+    sample_columns={
+        "discrete_checked_section_extra_load_pct":"Доп. нагрузка, проверенная дискретно, %",
+        "ratio_to_max_checked_load_pct_not_utilization":
+             "Отношение к проверенному уровню, % (не ULS)"}
+    reserve_history=timeline[["minute",*sample_columns]].rename(
+        columns=sample_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    if not reserve_history.empty and reserve_history.notna().any().any():
+        st.line_chart(reserve_history,x_label="Продолжительность пожара, мин",
+                      y_label="Проверенные доли, %")
+    st.caption("Коэффициенты нагрузки λ исследуются только до 2,0 с шагом 0,5. "
+               "Показаны только последовательные точки со сходимостью и "
+               "допустимыми деформациями сечения. "
+               "Неопределённые точки скрываются, а не принимаются за разрушение. "
+               "Полная несущая способность, использование U(t), реальный запас "
+               "и предел R(t) всей колонны пока не квалифицированы.")
+
     if not r.get("steel_material_confirmed"):
-        st.warning("Арматура S500: технология изготовления и класс пластичности "
-                   "приняты для демонстрационного расчёта и не подтверждены "
-                   "документацией. Для проверки реальной конструкции уточните "
-                   "эти характеристики.")
+        st.caption("Материал S500: технология изготовления и класс пластичности "
+                   "использованы как исходные допущения, без проверки сертификата.")
     st.markdown("**Риск хрупкого разрушения бетона · приложение Л СП 2.02.05-2026**")
+    if r.get("natural_sand_assumed"):
+        st.caption("Для приложения Л по умолчанию принят природный песок. "
+                   "Тип песка не подтверждён и является расчётным допущением.")
     sp=r.get("spalling_annex_L") or {}
     if sp.get("status")=="calculated_method_scope":
         st.write(f"Показатель F = {sp['F']:.3f}; "

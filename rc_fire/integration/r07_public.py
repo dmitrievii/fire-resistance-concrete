@@ -105,6 +105,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
     _input_preflight(column,required_minutes=required_minutes,
         steel_route=steel_route,ductility_class=ductility_class,
         moisture_mass_pct=moisture_mass_pct)
+    source_meta=column.get("source_assumptions") or {}
+    if (source_meta.get("steel_manufacturing_route",steel_route)!=steel_route or
+        source_meta.get("steel_ductility_class",ductility_class)!=ductility_class):
+        raise PublicFireInputError(
+            "Steel processing/class mismatch between column source and "
+            "TKP fire material selection")
     required=float(required_minutes)
     if type(grid) is not int or grid not in (8,12,16,24,32):
         raise PublicFireInputError("mesh grid must be one of 8/12/16/24/32")
@@ -123,7 +129,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
         ductility_class=ductility_class,
         cell_count=grid,fibre_grid=grid,
         max_step_minutes=dt,step_minutes=step,
-        max_factor=1.,factor_step=1.,max_bisection=0,
+        # Check independent sampled proportional-load factors 0..2.
+        # This is section equilibrium evidence, NOT column capacity.
+        max_factor=2.,factor_step=.5,max_bisection=0,
         include_member=bool(assess_member),
         refine_strain_transition=False)
     points=history.get("samples") or []
@@ -140,8 +148,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     any_exceeded=any(s==EXCEEDED for s in statuses)
     member=(at.get("member") or {}) if assess_member else {}
     spalling=evaluate_annex_l(column)
-    steel_spec=(column.get("material_spec") or {}).get("steel") or {}
-    steel_confirmed=steel_spec.get("selection_confirmed") is True
+    source_meta=column.get("source_assumptions") or {}
+    steel_confirmed=source_meta.get("steel_material_confirmed") is True
     blockers=[
        "FULL_COLUMN_FIRE_ULS_NOT_VALIDATED_TKP_4_3_4",
        "TEMPERATURE_AND_MECHANICAL_MESH_CONVERGENCE_NOT_ESTABLISHED",
@@ -151,6 +159,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
     ]
     if not steel_confirmed:
         blockers.append("STEEL_S500_PRODUCTION_AND_DUCTILITY_NOT_DOCUMENTED")
+    sand_source=(column.get("source_assumptions") or {}).get(
+        "natural_sand","unspecified")
+    if sand_source=="hidden_default_assumed_natural_unverified":
+        blockers.append("NATURAL_SAND_IS_ASSUMED_NOT_DOCUMENTED")
     if spalling.get("status")!="calculated_method_scope":
         blockers.append("SP2026_ANNEX_L_SPALLING_NOT_RESOLVED")
     elif spalling.get("protection_required"):
@@ -176,6 +188,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
             "first_observed_strain_exceedance_minutes"),
       "numerical_section_at_required_time":at.get("reference_classification",UNKNOWN),
       "numerical_section_status_at_required_time":at.get("status"),
+      "material_strength_at_required_time":at.get("material_strength_retention"),
+      "sampled_section_reserve_at_required_time":at.get("sampled_section_load_evidence"),
+      "capacity_scope":"Only a first-order section under discrete N-Mx-My scaling; "
+                       "not verified whole-column capacity or fire-resistance R(t)",
       "numerical_section_all_times_within":all_observed_within,
       "numerical_some_times_unknown":any_unknown,
       "numerical_some_times_exceeded":any_exceeded,
@@ -186,17 +202,35 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "bars_C":at.get("T_reinforcement_C")},
       "energy_balance":history.get("thermal_energy_balance"),
       "spalling_annex_L":spalling,
+      "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
+      "natural_sand_selection_provenance":sand_source,
       "timeline":[{
           "minute":p["time_minutes"],
           "gas_C":p.get("T_gas_C"),
           "concrete_surface_C":p.get("T_concrete_boundary_max_C"),
           "concrete_centre_C":p.get("T_concrete_center_C"),
+          "bars_C":p.get("T_reinforcement_C") or {},
+          "concrete_retained_uniaxial_pct":(
+              (p.get("material_strength_retention") or {}).get(
+                  "concrete_uniaxial_strength_retained_pct")),
+          "steel_retained_yield_pct":(
+              (p.get("material_strength_retention") or {}).get(
+                  "steel_yield_strength_retained_pct")),
+          "max_checked_section_load_factor":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "max_consecutively_checked_load_factor")),
+          "discrete_checked_section_extra_load_pct":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "discrete_extra_load_tested_pct")),
+          "ratio_to_max_checked_load_pct_not_utilization":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "ratio_to_max_checked_load_pct")),
           "section_classification":p.get("reference_classification"),
           "section_solver_status":p.get("status"),
           "member_status":(p.get("member") or {}).get("status")}
           for p in points],
       "steel_material_confirmed":steel_confirmed,
-      "steel_material_provenance":steel_spec.get("selection_provenance",
+      "steel_material_provenance":source_meta.get("steel_selection_provenance",
           "unrecorded_unverified"),
       "numerical_scenario_only":not steel_confirmed,
       "materials":{

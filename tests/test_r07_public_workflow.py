@@ -74,16 +74,19 @@ class CleanPhysicalInputsTest(unittest.TestCase):
     def test_default_steel_material_is_explicitly_unconfirmed(self):
         d=user_inputs()
         c=make_column(d)
-        steel=c['material_spec']['steel']
-        self.assertEqual(steel['production_route'],'hot_rolled')
-        self.assertEqual(steel['ductility_class'],'B')
-        self.assertFalse(steel['selection_confirmed'])
-        self.assertEqual(steel['selection_provenance'],
+        # SP material lookup needs a strict Reinforcement dataclass.
+        self.assertEqual(c['material_spec']['steel'],
+                         {'product_type':'weldable_bar'})
+        steel=c['source_assumptions']
+        self.assertEqual(steel['steel_manufacturing_route'],'hot_rolled')
+        self.assertEqual(steel['steel_ductility_class'],'B')
+        self.assertFalse(steel['steel_material_confirmed'])
+        self.assertEqual(steel['steel_selection_provenance'],
                          'user_visible_demonstration_defaults_unconfirmed')
         d['steel_material_confirmed']=True
-        confirmed=make_column(d)['material_spec']['steel']
-        self.assertTrue(confirmed['selection_confirmed'])
-        self.assertEqual(confirmed['selection_provenance'],'user_documented')
+        confirmed=make_column(d)['source_assumptions']
+        self.assertTrue(confirmed['steel_material_confirmed'])
+        self.assertEqual(confirmed['steel_selection_provenance'],'user_documented')
 
     def test_variable_bar_counts_and_validation(self):
         d=user_inputs();d['bars_horizontal']=4;d['bars_vertical']=4
@@ -138,6 +141,55 @@ class OneFireResultTest(unittest.TestCase):
         self.assertIn(r['numerical_section_at_required_time'],
                       (WITHIN,EXCEEDED,UNKNOWN))
         self.assertLess(r['energy_balance']['relative_cumulative_residual'],3e-4)
+
+    def test_material_catalog_is_resolved_after_source_provenance_separation(self):
+        from rc_fire.materials import resolve_materials
+        spec=resolve_materials(self.c)
+        self.assertEqual(spec['status'],'resolved_for_property_lookup',
+                         spec.get('issues'))
+        self.assertIsNotNone(self.r['material_strength_at_required_time'],
+                             [s.get('reason') for s in self.r[
+                                  'full_internal_audit']['samples']])
+
+    def test_temperature_series_contains_every_actual_rebar_at_every_minute(self):
+        r=self.r
+        expected=set(b["id"] for b in self.c["bars"])
+        self.assertEqual(len(expected),8)
+        self.assertGreaterEqual(len(r['timeline']),3)
+        for row in r['timeline']:
+            self.assertEqual(set(row['bars_C']),expected)
+            self.assertTrue(all(math.isfinite(x) for x in row['bars_C'].values()))
+            self.assertLessEqual(max(row['bars_C'].values()),row['gas_C']+1.e-5)
+
+    def test_material_strength_and_discrete_load_checks_are_separate(self):
+        r=self.r
+        retain=r['material_strength_at_required_time']
+        self.assertIsNotNone(retain,
+            [(p['time_minutes'],p.get('status'),p.get('reason'))
+             for p in r['full_internal_audit']['samples']])
+        self.assertLessEqual(retain['concrete_uniaxial_strength_retained_pct'],100.)
+        self.assertLessEqual(retain['steel_yield_strength_retained_pct'],100.)
+        self.assertFalse(retain['is_member_capacity'])
+        for row in r['timeline']:
+            self.assertIn('concrete_retained_uniaxial_pct',row)
+            self.assertIn('steel_retained_yield_pct',row)
+            self.assertIn('max_checked_section_load_factor',row)
+            self.assertIn('ratio_to_max_checked_load_pct_not_utilization',row)
+        tested=r['sampled_section_reserve_at_required_time']
+        self.assertFalse(tested['true_capacity_or_utilization_known'])
+        self.assertFalse(tested['is_normative_capacity'])
+        self.assertIsNone(r['calculated_member_failure_time_minutes'])
+        self.assertIsNone(r['R_t_minutes'])
+
+    def test_hidden_natural_sand_remains_a_disclosed_assumption(self):
+        import copy
+        inp=user_inputs()
+        inp['natural_sand_provenance']='hidden_default_assumed_natural_unverified'
+        c=make_column(inp)
+        self.assertIs(c['annex_l_spec']['natural_sand_confirmed'],True)
+        self.assertEqual(c['source_assumptions']['natural_sand'],
+                         'hidden_default_assumed_natural_unverified')
+        self.assertEqual(validate_column(c),[])
 
     def test_never_certify_member_R_by_section_equilibrium(self):
         r=self.r

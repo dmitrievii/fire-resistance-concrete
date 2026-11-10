@@ -147,13 +147,7 @@ def make_column(inputs:dict):
                                 else None,
             **({'independently_measured_Ecm_GPa':measured_Ecm}
                if measured_Ecm is not None else {})},
-        'steel':{'product_type':'weldable_bar',
-                 'production_route':route,
-                 'ductility_class':duct,
-                 'selection_confirmed':inputs.get('steel_material_confirmed') is True,
-                 'selection_provenance':(
-                     'user_documented' if inputs.get('steel_material_confirmed') is True
-                     else 'user_visible_demonstration_defaults_unconfirmed')}}
+        'steel':{'product_type':'weldable_bar'}}
     c['thermal_spec']={
         'a_red_mode':'table_K1','exposed_faces':list(inputs['exposed_faces']),
         'concrete_family':family,'dry_density_kg_m3':v['dry_density_kg_m3'],
@@ -167,6 +161,21 @@ def make_column(inputs:dict):
         'cement_kg_m3':v['cement_kg_m3'],
         'water_cement_ratio':v['water_cement_ratio'],
         'moisture_mode':'auto'}
+    # Metadata must not be placed inside the strictly validated Appendix L
+    # parameter schema. Keep human-provenance separate from physical inputs.
+    # Manufacturing choice is used only by the TKP steel law through
+    # explicit fire_assessment arguments. It is NOT part of the separate
+    # SP normal-temperature Reinforcement dataclass/schema.
+    steel_confirmed=inputs.get('steel_material_confirmed') is True
+    c['source_assumptions']={
+        'natural_sand':inputs.get('natural_sand_provenance','user_declared'),
+        'steel_manufacturing_route':route,
+        'steel_ductility_class':duct,
+        'steel_material_confirmed':steel_confirmed,
+        'steel_selection_provenance':(
+            'user_documented' if steel_confirmed
+            else 'user_visible_demonstration_defaults_unconfirmed'),
+    }
     # This is a **section input**, not proof of the complete longitudinal
     # member load distribution. Effective length factors alone cannot
     # establish the actual end supports or eliminate lateral sway.

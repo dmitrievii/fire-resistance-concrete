@@ -53,12 +53,9 @@ class PublicCalculatorScreen(unittest.TestCase):
         app=self._check(ROOT/"streamlit_app.py")
         route=next(x for x in app.selectbox if x.label=="Изготовление арматуры")
         duct=next(x for x in app.selectbox if x.label=="Класс пластичности")
-        confirmed=next(x for x in app.checkbox if
-            x.label=="Технология изготовления и класс пластичности подтверждены документами")
         self.assertEqual(route.value,"hot_rolled")
         self.assertEqual(duct.value,"B")
-        self.assertFalse(confirmed.value)
-        self.assertTrue(any("демонстрац" in x.value.lower()
+        self.assertTrue(any("исходными допущениями" in x.value.lower()
                             for x in app.get("caption")))
         # A Streamlit form commits changed widget values only on submit.
         route.set_value("cold_worked")
@@ -67,6 +64,53 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertFalse(app.exception)
         self.assertEqual(next(x for x in app.selectbox
             if x.label=="Изготовление арматуры").value,"cold_worked")
+
+    def test_material_confirmation_and_sand_checkboxes_are_not_in_public_UI(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        visible={x.label for x in app.checkbox}
+        self.assertNotIn("Природный песок подтверждён",visible)
+        self.assertNotIn(
+            "Технология изготовления и класс пластичности подтверждены документами",
+            visible)
+        self.assertEqual(next(x for x in app.selectbox
+            if x.label=="Изготовление арматуры").value,"hot_rolled")
+        self.assertEqual(next(x for x in app.selectbox
+            if x.label=="Класс пластичности").value,"B")
+
+    def test_recommended_example_help_mapping_is_present_for_all_major_inputs(self):
+        script=(ROOT/"multicolumn_r05"/"simple_app.py").read_text(
+            encoding="utf-8")
+        self.assertIn("_INPUT_HELP={",script)
+        self.assertIn('kwargs["help"]=',script)
+        for label in ("Ширина b, мм","Защитный слой до хомута, мм",
+                      "Класс бетона","Массовая влажность бетона, %",
+                      "Изготовление арматуры","Nᶠⁱ, кН (сжатие положительно)",
+                      "Mxᶠⁱ, кН·м","Требуемая огнестойкость"):
+            self.assertIn('"'+label+'":',script)
+
+    def test_real_public_results_render_rod_temperatures_and_strength_sections(self):
+        # UI smoke for the actual result path, which the static input tests
+        # cannot cover. R30 is the shortest supported fire duration.
+        app=AppTest.from_file(str(ROOT/"streamlit_app.py"),
+                              default_timeout=180).run()
+        self.assertFalse(app.exception)
+        def set_text(label,value):
+            next(x for x in app.text_input if x.label==label).set_value(value)
+        set_text("Nᶠⁱ, кН (сжатие положительно)","50")
+        set_text("Mxᶠⁱ, кН·м","2")
+        set_text("Myᶠⁱ, кН·м","0")
+        next(x for x in app.selectbox if
+             x.label=="Требуемая огнестойкость").set_value(30)
+        next(x for x in app.button if
+             x.label=="Рассчитать огнестойкость").click().run()
+        self.assertFalse(app.exception,repr(list(app.exception)))
+        self.assertFalse(app.error,repr(list(app.error)))
+        self.assertTrue(any("Изменение прочности и проверенный запас сечения"
+                            in x.value for x in app.subheader))
+        self.assertTrue(any("Температуры бетона и арматуры во времени"
+                            in x.value for x in app.markdown))
+        self.assertTrue(any("Сохранение прочности бетона" in x.label
+                            for x in app.get("metric")))
 
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
