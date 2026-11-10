@@ -37,9 +37,15 @@ def make_tkp_section_heatmap(column,frame,grid,*,color_max_C=None,
     if not isinstance(column,dict) or not isinstance(frame,dict) or not isinstance(grid,dict):
         raise ValueError("column, thermal frame and grid must be dictionaries")
     source=frame.get("temperature_source")
-    if source not in ("FVM initial condition t=0",
-                      "TKP 2D FVM solved snapshot"):
-        raise ValueError("Only a source-labelled TKP finite-volume temperature snapshot can be plotted")
+    permitted={
+        "FVM initial condition t=0":"TKP_4.3.2_FVM",
+        "TKP 2D FVM solved snapshot":"TKP_4.3.2_FVM",
+        "SP2026 2D FVM initial t=0":"SP2026_8.2.23_FVM",
+        "SP2026 2D FVM solved snapshot":"SP2026_8.2.23_FVM",
+    }
+    if source not in permitted:
+        raise ValueError("Only physically solved source-labelled FVM thermal snapshots can be plotted")
+    method=permitted[source]
     nx=int(grid["nx"]);ny=int(grid["ny"])
     if not 4<=nx<=80 or not 4<=ny<=80:
         raise ValueError("invalid TKP 2D grid size")
@@ -77,11 +83,11 @@ def make_tkp_section_heatmap(column,frame,grid,*,color_max_C=None,
             x=xs.tolist(),y=ys.tolist(),z=z.tolist(),
             contours={"start":500.,"end":500.,"size":1.,"coloring":"none",
                       "showlabels":True,"labelfont":{"size":11,"color":"white"}},
-            line={"color":"cyan","width":2},
+            line={"color":"#087eae","width":2},
             showscale=False,hoverinfo="skip",
             name="Изотерма 500 °C (только визуализация)"))
     fig.add_shape(type="rect",x0=0,y0=0,x1=b,y1=h,
-                  line={"color":"white","width":2})
+                  line={"color":"#202a35","width":2})
     bar_map=frame.get("bars_C") or {}
     if not isinstance(bar_map,dict):
         bar_map={}
@@ -111,8 +117,8 @@ def make_tkp_section_heatmap(column,frame,grid,*,color_max_C=None,
         fig.add_trace(go.Scatter(
             x=bx,y=by,mode="markers+text",
             text=labels,textposition="top center",
-            marker={"size":8,"color":"#00d5e6",
-                    "line":{"color":"black","width":1}},
+            marker={"size":8,"color":"#049bad",
+                    "line":{"color":"#1b2430","width":1}},
             customdata=custom,hovertemplate="%{customdata}<extra></extra>",
             name="Расположение арматуры",showlegend=False))
     fig.update_layout(
@@ -121,8 +127,10 @@ def make_tkp_section_heatmap(column,frame,grid,*,color_max_C=None,
         xaxis={"title":"x, мм","range":[-max(20.,b*.06),b+max(20.,b*.06)]},
         yaxis={"title":"y, мм","range":[-max(20.,h*.06),h+max(20.,h*.06)],
                "scaleanchor":"x","scaleratio":1},
-        plot_bgcolor="#151515",
-        meta={"temperature_method":"TKP_4.3.2_FVM",
+        plot_bgcolor="white",paper_bgcolor="white",
+        font={"color":"#243447"},
+        xaxis_gridcolor="#e0e5ea",yaxis_gridcolor="#e0e5ea",
+        meta={"temperature_method":method,
               "time_minutes":time,"grid_nx":nx,"grid_ny":ny,
               "visual_iso_500_is_not_normative_capacity":True},
         legend={"orientation":"h"})
