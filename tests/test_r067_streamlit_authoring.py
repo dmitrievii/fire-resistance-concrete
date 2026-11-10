@@ -12,7 +12,7 @@ except ImportError:
 @unittest.skipUnless(AppTest is not None,"Streamlit test framework unavailable")
 class R067StreamlitAuthoringTests(unittest.TestCase):
     def test_user_uniformity_and_load_choices_persist_in_project(self):
-        root=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        root=Path(__file__).resolve().parents[1]/"streamlit_legacy_app.py"
         app=AppTest.from_file(str(root),default_timeout=120).run()
         self.assertFalse(app.exception,list(app.exception))
         nav=next(x for x in app.radio if x.label=="Разделы")
