@@ -1,8 +1,10 @@
-"""SP-R.1: couple SP 2026 nonlinear fibres to the existing time-stamped heat grid.
+"""SP-R.2: couple SP 2026 nonlinear fibres to time-matched SP thermal grid.
 
-The transport solution currently has TKP conductivity/cp/density and
-boundary assumptions. Reuse it as a PHYSICAL TEMPERATURE INPUT ONLY,
-not a fully qualified SP §8.2.23 solution. The mechanical constitutive
+The primary transport path uses SP Appendix K.1 material properties
+under SP §8.2.23. An older TKP thermal field may still be evaluated
+in a separately labelled diagnostic legacy compatibility mode.
+The boundary coefficients, moisture transport and mesh convergence
+are NOT yet qualified for a normative R(t). The mechanical constitutive
 law is independent: SP2026 Tables9/10 + SP5 §6.1.5.4/§6.2.2.13.
 
 A first-order heated SECTION is not a full heated COLUMN or R(t).
@@ -21,8 +23,9 @@ from rc_fire.materials.sp2026_fire import (
 from rc_fire.mechanics.tkp_thermomechanical_fibres import (
     TKPPreparedFibres)
 from rc_fire.thermal.tkp_heat import sample_tkp_temperature
+from rc_fire.thermal.sp2026_heat import sample_sp2026_temperature
 
-VERSION="SP-R1-2026-heated-section-fibre-coupling-v1"
+VERSION="SP-R2-2026-heated-section-fibre-coupling-v2"
 
 
 class SPSectionInputError(ValueError):
@@ -126,18 +129,22 @@ class SPPreparedSection(TKPPreparedFibres):
 def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
     """SP fibre inventory sampled ONLY from the provided FVM temperature field.
 
-    A TKP solution is accepted as a numerical temperature source with an
-    explicit unresolved SP §8.2.23 qualification flag; the method is NOT
-    source-certified SP heat transfer. No Annex K/isotherm temperature
-    substitution or silent heated steel extrapolation.
+    SP Appendix K.1-based FVM is the primary source; the TKP field
+    remains available only as an explicitly segregated legacy diagnostic.
+    No Annex K critical isotherm substitution or steel extrapolation.
     """
     if not isinstance(column,dict) or not isinstance(thermal_snapshot,dict):
         raise SPSectionInputError("column and explicit thermal snapshot required")
-    if thermal_snapshot.get("thermal_method")!="TKP_4.3.2_FVM" or not isinstance(
+    method=thermal_snapshot.get("thermal_method")
+    if method not in ("SP2026_8.2.23_FVM","TKP_4.3.2_FVM") or not isinstance(
         thermal_snapshot.get("snapshot"),dict):
-        raise SPSectionInputError("time-matched FVM snapshot required")
-    if thermal_snapshot.get("status")!="evaluated_tkp_diagnostic":
-        raise SPSectionInputError("thermal temperature source not evaluated")
+        raise SPSectionInputError("time-matched SP or legacy TKP FVM snapshot required")
+    expected_status=("evaluated_sp2026_thermal_diagnostic"
+                     if method=="SP2026_8.2.23_FVM" else "evaluated_tkp_diagnostic")
+    if thermal_snapshot.get("status")!=expected_status:
+        raise SPSectionInputError("source thermal solution not evaluated")
+    temperature_at=(sample_sp2026_temperature if method=="SP2026_8.2.23_FVM"
+                    else sample_tkp_temperature)
     if type(grid) is not int or not 8<=grid<=80:
         raise SPSectionInputError("mechanical fibre grid integer 8..80 required")
     mat=resolve_materials(column)
@@ -168,7 +175,7 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
     xx=(np.arange(grid)+.5)*width/grid
     yy=(np.arange(grid)+.5)*height/grid
     X,Y=np.meshgrid(xx,yy,indexing="xy")
-    temps=np.asarray([sample_tkp_temperature(field,float(x*1000.),float(y*1000.))
+    temps=np.asarray([temperature_at(field,float(x*1000.),float(y*1000.))
         for x,y in zip(X.ravel(),Y.ravel())],dtype=float)
     bx=[];by=[];As=[];ts=[];tcb=[];ids=[]
     for i,bar in enumerate(column.get("bars") or []):
@@ -177,7 +184,7 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
         d=_positive(bar.get("diameter_mm"),"bar.d")/1000.
         if not d/2.<x<width-d/2. or not d/2.<y<height-d/2.:
             raise SPSectionInputError("bar outside section; check physical cover")
-        temperature=sample_tkp_temperature(field,x*1000.,y*1000.)
+        temperature=temperature_at(field,x*1000.,y*1000.)
         # Explicit steel >800 fail-closed. Concrete >800 => 0 stress.
         steel_at_sp_fire(steel,temperature,normal=ss)
         ids.append(str(bar["id"]))
@@ -220,7 +227,9 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
             "SP_fire":"СП 2.02.05-2026 §§8.2.18–8.2.20, Tables9–12, Eq6",
             "SP_normal":"СП 5.03.01-2020 §§6.1.5.4,6.2.2.13",
             "concrete_policy":"USER_ASSUME_ZERO_STRENGTH_IF_T>800_C",
-            "thermal":"TKP_4.3.2_FVM_UNQUALIFIED_AS_SP_823",
+            "thermal":("SP2026_8.2.23_K1_FVM_SOURCE_LAWS_WITH_UNQUALIFIED_BOUNDARY"
+                if method=="SP2026_8.2.23_FVM"
+                else "TKP_4.3.2_FVM_UNQUALIFIED_AS_SP_823"),
             "thermal_property_convergence_qualified":False,
             "full_member_R_t_qualified":False})
     b.sp_concrete=concrete
@@ -246,7 +255,7 @@ def evaluate_sp2026_section_at_time(column,thermal_snapshot,*,grid=12):
     return {
         "version":VERSION,
         "SP_mechanical_model":"SP2026_TABLE9_10_SP5_6_1_5_4_6_2_2_13",
-        "temperature_method":"TKP_FVM_PHYSICAL_FIELD_UNQUALIFIED_AS_SP",
+        "temperature_method":thermal_snapshot["thermal_method"],
         "time_minutes":float(thermal_snapshot["snapshot"]["time_minutes"]),
         "concrete_zero_strength_over_800_C_count":int(
             np.count_nonzero(prepared.theta_c>800.)),
