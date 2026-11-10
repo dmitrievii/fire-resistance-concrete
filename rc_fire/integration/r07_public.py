@@ -123,7 +123,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
         ductility_class=ductility_class,
         cell_count=grid,fibre_grid=grid,
         max_step_minutes=dt,step_minutes=step,
-        max_factor=1.,factor_step=1.,max_bisection=0,
+        # Check independent sampled proportional-load factors 0..2.
+        # This is section equilibrium evidence, NOT column capacity.
+        max_factor=2.,factor_step=.5,max_bisection=0,
         include_member=bool(assess_member),
         refine_strain_transition=False)
     points=history.get("samples") or []
@@ -176,6 +178,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
             "first_observed_strain_exceedance_minutes"),
       "numerical_section_at_required_time":at.get("reference_classification",UNKNOWN),
       "numerical_section_status_at_required_time":at.get("status"),
+      "material_strength_at_required_time":at.get("material_strength_retention"),
+      "sampled_section_reserve_at_required_time":at.get("sampled_section_load_evidence"),
+      "capacity_scope":"Only a first-order section under discrete N-Mx-My scaling; "
+                       "not verified whole-column capacity or fire-resistance R(t)",
       "numerical_section_all_times_within":all_observed_within,
       "numerical_some_times_unknown":any_unknown,
       "numerical_some_times_exceeded":any_exceeded,
@@ -191,6 +197,22 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "gas_C":p.get("T_gas_C"),
           "concrete_surface_C":p.get("T_concrete_boundary_max_C"),
           "concrete_centre_C":p.get("T_concrete_center_C"),
+          "bars_C":p.get("T_reinforcement_C") or {},
+          "concrete_retained_uniaxial_pct":(
+              (p.get("material_strength_retention") or {}).get(
+                  "concrete_uniaxial_strength_retained_pct")),
+          "steel_retained_yield_pct":(
+              (p.get("material_strength_retention") or {}).get(
+                  "steel_yield_strength_retained_pct")),
+          "max_checked_section_load_factor":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "max_consecutively_checked_load_factor")),
+          "discrete_checked_section_extra_load_pct":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "discrete_extra_load_tested_pct")),
+          "ratio_to_max_checked_load_pct_not_utilization":(
+              (p.get("sampled_section_load_evidence") or {}).get(
+                  "ratio_to_max_checked_load_pct")),
           "section_classification":p.get("reference_classification"),
           "section_solver_status":p.get("status"),
           "member_status":(p.get("member") or {}).get("status")}
