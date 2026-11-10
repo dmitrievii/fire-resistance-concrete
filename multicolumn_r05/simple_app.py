@@ -372,13 +372,29 @@ if record:
         st.caption("Показан также прогрев после требуемого R. "
                    "Этот период является исследовательским и сам по себе "
                    "не доказывает несущую способность после Rrequired.")
+    sp_thermal_available=bool(r.get("sp2026_stage2_thermal_timeline"))
+    selected_thermal=(r.get("sp2026_stage2_thermal_timeline")
+                      if sp_thermal_available else r.get("thermal_timeline")) or []
     chart_report={
         **r,
         "timeline":[x for x in (r.get("timeline") or [])
                     if float(x["minute"])<=max_chart_time+1.e-9],
-        "thermal_timeline":[x for x in (r.get("thermal_timeline") or [])
+        "thermal_timeline":[x for x in selected_thermal
                             if float(x["minute"])<=max_chart_time+1.e-9],
     }
+    if sp_thermal_available:
+        st.caption("Основные температурные графики и тепловая карта — "
+                   "СП 2.02.05-2026 §8.2.23, приложение К.1, "
+                   "двумерный конечно-объёмный решатель. "
+                   "Граничные коэффициенты h=25 Вт/(м²·К), ε=0,7 "
+                   "используются как явно указанное сравнительное "
+                   "допущение из ТКП, не как табличные значения СП.")
+    else:
+        st.warning("Расчёт температуры по СП не получен. Ниже показана "
+                   "только прежняя модель ТКП, которая НЕ подтверждает "
+                   "теплотехническую часть СП. Причина: "+
+                   str(r.get("sp2026_stage2_heat_blocker") or
+                       "в сохранённом результате нет ветви SP-R.2"))
     col1,col2=st.columns([1.2,1])
     with col1:
         timeline=pd.DataFrame(chart_report.get("timeline") or [])
@@ -469,7 +485,14 @@ if record:
         st.plotly_chart(make_section_figure(c),
             use_container_width=True,key="r07_section_diagram")
         st.markdown("**Температуры при требуемой продолжительности**")
-        temps=r["required_time_temperatures"]
+        sp_at=next((x for x in (r.get("sp2026_stage2_thermal_timeline") or [])
+                    if abs(float(x["minute"])-
+                           float(r["required_rating_minutes"]))<1e-8),None)
+        legacy=r["required_time_temperatures"]
+        temps=({
+            "concrete_surface_max_C":sp_at["concrete_surface_C"],
+            "concrete_centre_C":sp_at["concrete_centre_C"],
+            "bars_C":sp_at["bars_C"]} if sp_at else legacy)
         st.write(f"Бетон, поверхность: "
                  f"{temps['concrete_surface_max_C']:.1f} °C")
         st.write(f"Бетон, центр: {temps['concrete_centre_C']:.1f} °C")
