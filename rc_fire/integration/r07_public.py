@@ -56,10 +56,12 @@ def _input_preflight(c:dict,*,required_minutes,steel_route,ductility_class,
             "Actual rebar production route (hot_rolled/cold_worked) is required")
     if ductility_class not in ("A","B","C"):
         raise PublicFireInputError("Actual reinforcing ductility A/B/C is required")
-    w=_positive(moisture_mass_pct,"concrete gravimetric moisture %")
-    if w>3.:
+    try: w=float(moisture_mass_pct)
+    except (TypeError,ValueError) as exc:
+        raise PublicFireInputError("mass moisture percentage required") from exc
+    if isinstance(moisture_mass_pct,bool) or not math.isfinite(w) or not 0<=w<=3.:
         raise PublicFireInputError(
-            "Thermal heat-capacity moisture peak is only tabulated for <=3%")
+            "Thermal heat-capacity moisture source is tabulated for 0..3%")
     if not isinstance(c.get("bars"),list) or len(c["bars"])<4:
         raise PublicFireInputError("at least 4 real reinforcement bars required")
     if not isinstance(c.get("sections"),list) or not c["sections"]:
