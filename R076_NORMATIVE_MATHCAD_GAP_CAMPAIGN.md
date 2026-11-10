@@ -1,6 +1,8 @@
 # R0.7.6 — Belarus fire design / Mathcad K18 / Python code audit
 
 **Date:** 2026-11-10. **Baseline:** main after PR #24.
+**Method hierarchy update, 10 Nov 2026:** User chooses **СП 2.02.05-2026 as the mandatory first/default route**. See [R076_SP2026_PRIORITY_R90_ACCEPTANCE.md](R076_SP2026_PRIORITY_R90_ACCEPTANCE.md). In particular, the valid **§8.2.11 / Table 3** route may establish a normative R90 class without first finishing a general non-linear whole-column failure-time solver. The detailed P0 advanced-model validation below is required for the **calculation-based exact t_R**, not necessarily for a fully eligible tabular R90 check. K1's 600/40 mm geometry is a plausible Table 3 R90 case at η≤0.7, but the ambient N_Rd, eta, actual static scheme/eccentricity distribution and spalling have not been closed.
+
 **Verdict:** NOT NORMATIVELY VERIFIED for a reinforced-concrete whole-column fire limit R(t) or public R90 PASS/FAIL.
 
 ## Evidence sources (not redistributed)
