@@ -329,14 +329,23 @@ if record:
                "Это НЕ означает, что колонна не соответствует требованиям.")
     col1,col2=st.columns([1.2,1])
     with col1:
-        st.markdown("**Поведение конструкции во времени**")
+        st.markdown("**Температуры бетона и арматуры во времени**")
         timeline=pd.DataFrame(r["timeline"])
         if not timeline.empty:
             plot=timeline.set_index("minute")[[
-                "gas_C","concrete_surface_C","concrete_centre_C"]]
-            st.line_chart(plot)
-            st.caption("Газовая температура, максимальная температура "
-                       "поверхности и температура центра бетона, °C.")
+                "gas_C","concrete_surface_C","concrete_centre_C"]].copy()
+            plot.columns=["Температура газа","Поверхность бетона","Центр бетона"]
+            for bar in c["bars"]:
+                bar_id=str(bar["id"])
+                plot["Арматура "+bar_id]=[
+                    float(record[bar_id]) if isinstance(record,dict) and
+                    bar_id in record else float("nan")
+                    for record in timeline["bars_C"]]
+            st.line_chart(plot,x_label="Продолжительность пожара, мин",
+                          y_label="Температура, °C")
+            st.caption("Температуры всех фактически заданных стержней S1…Sn "
+                       "показаны на одном графике. Совпадающие кривые "
+                       "означают одинаковый нагрев симметричных стержней.")
         transition=r["observed_strain_limit_transition"]
         if transition:
             st.info("Обнаружен численный интервал достижения предельной "
@@ -367,6 +376,64 @@ if record:
             {"Стержень":key,"Температура, °C":round(float(t),1)}
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
+    st.divider()
+    st.subheader("Изменение прочности и проверенный запас сечения")
+    st.caption("Материальные показатели по ТКП EN 1992-1-2:2009 относятся "
+               "только к потере прочности бетона и стали при нагреве. "
+               "Они НЕ являются несущей способностью всей колонны.")
+    strengths=r.get("material_strength_at_required_time") or {}
+    a,b=st.columns(2)
+    with a:
+        if strengths:
+            st.metric("Сохранение прочности бетона при Rrequired",
+                f"{strengths['concrete_uniaxial_strength_retained_pct']:.1f}%")
+    with b:
+        if strengths:
+            st.metric("Сохранение предела текучести арматуры при Rrequired",
+                f"{strengths['steel_yield_strength_retained_pct']:.1f}%")
+    strength_columns={
+        "concrete_retained_uniaxial_pct":"Бетон: сохранение fck, %",
+        "steel_retained_yield_pct":"Арматура: сохранение fyk, %"}
+    strength_history=timeline[["minute",*strength_columns]].rename(
+        columns=strength_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    if not strength_history.empty and strength_history.notna().any().any():
+        st.line_chart(strength_history,
+            x_label="Продолжительность пожара, мин",
+            y_label="Сохранение прочности материала, %")
+    st.caption("Средневзвешенные по площадям коэффициенты прочности отдельных "
+               "материалов: бетон kc(θ), арматура ksy(θ). "
+               "Они не включают изгибно-сжатую работу колонны или устойчивость.")
+    reserve=r.get("sampled_section_reserve_at_required_time") or {}
+    if reserve.get("discrete_extra_load_tested_pct") is not None:
+        lambda_checked=reserve["max_consecutively_checked_load_factor"]
+        st.write("**Исследованный запас по N–Mx–My на Rrequired:** "
+                 f"при λ = {lambda_checked:.2f} равновесие проверено; "
+                 f"дополнительные {reserve['discrete_extra_load_tested_pct']:.0f}% "
+                 "заданных усилий проверены в дискретных точках модели.")
+        st.write("Отношение приложенных усилий к наибольшему проверенному "
+                 f"уровню = {reserve['ratio_to_max_checked_load_pct']:.1f}%. "
+                 "**Это НЕ нормативный коэффициент использования колонны.**")
+    else:
+        st.info("Запас и процент использования по N–Mx–My не могут быть "
+                "численно определены из доступных проверенных точек "
+                "нелинейного равновесия. Нельзя заменять их отношением "
+                "деформаций или считать несходимость потерей прочности.")
+    sample_columns={
+        "discrete_checked_section_extra_load_pct":"Доп. нагрузка, проверенная дискретно, %",
+        "ratio_to_max_checked_load_pct_not_utilization":
+             "Отношение к проверенному уровню, % (не ULS)"}
+    reserve_history=timeline[["minute",*sample_columns]].rename(
+        columns=sample_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    if not reserve_history.empty and reserve_history.notna().any().any():
+        st.line_chart(reserve_history,x_label="Продолжительность пожара, мин",
+                      y_label="Проверенные доли, %")
+    st.caption("Коэффициенты нагрузки λ исследуются только до 2,0 с шагом 0,5. "
+               "Показаны только последовательные точки со сходимостью и "
+               "допустимыми деформациями сечения. "
+               "Неопределённые точки скрываются, а не принимаются за разрушение. "
+               "Полная несущая способность, использование U(t), реальный запас "
+               "и предел R(t) всей колонны пока не квалифицированы.")
+
     if not r.get("steel_material_confirmed"):
         st.caption("Материал S500: технология изготовления и класс пластичности "
                    "использованы как исходные допущения, без проверки сертификата.")
