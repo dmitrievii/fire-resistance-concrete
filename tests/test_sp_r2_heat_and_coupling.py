@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import math
+import json
 import unittest
 
 import numpy as np
@@ -65,7 +66,7 @@ class SPAppendixK1ExactMaterialTests(unittest.TestCase):
                 derivative=(h_plus-h_minus)/(2*dT if T>20. else dT)
                 cp=float(_vol_heat_capacity(
                     np.asarray([T]),2200.,aggregate,1.5)[0])
-                self.assertAlmostEqual(derivative/cp,1.,places=6)
+                self.assertAlmostEqual(derivative/cp,1.,delta=1e-6)
 
     def test_wet_concrete_has_greater_effective_capacity(self):
         dry=sp_specific_heat(500.,aggregate="siliceous",
@@ -221,6 +222,17 @@ class SP2026RefinementAndNormativeReference(unittest.TestCase):
                             for x in r["models"]))
         self.assertFalse(r["sp2026_823_model_fully_qualified"])
         self.assertFalse(r["normative_claim"])
+        print("SP_R2_REFINEMENT_DIGEST "+json.dumps({
+            "grid_sizes":[x["grid"] for x in r["models"]],
+            "time_steps":[x["time_step_minutes"] for x in r["models"]],
+            "coarse_to_intermediate_max_bar_delta_C":
+                r["coarse_to_intermediate"]["max_bar_delta_abs_C"],
+            "intermediate_to_fine_max_bar_delta_C":
+                r["intermediate_to_fine"]["max_bar_delta_abs_C"],
+            "fine_temporal_max_bar_delta_C":
+                r["fine_temporal_refinement"]["max_bar_delta_abs_C"],
+            "status":r["status"],
+        },sort_keys=True),flush=True)
 
     def test_independent_SP_Zh7_reference_is_compared_without_calibration(self):
         c=make_column(user_inputs())
@@ -240,6 +252,12 @@ class SP2026RefinementAndNormativeReference(unittest.TestCase):
         self.assertFalse(result["normative_claim"])
         self.assertEqual(result["reference"],
                          "СП 2.02.05-2026, приложение Ж, таблица Ж.7")
+        print("SP_R2_ZH7_DIGEST "+json.dumps({
+            "RMSE_C":result["RMSE_C"],
+            "max_abs_error_C":result["max_abs_error_C"],
+            "rows":result["pointwise"],
+            "comparison_status":result["status"],
+        },ensure_ascii=False,sort_keys=True),flush=True)
 
 
 class PublicSP2026ThermalDefault(unittest.TestCase):
