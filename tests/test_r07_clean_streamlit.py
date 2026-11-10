@@ -111,6 +111,13 @@ class PublicCalculatorScreen(unittest.TestCase):
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
                             for x in app.get("metric")))
+        extended=next(x for x in app.checkbox
+                      if x.label.startswith("Показывать дополнительно период"))
+        self.assertFalse(extended.value)
+        extended.set_value(True).run()
+        self.assertFalse(app.exception,repr(list(app.exception)))
+        self.assertTrue(any("Показан также прогрев после требуемого R"
+                            in x.value for x in app.get("caption")))
         # Reproduce the user's exact failure: a previous deployment kept a
         # valid calculation in Streamlit session_state whose timeline had
         # no bars_C and no strength-percent fields. A rerun must not raise.
