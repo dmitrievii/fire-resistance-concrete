@@ -105,6 +105,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
     _input_preflight(column,required_minutes=required_minutes,
         steel_route=steel_route,ductility_class=ductility_class,
         moisture_mass_pct=moisture_mass_pct)
+    source_meta=column.get("source_assumptions") or {}
+    if (source_meta.get("steel_manufacturing_route",steel_route)!=steel_route or
+        source_meta.get("steel_ductility_class",ductility_class)!=ductility_class):
+        raise PublicFireInputError(
+            "Steel processing/class mismatch between column source and "
+            "TKP fire material selection")
     required=float(required_minutes)
     if type(grid) is not int or grid not in (8,12,16,24,32):
         raise PublicFireInputError("mesh grid must be one of 8/12/16/24/32")
@@ -142,8 +148,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     any_exceeded=any(s==EXCEEDED for s in statuses)
     member=(at.get("member") or {}) if assess_member else {}
     spalling=evaluate_annex_l(column)
-    steel_spec=(column.get("material_spec") or {}).get("steel") or {}
-    steel_confirmed=steel_spec.get("selection_confirmed") is True
+    source_meta=column.get("source_assumptions") or {}
+    steel_confirmed=source_meta.get("steel_material_confirmed") is True
     blockers=[
        "FULL_COLUMN_FIRE_ULS_NOT_VALIDATED_TKP_4_3_4",
        "TEMPERATURE_AND_MECHANICAL_MESH_CONVERGENCE_NOT_ESTABLISHED",
@@ -224,7 +230,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "member_status":(p.get("member") or {}).get("status")}
           for p in points],
       "steel_material_confirmed":steel_confirmed,
-      "steel_material_provenance":steel_spec.get("selection_provenance",
+      "steel_material_provenance":source_meta.get("steel_selection_provenance",
           "unrecorded_unverified"),
       "numerical_scenario_only":not steel_confirmed,
       "materials":{
