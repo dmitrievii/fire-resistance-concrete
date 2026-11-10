@@ -51,7 +51,8 @@ def prepare_temperature_chart(report,bar_ids):
     in that case the gas/concrete chart remains available and the bars
     are explicitly reported as unavailable, not set to zero.
     """
-    raw=(report.get("timeline") or []) if isinstance(report,dict) else []
+    raw=((report.get("thermal_timeline") or report.get("timeline") or [])
+         if isinstance(report,dict) else [])
     if not isinstance(raw,(list,tuple)):
         raw=[]
     requested=[str(x) for x in bar_ids]
@@ -163,3 +164,38 @@ def engineering_input_help(label,widget,kwargs,existing_help):
             if index is not None and 0<=index<len(rendered):
                 items.append("Выбрано по умолчанию: "+rendered[index]+".")
     return "\n\n".join(items)
+
+def split_temperature_chart(plot,*,max_group_temperature_difference_C=0.05):
+    """Two readable charts; merge only truly identical steel rod histories.
+
+    The public interface previously plotted 8 overlapping rods plus gas and
+    concrete in the same panel. For four-sided symmetric sections, the eight
+    legends correspond to as few as two *physically distinct* curves.
+    Grouping preserves every bar ID and checks ALL sampled temperatures.
+    """
+    if not isinstance(plot,pd.DataFrame) or plot.empty:
+        return pd.DataFrame(),pd.DataFrame()
+    concrete_keys=[c for c in (
+       "Температура газа","Поверхность бетона","Центр бетона") if c in plot.columns]
+    concrete=plot[concrete_keys].copy() if concrete_keys else pd.DataFrame()
+    bars=[c for c in plot.columns if c.startswith("Арматура ")]
+    groups=[]
+    for col in bars:
+        values=plot[col]
+        found=False
+        for group in groups:
+            previous=plot[group[0]]
+            if values.notna().equals(previous.notna()) and (
+                (values-previous).abs().fillna(0.).le(
+                    max_group_temperature_difference_C).all()):
+                group.append(col)
+                found=True
+                break
+        if not found:
+            groups.append([col])
+    out=pd.DataFrame(index=plot.index)
+    for group in groups:
+        names=[c.removeprefix("Арматура ") for c in group]
+        legend=("Стержни " if len(names)>1 else "Стержень ")+", ".join(names)
+        out[legend]=plot[group[0]]
+    return concrete,out
