@@ -74,16 +74,19 @@ class CleanPhysicalInputsTest(unittest.TestCase):
     def test_default_steel_material_is_explicitly_unconfirmed(self):
         d=user_inputs()
         c=make_column(d)
-        steel=c['material_spec']['steel']
-        self.assertEqual(steel['production_route'],'hot_rolled')
-        self.assertEqual(steel['ductility_class'],'B')
-        self.assertFalse(steel['selection_confirmed'])
-        self.assertEqual(steel['selection_provenance'],
+        # SP material lookup needs a strict Reinforcement dataclass.
+        self.assertEqual(c['material_spec']['steel'],
+                         {'product_type':'weldable_bar'})
+        steel=c['source_assumptions']
+        self.assertEqual(steel['steel_manufacturing_route'],'hot_rolled')
+        self.assertEqual(steel['steel_ductility_class'],'B')
+        self.assertFalse(steel['steel_material_confirmed'])
+        self.assertEqual(steel['steel_selection_provenance'],
                          'user_visible_demonstration_defaults_unconfirmed')
         d['steel_material_confirmed']=True
-        confirmed=make_column(d)['material_spec']['steel']
-        self.assertTrue(confirmed['selection_confirmed'])
-        self.assertEqual(confirmed['selection_provenance'],'user_documented')
+        confirmed=make_column(d)['source_assumptions']
+        self.assertTrue(confirmed['steel_material_confirmed'])
+        self.assertEqual(confirmed['steel_selection_provenance'],'user_documented')
 
     def test_variable_bar_counts_and_validation(self):
         d=user_inputs();d['bars_horizontal']=4;d['bars_vertical']=4
@@ -138,6 +141,15 @@ class OneFireResultTest(unittest.TestCase):
         self.assertIn(r['numerical_section_at_required_time'],
                       (WITHIN,EXCEEDED,UNKNOWN))
         self.assertLess(r['energy_balance']['relative_cumulative_residual'],3e-4)
+
+    def test_material_catalog_is_resolved_after_source_provenance_separation(self):
+        from rc_fire.materials import resolve_materials
+        spec=resolve_materials(self.c)
+        self.assertEqual(spec['status'],'resolved_for_property_lookup',
+                         spec.get('issues'))
+        self.assertIsNotNone(self.r['material_strength_at_required_time'],
+                             [s.get('reason') for s in self.r[
+                                  'full_internal_audit']['samples']])
 
     def test_temperature_series_contains_every_actual_rebar_at_every_minute(self):
         r=self.r
