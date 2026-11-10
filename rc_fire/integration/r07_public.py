@@ -201,6 +201,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
         "concrete_surface_C":row.get("T_concrete_boundary_max_C"),
         "concrete_centre_C":row.get("T_concrete_center_C"),
         "bars_C":row.get("T_reinforcement_C") or {},
+        "grid_temperature_C":row.get("grid_temperature_C"),
+        "surface_temperature_C":row.get("surface_temperature_C"),
         "temperature_source":row.get("temperature_source"),
     } for row in thermal_rows]
     report={
@@ -239,6 +241,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
       "natural_sand_selection_provenance":sand_source,
       "thermal_timeline":thermal_timeline,
+      "thermal_grid":history.get("thermal_grid"),
       "thermal_timeline_independent_of_mechanics":bool(thermal_timeline),
       "timeline":[{
           "minute":p["time_minutes"],
