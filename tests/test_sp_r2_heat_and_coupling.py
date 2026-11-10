@@ -243,6 +243,10 @@ class SP2026RefinementAndNormativeReference(unittest.TestCase):
         self.assertTrue(all(x["energy_residual"]<3e-4
                             for x in r["models"]))
         self.assertFalse(r["sp2026_823_model_fully_qualified"])
+        self.assertEqual(
+            r["status"],"WITHIN_PROVISIONAL_DISCRETIZATION_TOLERANCES")
+        self.assertLess(r["intermediate_to_fine"]["max_bar_delta_abs_C"],15.)
+        self.assertLess(r["fine_temporal_refinement"]["max_bar_delta_abs_C"],15.)
         self.assertEqual(len(r["intermediate_to_fine"][
             "bar_temperature_differences_C"]),8)
         print("SP_R2_K1_R90_REFINEMENT "+json.dumps({
