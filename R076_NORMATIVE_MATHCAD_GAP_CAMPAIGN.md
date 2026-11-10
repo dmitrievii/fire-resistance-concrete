@@ -75,7 +75,11 @@ At 500°C: СП 2.02.05-2026 Table9 siliceous concrete kc=0.80 and Table10 S500 
 
 ### Software tests vs normative evidence
 
-Last merged full CI had **503 tests, 502 passed and one skipped**, but these are mathematical/software checks, not a fire-test model validation or a code-qualification certificate. The new file tests/test_r076_normative_mathcad_campaign.py verifies selected Mathcad saved values and explicit fail-closed code requirements. It does not run licensed Mathcad or the fire experiments.
+Last merged full CI had **503 tests, 502 passed and one skipped**. The new, executed audit added **18 source-based regression/qualification tests**. **R0.7.6 PR #25 CI completed both workflows successfully: 521 tests executed, 520 passed, 1 skipped.** This is proof of a repeatable implementation regression campaign, NOT a fire-test validation or a code-qualification certificate.
+
+The printed machine-readable audit digest confirms, for the current *K1 R30 demonstration* (N50/Mx2/My0), **22 thermal samples, 11 mechanical time points, eight unresolved normative blockers, member load mode not_defined, unconfirmed steel, and R_t_minutes=null, regulatory_result=NOT_ESTABLISHED**. The historical Mathcad v2 x capacity is reproduced as 421.350648996387 kN·m. The saved Mathcad output is checked, but licensed Mathcad has not been recalculated with changed geometry and no new physical fire tests have been conducted.
+
+The new tests/test_r076_normative_mathcad_campaign.py verifies source saved outputs, Belarus source distinction, and fail-closed fire qualification.
 
 To reproduce:
 
