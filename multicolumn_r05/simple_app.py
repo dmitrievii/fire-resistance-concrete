@@ -21,6 +21,7 @@ from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
 from rc_fire.spalling.ui import RANGE_HINTS as BELARUS_ANNEX_L_SOURCE_HELP
+from rc_fire.thermal.tkp_section_plot import make_tkp_section_heatmap
 from rc_fire.integration.r073_plot_contract import (
     prepare_temperature_chart,prepare_optional_percent_chart,
     split_temperature_chart,engineering_input_help)
@@ -470,6 +471,75 @@ if record:
             {"Стержень":key,"Температура, °C":round(float(t),1)}
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
+    st.divider()
+    st.subheader("Температурное поле сечения")
+    grid_spec=r.get("thermal_grid")
+    available_frames=[
+        entry for entry in (chart_report.get("thermal_timeline") or [])
+        if isinstance(entry,dict) and
+           isinstance(entry.get("grid_temperature_C"),list)
+    ]
+    if isinstance(grid_spec,dict) and available_frames:
+        time_to_frame={float(x["minute"]):x for x in available_frames}
+        options=sorted(time_to_frame)
+        selected_default=min(options,key=lambda t:abs(
+            t-float(r["required_rating_minutes"])))
+        heat_slider_key=f"r074_heat_section_time_{cid}"
+        if (heat_slider_key in st.session_state and
+            st.session_state[heat_slider_key] not in options):
+            st.session_state.pop(heat_slider_key,None)
+        selected_time=st.select_slider(
+            "Время нагрева сечения, мин",
+            options=options,value=selected_default,
+            format_func=lambda t:f"{t:g} мин",
+            key=heat_slider_key,
+            help="Реальные сохранённые моменты решения ТКП 2D. "
+                 "Температуры между моментами не интерполируются.")
+        frame=time_to_frame[selected_time]
+        cmax=max(25.,*(float(x["gas_C"]) for x in available_frames))
+        show_500=st.checkbox(
+            "Показать изотерму 500 °C",
+            value=True,key=f"r074_isotherm_{cid}",
+            help="Только графическая изотерма. Она не рассчитывает "
+                 "остаточную несущую способность по приложению К.")
+        heat_left,heat_right=st.columns([1.35,1])
+        with heat_left:
+            try:
+                fig=make_tkp_section_heatmap(c,frame,grid_spec,
+                    color_max_C=cmax,draw_isotherm_500=show_500)
+            except (ValueError,TypeError,KeyError) as exc:
+                st.warning("Не удалось визуализировать температурное поле "
+                           "этого расчётного шага: "+str(exc))
+            else:
+                st.plotly_chart(fig,use_container_width=True,
+                    key=f"r074_tkp_section_{cid}")
+        with heat_right:
+            st.metric("Температура газа",f"{frame['gas_C']:.1f} °C")
+            st.metric("Максимальная температура бетона",
+                f"{frame['concrete_surface_C']:.1f} °C")
+            st.metric("Температура в центре",
+                f"{frame['concrete_centre_C']:.1f} °C")
+            bars_now=frame.get("bars_C") or {}
+            st.dataframe(pd.DataFrame([
+                {"Стержень":str(bar["id"]),
+                 "x, мм":float(bar["x_mm"]),
+                 "y, мм":float(bar["y_mm"]),
+                 "T, °C":(round(float(bars_now[str(bar["id"])]),1)
+                          if str(bar["id"]) in bars_now else None)}
+                for bar in c.get("bars",[])
+            ]),hide_index=True,use_container_width=True)
+        st.caption("Восстановленная тепловая карта сечения из исходных "
+                   "расчётных ячеек ТКП EN 1992-1-2 (2D FVM). "
+                   "Сетка: "+str(grid_spec['nx'])+"×"+str(grid_spec['ny'])+
+                   ". Бирюзовые окружности показывают реальные положения "
+                   "стержней; их температуры получены из того же поля. "
+                   "Изотерма 500 °C — только для визуализации, "
+                   "не самостоятельный расчёт R(t).")
+    else:
+        st.info("В сохранённом расчёте нет двухмерного температурного поля. "
+                "Нажмите «Рассчитать огнестойкость» ещё раз, "
+                "чтобы восстановить тепловую карту по ТКП.")
+
     st.divider()
     st.subheader("Изменение прочности и проверенный запас сечения")
     st.caption("Материальные показатели по ТКП EN 1992-1-2:2009 относятся "
