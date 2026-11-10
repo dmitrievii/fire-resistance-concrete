@@ -185,7 +185,7 @@ class BelarusAnnexLTests(unittest.TestCase):
         from pathlib import Path
         try:from streamlit.testing.v1 import AppTest
         except ImportError:self.skipTest('Streamlit testing not installed')
-        entry=Path(__file__).resolve().parents[1]/'streamlit_app.py'
+        entry=Path(__file__).resolve().parents[1]/'streamlit_legacy_app.py'
         app=AppTest.from_file(str(entry),default_timeout=100).run()
         self.assertFalse(app.exception,list(app.exception))
         nav=next(r for r in app.radio if r.label=='Разделы')
