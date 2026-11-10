@@ -1,7 +1,7 @@
 # R0.7.6 — Belarus fire design / Mathcad K18 / Python code audit
 
 **Date:** 2026-11-10. **Baseline:** main after PR #24.
-**Method hierarchy update, 10 Nov 2026:** User chooses **СП 2.02.05-2026 as the mandatory first/default route**. See [R076_SP2026_PRIORITY_R90_ACCEPTANCE.md](R076_SP2026_PRIORITY_R90_ACCEPTANCE.md). In particular, the valid **§8.2.11 / Table 3** route may establish a normative R90 class without first finishing a general non-linear whole-column failure-time solver. The detailed P0 advanced-model validation below is required for the **calculation-based exact t_R**, not necessarily for a fully eligible tabular R90 check. K1's 600/40 mm geometry is a plausible Table 3 R90 case at η≤0.7, but the ambient N_Rd, eta, actual static scheme/eccentricity distribution and spalling have not been closed.
+**FINAL METHOD CHOICE (user decision, 10 Nov 2026):** СП 2.02.05-2026 §§8.2.16–8.2.23 are the **exclusive production calculation target** for actual whole-column first failure time t_R. **No Table 3 rating, no simplified critical-isotherm strength shortcut, and no implicit use of TKP material factors as SP2026.** See [R076_SP2026_CALCULATED_R_IMPLEMENTATION.md](R076_SP2026_CALCULATED_R_IMPLEMENTATION.md). The user has expressly rejected all tabular pathways. The TKP advanced solver may remain as a separately identified comparator / explicit alternative, but the current public program is NOT yet an SP §8.2.16–23 model. All earlier recommendations to implement Table 3 first are superseded.
 
 **Verdict:** NOT NORMATIVELY VERIFIED for a reinforced-concrete whole-column fire limit R(t) or public R90 PASS/FAIL.
 
