@@ -125,45 +125,50 @@ def _render_value(x):
 
 
 def engineering_input_help(label,widget,kwargs,existing_help):
-    """Actual UI limits vs normative values; selectable enumerations shown."""
-    items=[]
-    if existing_help:
-        items.append(str(existing_help))
+    """A single concise input-range hint; no examples, steps or duplications.
+
+    Numeric limits describe the public form, not a claimed Belarusian code
+    acceptance interval. The longer original Appendix L explanations remain
+    in rc_fire.spalling.ui.RANGE_HINTS and an optional help expander.
+    """
     if widget=="number_input":
         lo=kwargs.get("min_value")
         hi=kwargs.get("max_value")
+        unit=(label.rsplit(",",1)[-1].strip()
+              if "," in label else "")
+        if unit not in ("мм","м","кг/м³","ГПа","%"):
+            unit=""
         if lo is not None and hi is not None:
-            items.append(
-                "Диапазон значений, допускаемый этой формой: "
-                f"{_render_value(lo)}–{_render_value(hi)}.")
-        elif lo is not None:
-            items.append("Диапазон значений в форме: от "+_render_value(lo)+".")
-        elif hi is not None:
-            items.append("Диапазон значений в форме: до "+_render_value(hi)+".")
-        value=kwargs.get("value")
-        if value is not None:
-            items.append("Начальное значение: "+_render_value(value)+
-                         " (пример, не универсальная нормативная рекомендация).")
-        step=kwargs.get("step")
-        if step is not None:
-            items.append("Шаг ввода: "+_render_value(step)+".")
-    elif widget=="selectbox":
-        opts=kwargs.get("_options_for_tooltip")
-        if opts is not None:
-            format_func=kwargs.get("format_func")
-            rendered=[]
-            for option in opts:
+            return ("Диапазон значений: "
+                f"{_render_value(lo)}–{_render_value(hi)}"
+                +(" "+unit if unit else "")+".")
+        if lo is not None:
+            return ("Диапазон значений: от "+_render_value(lo)
+                    +(" "+unit if unit else "")+".")
+        if hi is not None:
+            return ("Диапазон значений: до "+_render_value(hi)
+                    +(" "+unit if unit else "")+".")
+        return "Диапазон значений: конечное числовое значение."
+    if widget=="selectbox":
+        options=kwargs.get("_options_for_tooltip")
+        if options is not None:
+            formatter=kwargs.get("format_func")
+            choices=[]
+            for value in options:
                 try:
-                    label_value=format_func(option) if callable(format_func) else option
-                except (ValueError,TypeError):
-                    label_value=option
-                rendered.append(str(label_value))
-            if rendered:
-                items.append("Доступные значения: "+", ".join(rendered)+".")
-            index=kwargs.get("index",0)
-            if index is not None and 0<=index<len(rendered):
-                items.append("Выбрано по умолчанию: "+rendered[index]+".")
-    return "\n\n".join(items)
+                    name=formatter(value) if callable(formatter) else value
+                except (TypeError,ValueError,KeyError):
+                    name=value
+                choices.append(str(name))
+            if choices:
+                return "Диапазон значений: "+", ".join(choices)+"."
+    if widget=="text_input":
+        if label.startswith("Nᶠⁱ"):
+            return "Диапазон значений: N > 0 кН (сжатие)."
+        if label.startswith(("Mxᶠⁱ","Myᶠⁱ")):
+            return "Диапазон значений: любое конечное число кН·м, включая 0."
+    return str(existing_help or "")
+
 
 def split_temperature_chart(plot,*,max_group_temperature_difference_C=0.05):
     """Two readable charts; merge only truly identical steel rod histories.
