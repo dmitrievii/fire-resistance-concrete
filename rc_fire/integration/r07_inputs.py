@@ -161,14 +161,17 @@ def make_column(inputs:dict):
             'moisture_mass_pct')}
     c['annex_l_spec']={
         'natural_sand_confirmed':inputs['natural_sand_confirmed'],
-        'natural_sand_selection_provenance':inputs.get(
-            'natural_sand_provenance','user_declared'),
         'coarse_aggregate_volume_pct':v['coarse_aggregate_pct'],
         'max_aggregate_mm':v['max_aggregate_mm'],
         'relative_humidity_pct':v['relative_humidity_pct'],
         'cement_kg_m3':v['cement_kg_m3'],
         'water_cement_ratio':v['water_cement_ratio'],
         'moisture_mode':'auto'}
+    # Metadata must not be placed inside the strictly validated Appendix L
+    # parameter schema. Keep human-provenance separate from physical inputs.
+    c['source_assumptions']={
+        'natural_sand':inputs.get('natural_sand_provenance','user_declared'),
+    }
     # This is a **section input**, not proof of the complete longitudinal
     # member load distribution. Effective length factors alone cannot
     # establish the actual end supports or eliminate lateral sway.
