@@ -77,6 +77,11 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertEqual(next(x for x in app.selectbox
             if x.label=="Класс пластичности").value,"B")
 
+    def test_original_normative_material_comments_are_still_exposed(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        self.assertTrue(any("Нормативные пояснения к диапазонам материалов"
+                            in x.label for x in app.expander))
+
     def test_recommended_example_help_mapping_is_present_for_all_major_inputs(self):
         script=(ROOT/"multicolumn_r05"/"simple_app.py").read_text(
             encoding="utf-8")
@@ -107,6 +112,10 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertFalse(app.error,repr(list(app.error)))
         self.assertTrue(any("Изменение прочности и проверенный запас сечения"
                             in x.value for x in app.subheader))
+        self.assertTrue(any("Температурное поле сечения"
+                            in x.value for x in app.subheader))
+        self.assertTrue(any("Нормативные пояснения к диапазонам материалов"
+                            in x.label for x in app.expander))
         self.assertTrue(any("Температура продольной арматуры"
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
