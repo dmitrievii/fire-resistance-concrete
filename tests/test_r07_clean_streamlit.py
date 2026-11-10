@@ -49,6 +49,25 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertEqual(name.value,"К2")
         self.assertFalse(any(x.label=="Разделы" for x in app.radio))
 
+    def test_steel_defaults_are_visible_and_unverified(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        route=next(x for x in app.selectbox if x.label=="Изготовление арматуры")
+        duct=next(x for x in app.selectbox if x.label=="Класс пластичности")
+        confirmed=next(x for x in app.checkbox if
+            x.label=="Технология изготовления и класс пластичности подтверждены документами")
+        self.assertEqual(route.value,"hot_rolled")
+        self.assertEqual(duct.value,"B")
+        self.assertFalse(confirmed.value)
+        self.assertTrue(any("демонстрац" in x.value.lower()
+                            for x in app.get("caption")))
+        # A Streamlit form commits changed widget values only on submit.
+        route.set_value("cold_worked")
+        next(b for b in app.button if
+             "Рассчитать огнестойкость" in b.label).click().run()
+        self.assertFalse(app.exception)
+        self.assertEqual(next(x for x in app.selectbox
+            if x.label=="Изготовление арматуры").value,"cold_worked")
+
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
         buttons=[b for b in app.button if "Рассчитать огнестойкость" in b.label]

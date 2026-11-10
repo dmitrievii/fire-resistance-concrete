@@ -140,6 +140,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     any_exceeded=any(s==EXCEEDED for s in statuses)
     member=(at.get("member") or {}) if assess_member else {}
     spalling=evaluate_annex_l(column)
+    steel_spec=(column.get("material_spec") or {}).get("steel") or {}
+    steel_confirmed=steel_spec.get("selection_confirmed") is True
     blockers=[
        "FULL_COLUMN_FIRE_ULS_NOT_VALIDATED_TKP_4_3_4",
        "TEMPERATURE_AND_MECHANICAL_MESH_CONVERGENCE_NOT_ESTABLISHED",
@@ -147,6 +149,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
        "LONGITUDINAL_SUPPORT_RESTRAINT_AND_ACTION_PATH_MUST_BE_QUALIFIED",
        "OBSERVED_SECTION_STRAIN_IS_NOT_PHYSICAL_MEMBER_COLLAPSE",
     ]
+    if not steel_confirmed:
+        blockers.append("STEEL_S500_PRODUCTION_AND_DUCTILITY_NOT_DOCUMENTED")
     if spalling.get("status")!="calculated_method_scope":
         blockers.append("SP2026_ANNEX_L_SPALLING_NOT_RESOLVED")
     elif spalling.get("protection_required"):
@@ -191,6 +195,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "section_solver_status":p.get("status"),
           "member_status":(p.get("member") or {}).get("status")}
           for p in points],
+      "steel_material_confirmed":steel_confirmed,
+      "steel_material_provenance":steel_spec.get("selection_provenance",
+          "unrecorded_unverified"),
+      "numerical_scenario_only":not steel_confirmed,
       "materials":{
           "concrete":column.get("concrete"),
           "density_kg_m3":column.get("thermal_spec",{}).get("dry_density_kg_m3"),

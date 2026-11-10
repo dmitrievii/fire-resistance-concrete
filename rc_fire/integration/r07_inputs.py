@@ -147,7 +147,13 @@ def make_column(inputs:dict):
                                 else None,
             **({'independently_measured_Ecm_GPa':measured_Ecm}
                if measured_Ecm is not None else {})},
-        'steel':{'product_type':'weldable_bar'}}
+        'steel':{'product_type':'weldable_bar',
+                 'production_route':route,
+                 'ductility_class':duct,
+                 'selection_confirmed':inputs.get('steel_material_confirmed') is True,
+                 'selection_provenance':(
+                     'user_documented' if inputs.get('steel_material_confirmed') is True
+                     else 'user_visible_demonstration_defaults_unconfirmed')}}
     c['thermal_spec']={
         'a_red_mode':'table_K1','exposed_faces':list(inputs['exposed_faces']),
         'concrete_family':family,'dry_density_kg_m3':v['dry_density_kg_m3'],
