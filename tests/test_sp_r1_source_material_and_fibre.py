@@ -176,6 +176,33 @@ class HeatedSPSectionCouplingTests(unittest.TestCase):
         self.assertFalse(info["normative_claim"])
         self.assertTrue(info["user_zero_tail_not_SP_tabulated"])
 
+    def test_zero_tail_is_applied_to_real_2D_fibre_stress_and_tangent(self):
+        import copy
+        p=copy.deepcopy(self.prepared)
+        # Isolate exactly one hot concrete fibre without changing actual
+        # reinforcement temperatures and material-source resolution.
+        p.theta_c[:]=20.
+        p.eps_th_c[:]=0.
+        p.theta_cb[:]=20.
+        p.eps_th_cb[:]=0.
+        p.theta_s[:]=20.
+        p.eps_th_s[:]=0.
+        p.theta_c[0]=800.
+        before,_,meta_before=p.force_and_tangent(
+            np.array([.001,0.,0.]),include_maps=True)
+        self.assertGreater(meta_before['map']['concrete_stress_MPa'][0],0.)
+        self.assertEqual(meta_before['zero_strength_concrete_fibre_count'],0)
+        p.theta_c[0]=800.000001
+        after,J,meta_after=p.force_and_tangent(
+            np.array([.001,0.,0.]),include_maps=True)
+        self.assertEqual(meta_after['map']['concrete_stress_MPa'][0],0.)
+        self.assertEqual(meta_after['zero_strength_concrete_fibre_count'],1)
+        self.assertAlmostEqual(
+            before[0]-after[0],
+            meta_before['map']['concrete_stress_MPa'][0]
+                *p.area[0]*1000.,places=7)
+        self.assertTrue(np.all(np.isfinite(J)))
+
     def test_mechanism_integration_never_certifies_member(self):
         report=evaluate_sp2026_section_at_time(
             self.column,self.snap,grid=8)
