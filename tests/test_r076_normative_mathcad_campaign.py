@@ -105,8 +105,7 @@ class MathcadLegacyVsCurrentCode(unittest.TestCase):
             (Variant('v1',496.7,3.83,0.,20.),
              Variant('v2',527.16,6.5,0.,25.)))
         self.assertEqual(case.fire.minutes,90.)
-        self.assertIn('fixed',self.legacy['assumptions'][0].lower()+
-                      self.legacy['assumptions'][1].lower())
+        self.assertTrue(any('R90' in item for item in self.legacy['assumptions']))
         self.assertNotIn('physical_first_failure_time_minutes',self.legacy)
 
     def test_legacy_mathcad_is_not_identical_to_current_public_k1(self):
