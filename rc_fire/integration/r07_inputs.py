@@ -161,6 +161,8 @@ def make_column(inputs:dict):
             'moisture_mass_pct')}
     c['annex_l_spec']={
         'natural_sand_confirmed':inputs['natural_sand_confirmed'],
+        'natural_sand_selection_provenance':inputs.get(
+            'natural_sand_provenance','user_declared'),
         'coarse_aggregate_volume_pct':v['coarse_aggregate_pct'],
         'max_aggregate_mm':v['max_aggregate_mm'],
         'relative_humidity_pct':v['relative_humidity_pct'],
