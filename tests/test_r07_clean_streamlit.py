@@ -60,7 +60,11 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertFalse(confirmed.value)
         self.assertTrue(any("демонстрац" in x.value.lower()
                             for x in app.get("caption")))
-        route.set_value("cold_worked").run()
+        # A Streamlit form commits changed widget values only on submit.
+        route.set_value("cold_worked")
+        next(b for b in app.button if
+             "Рассчитать огнестойкость" in b.label).click().run()
+        self.assertFalse(app.exception)
         self.assertEqual(next(x for x in app.selectbox
             if x.label=="Изготовление арматуры").value,"cold_worked")
 
