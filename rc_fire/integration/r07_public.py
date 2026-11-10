@@ -30,7 +30,7 @@ from rc_fire.thermal.sp2026_heat import (
     sample_sp2026_temperature,standard_fire_sp,
     reference_sp2026_boundary)
 
-VERSION="R0.7-public-fire-workflow-v7"
+VERSION="R0.7-public-fire-workflow-v8"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -217,15 +217,15 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp_heat_status="UNAVAILABLE"
     sp_heat_problem=None
     c_sp=copy.deepcopy(c)
-    c_sp["fire_minutes"]=required
+    c_sp["fire_minutes"]=horizon
     # Preserve shared TKP section sample times for controlled comparison,
     # and independently record every 5 minutes for accurate SP plots.
     sp_samples=sorted(set([required,*(
         float(p["time_minutes"]) for p in points
-        if 0<float(p["time_minutes"])<=required+1e-8
+        if 0<float(p["time_minutes"])<=horizon+1e-8
     ),*(
-        5.*k for k in range(1,int(required/5.)+1)
-        if 5.*k<=required+1e-8
+        5.*k for k in range(1,int(horizon/5.)+1)
+        if 5.*k<=horizon+1e-8
     )]))
     try:
         sp_heat=solve_sp2026_2d_heat(
@@ -339,6 +339,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage1_at_required_time":sp_preview,
       "sp2026_stage1_material_qualification":sp_material_qualification(),
       "sp2026_stage2_heat_status":sp_heat_status,
+      "sp2026_stage2_heat_horizon_minutes":horizon,
       "sp2026_stage2_heat_blocker":sp_heat_problem,
       "sp2026_stage2_thermal_timeline":sp_thermal_timeline,
       "sp2026_stage2_thermal_grid":sp_heat.get("grid") if sp_heat else None,
