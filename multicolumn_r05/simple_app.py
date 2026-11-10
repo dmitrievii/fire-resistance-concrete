@@ -20,6 +20,7 @@ from rc_fire.integration.r07_inputs import make_column,perimeter_bars
 from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
+from rc_fire.spalling.ui import RANGE_HINTS as BELARUS_ANNEX_L_SOURCE_HELP
 from rc_fire.integration.r073_plot_contract import (
     prepare_temperature_chart,prepare_optional_percent_chart,
     split_temperature_chart,engineering_input_help)
@@ -95,24 +96,16 @@ class _Fields:
         fn=getattr(st,widget)
         def keyed(label,*args,**kwargs):
             kwargs.setdefault("key",f"r07_{cid}_{widget}_{label}")
-            description=_INPUT_HELP.get(label,"")
-            previous=kwargs.get("help","")
-            context="\n\n".join(x for x in (description,previous) if x)
             help_settings=dict(kwargs)
             if widget=="selectbox":
                 help_settings["_options_for_tooltip"]=(
                     args[0] if args else kwargs.get("options"))
-            if widget=="text_input" and label in (
-                "Nᶠⁱ, кН (сжатие положительно)",
-                "Mxᶠⁱ, кН·м","Myᶠⁱ, кН·м"):
-                context+=("\n\nДопустимый диапазон: N > 0 кН (сжатие). "
-                          "Максимум зависит от расчётной схемы и не "
-                          "задаётся искусственным пределом ввода."
-                          if label.startswith("Nᶠⁱ") else
-                          "\n\nДопустимый диапазон: любое конечное число "
-                          "кН·м, включая ноль; знак определяет направление.")
+            # Deliberately ONE short range hint per field. The old
+            # Belarus normative input comments are accessible in an
+            # optional materials expander below, not duplicated here.
             kwargs["help"]=engineering_input_help(
-                label,widget,help_settings,context)
+                label,widget,help_settings,
+                _INPUT_HELP.get(label,"") or kwargs.get("help",""))
             return fn(label,*args,**kwargs)
         return keyed
 
@@ -244,6 +237,27 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
         # User requested natural sand hidden and preset to Yes.
         # Keep the provenance of this unverified assumption in source JSON.
         natural_sand=True
+
+    # The original well-sourced comments from R0.6.8.2 have NEVER been
+    # deleted. Keep them readable separately from the single-line (?).
+    with st.expander("Нормативные пояснения к диапазонам материалов",
+                     expanded=False):
+        st.caption("Сохранены исходные пояснения приложения Л СП 2.02.05-2026. "
+                   "Это область применимости формул и таблиц, которая может "
+                   "быть уже диапазона, допускаемого формой ввода.")
+        for heading,source_key in (
+            ("Объёмная доля крупного заполнителя",
+             "coarse_aggregate_volume_pct"),
+            ("Наибольшая крупность заполнителя",
+             "max_aggregate_mm"),
+            ("Расход цемента","cement_kg_m3"),
+            ("Водоцементное отношение В/Ц","water_cement_ratio"),
+            ("Относительная влажность RH","relative_humidity_pct"),
+        ):
+            st.markdown("**"+heading+"**")
+            st.write(BELARUS_ANNEX_L_SOURCE_HELP[source_key])
+        st.caption("Теплотехническое поле ниже рассчитывается по ТКП EN "
+                   "1992-1-2, а не по ранее применявшемуся приложению К.")
 
     st.divider()
     st.subheader("3. Пожар и действующие усилия")
