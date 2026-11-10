@@ -274,6 +274,19 @@ if record:
             {"Стержень":key,"Температура, °C":round(float(t),1)}
             for key,t in (temps["bars_C"] or {}).items()]),
             hide_index=True,use_container_width=True)
+    st.markdown("**Риск хрупкого разрушения бетона · приложение Л СП 2.02.05-2026**")
+    sp=r.get("spalling_annex_L") or {}
+    if sp.get("status")=="calculated_method_scope":
+        st.write(f"Показатель F = {sp['F']:.3f}; "
+                 +("требуются защитные мероприятия по Л.6" if
+                    sp.get('protection_required') else
+                    "F ≤ 4 при принятых параметрах"))
+        if not sp.get("moisture_method_qualified"):
+            st.caption("Вычисление влажности по Л.5 имеет нерешённую "
+                       "оговорку о единицах; результат условный.")
+    else:
+        st.write("Оценка F не завершена: "
+                 +str(sp.get("reason","недостаточно подтверждённых параметров.")))
     st.markdown("**Что препятствует окончательному выводу**")
     st.write(
         "Нужно подтвердить пространственную расчётную схему колонны, "
