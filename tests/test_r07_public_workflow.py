@@ -18,7 +18,9 @@ def user_inputs():
         cover_mm=20.,stirrup_mm=10.,bar_diameter_mm=20.,
         mu_x=1.,mu_y=1.,bars_horizontal=3,bars_vertical=3,
         concrete_class='C30/37',aggregate_family='siliceous',
-        consistency='V3_V4',curing='natural',dry_density_kg_m3=2200.,
+        consistency='V3_V4',curing='natural',
+        modulus_aggregate='gravel_granite_upto40',measured_Ecm_GPa=None,
+        dry_density_kg_m3=2200.,
         coarse_aggregate_pct=40.,max_aggregate_mm=30.,
         cement_kg_m3=500.,water_cement_ratio=.45,
         relative_humidity_pct=44.,natural_sand_confirmed=True,
@@ -49,10 +51,25 @@ class CleanPhysicalInputsTest(unittest.TestCase):
     def test_missing_load_or_invalid_steel_never_becomes_default(self):
         for k,v in [('N_kN',None),('Mx_kNm',None),('My_kNm',None),
                     ('steel_route','unknown'),('ductility_class',None),
-                    ('natural_sand_confirmed',False)]:
+                    ('natural_sand_confirmed',None)]:
             d=user_inputs();d[k]=v
             with self.subTest(k=k),self.assertRaises((ValueError,TypeError)):
                 make_column(d)
+
+    def test_non_natural_sand_is_allowed_as_input_not_a_spalling_pass(self):
+        d=user_inputs();d['natural_sand_confirmed']=False
+        c=make_column(d)
+        self.assertIs(c['annex_l_spec']['natural_sand_confirmed'],False)
+
+    def test_carbonate_material_requires_independently_verified_Ecm(self):
+        d=user_inputs();d['aggregate_family']='calcareous'
+        with self.assertRaises(ValueError):
+            make_column(d)
+        d['modulus_aggregate']='measured';d['measured_Ecm_GPa']=35.
+        c=make_column(d)
+        self.assertEqual(c['material_spec']['concrete'][
+            'independently_measured_Ecm_GPa'],35.)
+        self.assertIsNone(c['material_spec']['concrete']['modulus_aggregate'])
 
     def test_variable_bar_counts_and_validation(self):
         d=user_inputs();d['bars_horizontal']=4;d['bars_vertical']=4
