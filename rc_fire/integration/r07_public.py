@@ -153,8 +153,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     ]
     if not steel_confirmed:
         blockers.append("STEEL_S500_PRODUCTION_AND_DUCTILITY_NOT_DOCUMENTED")
-    sand_source=(column.get("annex_l_spec") or {}).get(
-        "natural_sand_selection_provenance","unspecified")
+    sand_source=(column.get("source_assumptions") or {}).get(
+        "natural_sand","unspecified")
     if sand_source=="hidden_default_assumed_natural_unverified":
         blockers.append("NATURAL_SAND_IS_ASSUMED_NOT_DOCUMENTED")
     if spalling.get("status")!="calculated_method_scope":
