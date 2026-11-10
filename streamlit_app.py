@@ -127,5 +127,22 @@ if _stale:
             sys.modules.pop(_name, None)
     importlib.invalidate_caches()
 
+# Public R0.7 source must not combine an older cached UI adapter with a
+# newer fire result engine after Streamlit Cloud redeployment.
+for _name, _release in (
+    ("rc_fire.integration.r07_inputs","R0.7-simple-physical-column-inputs-v1"),
+    ("rc_fire.integration.r07_public","R0.7-public-fire-workflow-v1")):
+    _loaded=sys.modules.get(_name)
+    if _loaded is not None:
+        _cached_path=getattr(_loaded,"__file__",None)
+        _expected_path=(_ROOT / "rc_fire" / "integration" /
+                        (_name.rsplit(".",1)[-1]+".py")).resolve()
+        _stale_public=(not _cached_path or
+            Path(_cached_path).resolve()!=_expected_path or
+            getattr(_loaded,"VERSION",None)!=_release)
+        if _stale_public:
+            sys.modules.pop(_name,None)
+            importlib.invalidate_caches()
+
 # run_module, not import_module: rerun the UI on every Streamlit interaction.
 runpy.run_module("multicolumn_r05.simple_app", run_name="__main__")
