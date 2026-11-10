@@ -111,6 +111,23 @@ class PublicCalculatorScreen(unittest.TestCase):
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
                             for x in app.get("metric")))
+        # Reproduce the user's exact failure: a previous deployment kept a
+        # valid calculation in Streamlit session_state whose timeline had
+        # no bars_C and no strength-percent fields. A rerun must not raise.
+        saved=app.session_state["r07_last_public_result_c1"]["result"]
+        for row in saved["timeline"]:
+            row.pop("bars_C",None)
+            row.pop("concrete_retained_uniaxial_pct",None)
+            row.pop("steel_retained_yield_pct",None)
+            row.pop("discrete_checked_section_extra_load_pct",None)
+            row.pop("ratio_to_max_checked_load_pct_not_utilization",None)
+        app.run()
+        self.assertFalse(app.exception,
+                         "Historical calculation must not raise KeyError: "+
+                         repr(list(app.exception)))
+        self.assertFalse(app.error,repr(list(app.error)))
+        self.assertTrue(any("Температуры бетона и арматуры" in x.value
+                            for x in app.markdown))
 
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
