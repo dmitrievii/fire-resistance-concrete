@@ -34,6 +34,16 @@ column_ids=[f"c{i+1}" for i in range(int(count))]
 cid=st.sidebar.radio("Колонна",column_ids,
     format_func=lambda x:"К"+x[1:],key="r07_construction_select")
 
+# Streamlit can retain the previous release's "Не установлено" widget
+# value across reruns. Reset ONLY invalid legacy selections; retain any
+# deliberate valid hot/cold and A/B/C choices.
+for _field_name,_valid in (
+    ("Изготовление арматуры",("hot_rolled","cold_worked")),
+    ("Класс пластичности",("A","B","C"))):
+    _widget_key=f"r07_{cid}_selectbox_{_field_name}"
+    if _widget_key in st.session_state and st.session_state[_widget_key] not in _valid:
+        del st.session_state[_widget_key]
+
 
 class _Fields:
     def __getattr__(self,widget):
