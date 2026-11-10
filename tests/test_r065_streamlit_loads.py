@@ -10,7 +10,7 @@ except ImportError:
 @unittest.skipUnless(AppTest is not None,"Streamlit test framework unavailable")
 class R065StreamlitLoadTransferTests(unittest.TestCase):
     def test_overview_load_editor_reaches_column_page_and_engine(self):
-        root=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        root=Path(__file__).resolve().parents[1]/"streamlit_legacy_app.py"
         app=AppTest.from_file(str(root),default_timeout=120).run()
         self.assertFalse(app.exception,list(app.exception))
         project=app.session_state["project"]
@@ -37,7 +37,7 @@ class R065StreamlitLoadTransferTests(unittest.TestCase):
 
 
     def test_explicit_new_project_resets_old_end_sections_safely(self):
-        root=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        root=Path(__file__).resolve().parents[1]/"streamlit_legacy_app.py"
         app=AppTest.from_file(str(root),default_timeout=120).run()
         self.assertFalse(app.exception,list(app.exception))
         old=app.session_state['project']['columns'][0]
