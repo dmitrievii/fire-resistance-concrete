@@ -11,7 +11,7 @@ except ImportError:
 @unittest.skipUnless(AppTest is not None,'Streamlit testing framework unavailable in offline build')
 class StreamlitAppTests(unittest.TestCase):
     def test_r05_multi_column_main_starts_with_overview(self):
-        app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'streamlit_app.py'),default_timeout=60).run()
+        app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'streamlit_legacy_app.py'),default_timeout=60).run()
         self.assertFalse(app.exception, f'R0.5 entrypoint crashed: {list(app.exception)}')
         self.assertFalse(app.error, f'R0.5 entrypoint error: {list(app.error)}')
         self.assertEqual(len(app.session_state['project']['columns']), 1)
@@ -48,7 +48,7 @@ class StreamlitAppTests(unittest.TestCase):
     def test_cloud_legacy_entrypoint_imports_current_root_backend(self):
         """Exercises the exact file path used by the deployed Streamlit Cloud app."""
         entrypoint = (Path(__file__).resolve().parents[1] /
-                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_legacy_app.py')
         app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
         self.assertFalse(app.exception, f'Cloud compatibility path crashed: {list(app.exception)}')
         self.assertFalse(app.error, f'Cloud compatibility path reported an error: {list(app.error)}')
@@ -62,7 +62,7 @@ class StreamlitAppTests(unittest.TestCase):
         delattr(model, "update_spalling")
         try:
             entrypoint = (Path(__file__).resolve().parents[1] /
-                          "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_app.py")
+                          "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_legacy_app.py")
             app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
             self.assertFalse(app.exception, f"Stale R0.5.6 import: {list(app.exception)}")
             self.assertFalse(app.error, f"Stale R0.5.6 UI: {list(app.error)}")
@@ -77,7 +77,7 @@ class StreamlitAppTests(unittest.TestCase):
     def test_cloud_sp468_form_replaces_old_manual_only_fields(self):
         """Historical Streamlit Cloud entrypoint opens the new SP468 UI."""
         entrypoint = (Path(__file__).resolve().parents[1] /
-                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+                      'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_legacy_app.py')
         app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
         self.assertFalse(app.exception, f'Cloud entrypoint crashed: {list(app.exception)}')
         page = next(r for r in app.radio if r.label == 'Разделы')
@@ -96,7 +96,7 @@ class StreamlitAppTests(unittest.TestCase):
         delattr(old_ui, 'R056_SP468_RELEASE')
         try:
             entrypoint = (Path(__file__).resolve().parents[1] /
-                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_legacy_app.py')
             app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
             self.assertFalse(app.exception, f'Stale SP468 module: {list(app.exception)}')
             loaded = sys.modules.get('multicolumn_r05.r056_ui')
@@ -114,7 +114,7 @@ class StreamlitAppTests(unittest.TestCase):
     def test_r062_thermal_editor_and_empty_state_on_historic_cloud_entrypoint(self):
         """The historical Streamlit Cloud URL must expose Annex K controls."""
         entrypoint=(Path(__file__).resolve().parents[1] /
-                    "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_app.py")
+                    "K18_Streamlit_GitHub_MVP_R0.5" / "streamlit_legacy_app.py")
         app=AppTest.from_file(str(entrypoint),default_timeout=60).run()
         self.assertFalse(app.exception,f"Cloud startup: {list(app.exception)}")
         page=next(r for r in app.radio if r.label=="Разделы")
@@ -129,7 +129,7 @@ class StreamlitAppTests(unittest.TestCase):
     def test_r062_plotted_thermal_field_survives_column_rerun(self):
         """R0.6.2: real data render goes past the new Plotly heatmap path."""
         from multicolumn_r05.project_model import update_thermal_spec
-        path=Path(__file__).resolve().parents[1]/"streamlit_app.py"
+        path=Path(__file__).resolve().parents[1]/"streamlit_legacy_app.py"
         app=AppTest.from_file(str(path),default_timeout=60).run()
         self.assertFalse(app.exception)
         model=app.session_state["project"]
@@ -145,7 +145,7 @@ class StreamlitAppTests(unittest.TestCase):
     def test_r063_mechanics_panel_via_historical_cloud_entrypoint(self):
         """R0.6.3 panel renders with default incomplete inputs and no R90 pass."""
         entrypoint=(Path(__file__).resolve().parents[1] /
-                    "K18_Streamlit_GitHub_MVP_R0.5"/"streamlit_app.py")
+                    "K18_Streamlit_GitHub_MVP_R0.5"/"streamlit_legacy_app.py")
         app=AppTest.from_file(str(entrypoint),default_timeout=60).run()
         self.assertFalse(app.exception,f"Initial Cloud render: {list(app.exception)}")
         page=next(r for r in app.radio if r.label=="Разделы")
@@ -161,7 +161,7 @@ class StreamlitAppTests(unittest.TestCase):
         """R0.6.3 interactively executes both new chart branches."""
         from multicolumn_r05.project_model import (update_material_spec,
             update_thermal_spec,update_column,update_section)
-        root=Path(__file__).resolve().parents[1]/'streamlit_app.py'
+        root=Path(__file__).resolve().parents[1]/'streamlit_legacy_app.py'
         app=AppTest.from_file(str(root),default_timeout=60).run()
         self.assertFalse(app.exception)
         proj=app.session_state['project']
@@ -194,7 +194,7 @@ class StreamlitAppTests(unittest.TestCase):
         delattr(app_core, 'default_template_bytes')
         try:
             entrypoint = (Path(__file__).resolve().parents[1] /
-                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_app.py')
+                          'K18_Streamlit_GitHub_MVP_R0.5' / 'streamlit_legacy_app.py')
             app = AppTest.from_file(str(entrypoint), default_timeout=60).run()
             self.assertFalse(app.exception, f'Stale import recovery failed: {list(app.exception)}')
             self.assertTrue(callable(app_core.default_template_bytes))
