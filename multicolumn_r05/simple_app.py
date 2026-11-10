@@ -344,11 +344,31 @@ if record:
                "способности всей колонны. Поэтому фактическое R(t) "
                "и соответствие Rrequired не определены. "
                "Это НЕ означает, что колонна не соответствует требованиям.")
+    show_after_required=st.checkbox(
+        "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
+        value=False,key=f"r074_extended_results_{cid}",
+        help="По умолчанию графики ограничены требуемой продолжительностью "
+             "пожара. Продлённый расчёт выполняется для исследования "
+             "нагрева; он не означает, что конструкция сохраняет несущую "
+             "способность после Rrequired.")
+    max_chart_time=float("inf") if show_after_required else float(
+        r["required_rating_minutes"])
+    if show_after_required:
+        st.caption("Показан также прогрев после требуемого R. "
+                   "Этот период является исследовательским и сам по себе "
+                   "не доказывает несущую способность после Rrequired.")
+    chart_report={
+        **r,
+        "timeline":[x for x in (r.get("timeline") or [])
+                    if float(x["minute"])<=max_chart_time+1.e-9],
+        "thermal_timeline":[x for x in (r.get("thermal_timeline") or [])
+                            if float(x["minute"])<=max_chart_time+1.e-9],
+    }
     col1,col2=st.columns([1.2,1])
     with col1:
-        timeline=pd.DataFrame(r.get("timeline") or [])
+        timeline=pd.DataFrame(chart_report.get("timeline") or [])
         plot,missing_bars,audit_rows=prepare_temperature_chart(
-            r,[bar["id"] for bar in c.get("bars",[])])
+            chart_report,[bar["id"] for bar in c.get("bars",[])])
         concrete_plot,steel_plot=split_temperature_chart(plot)
         st.markdown("**Газовая среда и температура бетона**")
         if not concrete_plot.empty:
@@ -401,7 +421,7 @@ if record:
         if strain_ratio is not None:
             st.metric("Отношение расчётной деформации к предельной "
                       "при Rrequired",f"{strain_ratio:.2f}%")
-        strain_plot=prepare_optional_percent_chart(r,{
+        strain_plot=prepare_optional_percent_chart(chart_report,{
             "design_action_strain_demand_pct":
                 "Максимальная деформация / предельная, %"})
         if not strain_plot.empty:
@@ -454,7 +474,7 @@ if record:
     strength_columns={
         "concrete_retained_uniaxial_pct":"Бетон: сохранение fck, %",
         "steel_retained_yield_pct":"Арматура: сохранение fyk, %"}
-    strength_history=prepare_optional_percent_chart(r,strength_columns)
+    strength_history=prepare_optional_percent_chart(chart_report,strength_columns)
     if not strength_history.empty and strength_history.notna().any().any():
         st.line_chart(strength_history,
             x_label="Продолжительность пожара, мин",
@@ -481,7 +501,7 @@ if record:
         "discrete_checked_section_extra_load_pct":"Доп. нагрузка, проверенная дискретно, %",
         "ratio_to_max_checked_load_pct_not_utilization":
              "Отношение к проверенному уровню, % (не ULS)"}
-    reserve_history=prepare_optional_percent_chart(r,sample_columns)
+    reserve_history=prepare_optional_percent_chart(chart_report,sample_columns)
     if not reserve_history.empty and reserve_history.notna().any().any():
         st.line_chart(reserve_history,x_label="Продолжительность пожара, мин",
                       y_label="Проверенные доли, %")
