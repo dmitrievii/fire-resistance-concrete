@@ -146,16 +146,49 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
             cell_count=12,max_step_minutes=5.,step_minutes=30.,
             fibre_grid=None,include_member=False,
             max_factor=1.,factor_step=1.,max_bisection=0,
-            refine_strain_transition=False,max_time_refinements=4):
+            refine_strain_transition=False,max_time_refinements=4,
+            thermal_curve_step_minutes=None):
     """One independent heat solve; no rerun/mismatch across mechanical times."""
     if not isinstance(column,dict):
         raise TypeError('column must be a dictionary')
     actions=_action_sections(column)
     times=timeline_points(column.get('fire_minutes'),
            step_minutes=step_minutes,start_minutes=1.,max_points=12)
+    # A temperature curve must have independent time resolution.  Sampling
+    # only the sparse nonlinear mechanical history and connecting its
+    # points created misleading temperature plots in the public UI.
+    thermal_times=list(times)
+    if thermal_curve_step_minutes is not None:
+        from rc_fire.thermal.tkp_heat import _finite
+        curve_step=_finite(thermal_curve_step_minutes,
+                           'thermal_curve_step_minutes',lo=1.,hi=30.)
+        duration=float(column['fire_minutes'])
+        extra=[curve_step*i for i in range(1,int(duration/curve_step)+1)
+               if curve_step*i<=duration+1.e-8]
+        thermal_times=sorted(set([*times,*extra,duration]))
     thermal=solve_tkp_2d_heat(column,boundary=boundary,
         cell_count_x=cell_count,cell_count_y=cell_count,
-        max_step_minutes=max_step_minutes,sample_times_minutes=times)
+        max_step_minutes=max_step_minutes,
+        sample_times_minutes=thermal_times)
+    thermal_curve=None
+    if thermal_curve_step_minutes is not None:
+        # t=0 is the exact initial condition, not an extrapolated heat sample.
+        initial=float(thermal['initial_temperature_C'])
+        thermal_curve=[{
+            'time_minutes':0.,
+            'T_gas_C':initial,
+            'T_concrete_boundary_max_C':initial,
+            'T_concrete_center_C':initial,
+            'T_reinforcement_C':{
+                str(bar['id']):initial for bar in column.get('bars',[])},
+            'temperature_source_match_verified':True,
+            'temperature_source':'FVM initial condition t=0'}]
+        for t in thermal_times:
+            selected=select_tkp_snapshot(thermal,t)
+            thermal_curve.append({
+                **_field_evidence(column,selected),
+                'time_minutes':float(t),
+                'temperature_source':'TKP 2D FVM solved snapshot'})
     if fibre_grid is None:
         fibre_grid=cell_count
     if type(fibre_grid) is not int or not 8<=fibre_grid<=80:
@@ -270,6 +303,9 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
         'thermal_source':thermal['governing_source'],
         'thermal_field_source_method':thermal['thermal_method'],
         'temperature_field_not_from_SP_annex_K':True,
+        'thermal_curve_samples':thermal_curve,
+        'thermal_curve_step_minutes':thermal_curve_step_minutes,
+        'temperature_curve_independent_of_mechanics_times':thermal_curve is not None,
         'mechanical_material_source':'ТКП EN 1992-1-2-2009 §3.2',
         'fire_design_actions_used_without_recombination':True,
         'steel_production_route':production_route,
