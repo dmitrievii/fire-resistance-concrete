@@ -85,18 +85,23 @@ class ThermalMechanicalSeparation(unittest.TestCase):
         self.assertGreater(len(chart),len(report['timeline']))
         concrete,steel=split_temperature_chart(chart)
         self.assertEqual(len(concrete.columns),3)
-        self.assertEqual(set(
-            v.replace('Стержни ','').replace('Стержень ','').replace(' ','')
-            for v in steel.columns),
-            {'S1,S3,S5,S7','S2,S4,S6,S8'} if len(steel.columns)==2 else
-            set(v.replace('Стержни ','').replace('Стержень ','').replace(' ','')
-            for v in steel.columns))
+        # Four-sided symmetric heating has only two unique bar curves:
+        # corner bars and side-midpoint bars.
+        self.assertEqual(len(steel.columns),2)
         seen=set()
         for group in steel.columns:
             seen.update(group.replace('Стержни ','').replace(
                 'Стержень ','').replace(' ','').split(','))
         self.assertEqual(seen,set(ids))
         self.assertTrue(all(steel.iloc[0].values==20.))
+
+    def test_public_loaded_demand_is_distinct_from_load_independent_material_loss(self):
+        r=self.result
+        self.assertIn('design_action_strain_demand_pct_at_required_time',r)
+        self.assertIn('design_action_strain_demand_pct',r['timeline'][0])
+        self.assertEqual(r['regulatory_result'],'NOT_ESTABLISHED')
+        self.assertIsNone(r['R_t_minutes'])
+        self.assertIn('not verified',r['capacity_scope'])
 
     def test_compatibility_falls_back_to_old_mechanics_timeline(self):
         legacy={'timeline':self.result['timeline']}
@@ -143,11 +148,7 @@ class ActualAppliedLoadMechanicalResponse(unittest.TestCase):
                 self.assertIn('critical_ratio',x)
                 if x['classification'] in (WITHIN,EXCEEDED):
                     self.assertIsNotNone(x['critical_ratio'])
-        report=ThermalMechanicalSeparation.result
-        self.assertIn('design_action_strain_demand_pct_at_required_time',report)
-        self.assertIn('design_action_strain_demand_pct',report['timeline'][0])
-        self.assertIsNone(report['R_t_minutes'])
-        self.assertEqual(report['regulatory_result'],'NOT_ESTABLISHED')
+
 
 
 if __name__=="__main__":
