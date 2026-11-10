@@ -139,6 +139,43 @@ class OneFireResultTest(unittest.TestCase):
                       (WITHIN,EXCEEDED,UNKNOWN))
         self.assertLess(r['energy_balance']['relative_cumulative_residual'],3e-4)
 
+    def test_temperature_series_contains_every_actual_rebar_at_every_minute(self):
+        r=self.r
+        expected=set(b["id"] for b in self.c["bars"])
+        self.assertEqual(len(expected),8)
+        self.assertGreaterEqual(len(r['timeline']),3)
+        for row in r['timeline']:
+            self.assertEqual(set(row['bars_C']),expected)
+            self.assertTrue(all(math.isfinite(x) for x in row['bars_C'].values()))
+            self.assertLessEqual(max(row['bars_C'].values()),row['gas_C']+1.e-5)
+
+    def test_material_strength_and_discrete_load_checks_are_separate(self):
+        r=self.r
+        retain=r['material_strength_at_required_time']
+        self.assertIsNotNone(retain)
+        self.assertLessEqual(retain['concrete_uniaxial_strength_retained_pct'],100.)
+        self.assertLessEqual(retain['steel_yield_strength_retained_pct'],100.)
+        self.assertFalse(retain['is_member_capacity'])
+        for row in r['timeline']:
+            self.assertIn('concrete_retained_uniaxial_pct',row)
+            self.assertIn('steel_retained_yield_pct',row)
+            self.assertIn('max_checked_section_load_factor',row)
+            self.assertIn('ratio_to_max_checked_load_pct_not_utilization',row)
+        tested=r['sampled_section_reserve_at_required_time']
+        self.assertFalse(tested['true_capacity_or_utilization_known'])
+        self.assertFalse(tested['is_normative_capacity'])
+        self.assertIsNone(r['calculated_member_failure_time_minutes'])
+        self.assertIsNone(r['R_t_minutes'])
+
+    def test_hidden_natural_sand_remains_a_disclosed_assumption(self):
+        import copy
+        inp=user_inputs()
+        inp['natural_sand_provenance']='hidden_default_assumed_natural_unverified'
+        c=make_column(inp)
+        self.assertIs(c['annex_l_spec']['natural_sand_confirmed'],True)
+        self.assertEqual(c['annex_l_spec']['natural_sand_selection_provenance'],
+                         'hidden_default_assumed_natural_unverified')
+
     def test_never_certify_member_R_by_section_equilibrium(self):
         r=self.r
         self.assertEqual(r['regulatory_result'],'NOT_ESTABLISHED')
