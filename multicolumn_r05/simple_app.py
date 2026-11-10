@@ -547,6 +547,44 @@ if record:
                 "чтобы восстановить тепловую карту по ТКП.")
 
     st.divider()
+    st.subheader("Температурные свойства и механика по СП 2.02.05-2026")
+    sp_mech=r.get("sp2026_stage1_at_required_time") or {}
+    if sp_mech.get("status")=="SP_MATERIAL_AND_SECTION_NUMERICAL_DIAGNOSTIC":
+        c1,c2=st.columns(2)
+        with c1:
+            st.metric("Бетонные волокна без прочности при T > 800 °C",
+                int(sp_mech.get("concrete_zero_strength_over_800_C_count",0)))
+        with c2:
+            st.metric("Максимальная температура арматуры",
+                f"{sp_mech['max_steel_temperature_C']:.1f} °C")
+        st.caption("Принятое вами правило: при T > 800 °C прочность "
+                   "и жёсткость бетона равны нулю. При T = 800 °C "
+                   "сохраняются значения таблицы 9. Это отдельное "
+                   "инженерное допущение, не продолжение таблицы СП.")
+        with st.expander("Равновесие сечений по СП 5.03.01-2020",
+                         expanded=False):
+            for item in sp_mech.get("sections",[]):
+                eq=item.get("equilibrium") or {}
+                st.write(f"{item.get('id')}: N={item.get('N_kN')} кН, "
+                         f"Mx={item.get('Mx_kNm')} кН·м, "
+                         f"My={item.get('My_kNm')} кН·м — "
+                         f"{eq.get('model_status','не определено')}")
+                if eq.get("classification") not in (
+                    "sampled_equilibrium_within_strain_limits",
+                    "sampled_equilibrium_strain_limits_exceeded"):
+                    st.caption("Нелинейное равновесие не установлено; "
+                               "это не является доказательством разрушения.")
+    else:
+        st.info("Расчётная механика СП на выбранное время не выполнена: "+
+                str(sp_mech.get("reason","нет проверенного поля температуры")))
+    st.caption("Этот блок использует материал СП 2.02.05-2026, "
+               "но существующий температурный решатель пока использует "
+               "теплофизические свойства ТКП. Это переходный этап SP-R.1, "
+               "а не подтверждённая расчётная ветвь СП. "
+               "Для U(t) всей колонны и t_R остаются необходимыми "
+               "сопряжённая механика второго порядка, проверка сходимости "
+               "и первый физически обоснованный предел несущей способности.")
+    st.divider()
     st.subheader("Изменение прочности и проверенный запас сечения")
     st.caption("Материальные показатели по ТКП EN 1992-1-2:2009 относятся "
                "только к потере прочности бетона и стали при нагреве. "
