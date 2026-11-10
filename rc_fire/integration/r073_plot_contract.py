@@ -79,11 +79,16 @@ def prepare_temperature_chart(report,bar_ids):
         return pd.DataFrame(),requested,0
     plot=pd.DataFrame(output).set_index("minute").sort_index()
     # Retain only real calculated series; never plot a missing bar as zero.
-    absent=[bar_id for bar_id,display in names.items() if plot[display].isna().all()]
+    # Also signal a partial time history: missing a single sample is not
+    # equivalent to a fully computed steel-temperature curve.
+    missing=[bar_id for bar_id,display in names.items()
+             if plot[display].isna().any()]
+    absent=[bar_id for bar_id,display in names.items()
+            if plot[display].isna().all()]
     for bar_id in absent:
         plot=plot.drop(columns=names[bar_id])
     plot=plot.dropna(axis=1,how="all")
-    return plot,absent,audit_source_rows
+    return plot,missing,audit_source_rows
 
 
 def prepare_optional_percent_chart(report, field_to_label):
