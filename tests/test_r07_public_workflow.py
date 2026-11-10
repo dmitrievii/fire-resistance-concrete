@@ -152,7 +152,9 @@ class OneFireResultTest(unittest.TestCase):
     def test_material_strength_and_discrete_load_checks_are_separate(self):
         r=self.r
         retain=r['material_strength_at_required_time']
-        self.assertIsNotNone(retain)
+        self.assertIsNotNone(retain,
+            [(p['time_minutes'],p.get('status'),p.get('reason'))
+             for p in r['full_internal_audit']['samples']])
         self.assertLessEqual(retain['concrete_uniaxial_strength_retained_pct'],100.)
         self.assertLessEqual(retain['steel_yield_strength_retained_pct'],100.)
         self.assertFalse(retain['is_member_capacity'])
