@@ -153,6 +153,18 @@ def appendix_zh7_comparison(result):
         "reference":"СП 2.02.05-2026, приложение Ж, таблица Ж.7",
         "status":"DIAGNOSTIC_SOURCE_POINTS_NOT_FULLY_MATCHED_BOUNDARY",
         "pointwise":rows,
+        "comparison_inputs":{
+            "aggregate":result.get("material_family"),
+            "dry_density_kg_m3":result.get("dry_density_kg_m3"),
+            "moisture_mass_pct":result.get("moisture_mass_pct"),
+            "boundary_source":result.get("external_boundary_source"),
+            "convective_heat_transfer_W_m2_K":(
+                (result.get("boundary_parameters") or {}).get(
+                    "convection_W_m2_K")),
+            "surface_emissivity":(
+                (result.get("boundary_parameters") or {}).get(
+                    "surface_emissivity")),
+        },
         "RMSE_C":rmse,
         "max_abs_error_C":max(abs(row["difference_C"]) for row in rows),
         "source_boundary_comparability_qualified":False,
