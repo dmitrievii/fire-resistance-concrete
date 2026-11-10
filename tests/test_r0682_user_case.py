@@ -171,7 +171,7 @@ class R0682SandEcmCouplingTests(unittest.TestCase):
             from streamlit.testing.v1 import AppTest
         except ImportError:
             self.skipTest('Streamlit testing dependency unavailable')
-        path=Path(__file__).resolve().parents[1]/'streamlit_app.py'
+        path=Path(__file__).resolve().parents[1]/'streamlit_legacy_app.py'
         app=AppTest.from_file(str(path),default_timeout=120).run()
         self.assertFalse(app.exception,list(app.exception))
         next(r for r in app.radio if r.label=='Разделы').set_value('c1').run()
