@@ -68,6 +68,29 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertEqual(next(x for x in app.selectbox
             if x.label=="Изготовление арматуры").value,"cold_worked")
 
+    def test_material_confirmation_and_sand_checkboxes_are_not_in_public_UI(self):
+        app=self._check(ROOT/"streamlit_app.py")
+        visible={x.label for x in app.checkbox}
+        self.assertNotIn("Природный песок подтверждён",visible)
+        self.assertNotIn(
+            "Технология изготовления и класс пластичности подтверждены документами",
+            visible)
+        self.assertEqual(next(x for x in app.selectbox
+            if x.label=="Изготовление арматуры").value,"hot_rolled")
+        self.assertEqual(next(x for x in app.selectbox
+            if x.label=="Класс пластичности").value,"B")
+
+    def test_recommended_example_help_mapping_is_present_for_all_major_inputs(self):
+        script=(ROOT/"multicolumn_r05"/"simple_app.py").read_text(
+            encoding="utf-8")
+        self.assertIn("_INPUT_HELP={",script)
+        self.assertIn('kwargs["help"]=',script)
+        for label in ("Ширина b, мм","Защитный слой до хомута, мм",
+                      "Класс бетона","Массовая влажность бетона, %",
+                      "Изготовление арматуры","Nᶠⁱ, кН (сжатие положительно)",
+                      "Mxᶠⁱ, кН·м","Требуемая огнестойкость"):
+            self.assertIn('"'+label+'":',script)
+
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
         app=self._check(ROOT/"streamlit_app.py")
         buttons=[b for b in app.button if "Рассчитать огнестойкость" in b.label]
