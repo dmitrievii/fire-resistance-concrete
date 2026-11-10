@@ -107,7 +107,7 @@ class PublicCalculatorScreen(unittest.TestCase):
         self.assertFalse(app.error,repr(list(app.error)))
         self.assertTrue(any("Изменение прочности и проверенный запас сечения"
                             in x.value for x in app.subheader))
-        self.assertTrue(any("Температуры бетона и арматуры во времени"
+        self.assertTrue(any("Температура продольной арматуры"
                             in x.value for x in app.markdown))
         self.assertTrue(any("Сохранение прочности бетона" in x.label
                             for x in app.get("metric")))
@@ -126,7 +126,9 @@ class PublicCalculatorScreen(unittest.TestCase):
                          "Historical calculation must not raise KeyError: "+
                          repr(list(app.exception)))
         self.assertFalse(app.error,repr(list(app.error)))
-        self.assertTrue(any("Температуры бетона и арматуры" in x.value
+        self.assertTrue(any("Температура продольной арматуры" in x.value
+                            for x in app.markdown))
+        self.assertTrue(any("Механический ответ при заданных N–Mx–My" in x.value
                             for x in app.markdown))
 
     def test_missing_load_stays_missing_and_does_not_display_R90_pass(self):
