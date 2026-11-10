@@ -502,7 +502,8 @@ if record:
             hide_index=True,use_container_width=True)
     st.divider()
     st.subheader("Температурное поле сечения")
-    grid_spec=r.get("thermal_grid")
+    grid_spec=(r.get("sp2026_stage2_thermal_grid")
+               if sp_thermal_available else r.get("thermal_grid"))
     available_frames=[
         entry for entry in (chart_report.get("thermal_timeline") or [])
         if isinstance(entry,dict) and
@@ -522,7 +523,7 @@ if record:
             options=options,value=selected_default,
             format_func=lambda t:f"{t:g} мин",
             key=heat_slider_key,
-            help="Реальные сохранённые моменты решения ТКП 2D. "
+            help="Реальные сохранённые моменты конечно-объёмного решения. "
                  "Температуры между моментами не интерполируются.")
         frame=time_to_frame[selected_time]
         cmax=max(25.,*(float(x["gas_C"]) for x in available_frames))
@@ -557,22 +558,25 @@ if record:
                           if str(bar["id"]) in bars_now else None)}
                 for bar in c.get("bars",[])
             ]),hide_index=True,use_container_width=True)
-        st.caption("Восстановленная тепловая карта сечения из исходных "
-                   "расчётных ячеек ТКП EN 1992-1-2 (2D FVM). "
+        st.caption("Тепловая карта по фактическим расчётным ячейкам "+(
+                     "СП 2.02.05-2026 (2D FVM, приложение К.1). "
+                     if sp_thermal_available else
+                     "старой ветви ТКП EN 1992-1-2 (2D FVM). ")+
                    "Сетка: "+str(grid_spec['nx'])+"×"+str(grid_spec['ny'])+
-                   ". Бирюзовые окружности показывают реальные положения "
-                   "стержней; их температуры получены из того же поля. "
-                   "Изотерма 500 °C — только для визуализации, "
-                   "не самостоятельный расчёт R(t).")
+                   ". Бирюзовые окружности показывают положение стержней; "
+                   "температуры взяты из того же поля. Изотерма 500 °C — "
+                   "только графическая, не нормативный расчёт R(t).")
     else:
         st.info("В сохранённом расчёте нет двухмерного температурного поля. "
                 "Нажмите «Рассчитать огнестойкость» ещё раз, "
-                "чтобы восстановить тепловую карту по ТКП.")
+                "чтобы восстановить тепловую карту по СП.")
 
     st.divider()
     st.subheader("Температурные свойства и механика по СП 2.02.05-2026")
     sp_mech=r.get("sp2026_stage1_at_required_time") or {}
-    if sp_mech.get("status")=="SP_MATERIAL_AND_SECTION_NUMERICAL_DIAGNOSTIC":
+    if sp_mech.get("status") in (
+        "SP_MATERIAL_AND_SECTION_NUMERICAL_DIAGNOSTIC",
+        "SP2026_K1_FVM_AND_FIBRES_NUMERICAL_DIAGNOSTIC"):
         c1,c2=st.columns(2)
         with c1:
             st.metric("Бетонные волокна без прочности при T > 800 °C",
@@ -600,13 +604,17 @@ if record:
     else:
         st.info("Расчётная механика СП на выбранное время не выполнена: "+
                 str(sp_mech.get("reason","нет проверенного поля температуры")))
-    st.caption("Этот блок использует материал СП 2.02.05-2026, "
-               "но существующий температурный решатель пока использует "
-               "теплофизические свойства ТКП. Это переходный этап SP-R.1, "
-               "а не подтверждённая расчётная ветвь СП. "
-               "Для U(t) всей колонны и t_R остаются необходимыми "
-               "сопряжённая механика второго порядка, проверка сходимости "
-               "и первый физически обоснованный предел несущей способности.")
+    sp_energy=r.get("sp2026_stage2_heat_energy_balance") or {}
+    if sp_thermal_available and sp_energy:
+        st.metric("Относительная невязка теплового баланса СП",
+            f"{100*float(sp_energy['relative_cumulative_residual']):.5f} %")
+    st.caption("SP-R.2: температурное поле рассчитано по зависимостям "
+               "теплопроводности и теплоёмкости приложения К.1 СП. "
+               "Влажность учтена через эффективную теплоёмкость формулы К.1; "
+               "перенос пара не моделируется. Граничные условия, "
+               "сравнение с приложением Ж и сеточная/временная "
+               "независимость требуют проверки. "
+               "Нормативные U(t) и t_R всей колонны ещё не определены.")
     st.divider()
     st.subheader("Изменение прочности и проверенный запас сечения")
     st.warning("Следующие исторические графики построены по ТКП EN 1992-1-2, "
