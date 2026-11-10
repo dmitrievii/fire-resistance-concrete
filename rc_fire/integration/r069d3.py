@@ -30,6 +30,8 @@ from rc_fire.member.time_scan import timeline_points
 from rc_fire.materials.tkp_en1992_fire import EurocodeFireMaterialError
 from rc_fire.integration.r072_strength_evidence import (
     material_strength_retention,sampled_action_reserve)
+from rc_fire.integration.r075_bounded_utilisation import (
+    section_interaction_upper_bound)
 from rc_fire.integration.r069d4_first_crossing import (
     summarize_observed_strain_history, refine_observed_interval)
 
@@ -237,15 +239,40 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
             scan=p.load_factor_scan(s['N_kN'],s['Mx_kNm'],s['My_kNm'],
                  max_factor=max_factor,factor_step=factor_step,
                  max_bisection=max_bisection)
+            relaxed=section_interaction_upper_bound(
+                p,s['N_kN'],s['Mx_kNm'],s['My_kNm'])
             reports.append({'id':s['id'],'z_m':s['z_m'],
                 'entered_actions_N_Mx_My':{k:s[k]
                    for k in ('N_kN','Mx_kNm','My_kNm')},
                 'at_lambda_1':scan['design_action_evidence'],
-                'sampled_scale_path':scan})
+                'sampled_scale_path':scan,
+                'interaction_capacity_upper_bound':relaxed})
         # Independent evidence: temperature-driven material strength and a
         # discrete proportional load test. These are never whole-member ULS.
         strength_retention=material_strength_retention(p)
         checked_reserve=sampled_action_reserve(reports)
+        known_bounds=[report['interaction_capacity_upper_bound']
+                      for report in reports]
+        overload_proven=any(b.get('definite_section_overload_in_source_model')
+                            for b in known_bounds)
+        if any(b.get('status')!='STRESS_ENVELOPE_UPPER_BOUND_SOLVED'
+               for b in known_bounds):
+            combined_bound_status='UNRESOLVED'
+            minimum_use=None
+        else:
+            combined_bound_status='STRESS_ENVELOPE_UPPER_BOUND_SOLVED'
+            # Worst section means largest minimum use. This still remains
+            # a LOWER bound on usage of the overall member.
+            minimum_use=max((b['section_utilization_lower_bound_pct'] or 0.)
+                            for b in known_bounds)
+        bound_summary={
+            'status':combined_bound_status,
+            'section_utilization_lower_bound_pct':minimum_use,
+            'definite_section_overload_in_source_model':overload_proven,
+            'by_section':{r['id']:r['interaction_capacity_upper_bound']
+                          for r in reports},
+            'member_utilization_known':False,
+            'normative_claim':False}
         classes=[s['at_lambda_1']['classification'] for s in reports]
         classification=(EXCEEDED if EXCEEDED in classes else
             WITHIN if classes and all(v==WITHIN for v in classes) else UNKNOWN)
@@ -257,6 +284,7 @@ def evaluate_tkp_thermal_mechanical_history(column,*,boundary,
             'sections':reports,'member':member,
             'material_strength_retention':strength_retention,
             'sampled_section_load_evidence':checked_reserve,
+            'section_utilization_bound':bound_summary,
             'blockers':[
                 'TKP_4_3_4_EXPERIMENTAL_VALIDATION_NOT_DONE',
                 'NUMERICAL_FAILURE_IS_NOT_PHYSICAL_FAILURE',
