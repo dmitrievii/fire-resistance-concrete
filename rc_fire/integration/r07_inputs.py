@@ -98,9 +98,19 @@ def make_column(inputs:dict):
     curing=inputs.get('curing')
     if curing not in ('natural','heat'):
         raise ValueError('curing method must be declared')
-    if inputs.get('natural_sand_confirmed') is not True:
-        raise ValueError('natural sand assumption must be explicitly confirmed '
-                         'or separate Annex L source route established')
+    if type(inputs.get('natural_sand_confirmed')) is not bool:
+        raise ValueError('actual natural-sand classification must be stated')
+    modulus_basis=inputs.get('modulus_aggregate')
+    measured_Ecm=inputs.get('measured_Ecm_GPa')
+    if modulus_basis=='gravel_granite_upto40':
+        if family!='siliceous':
+            raise ValueError('Do not label calcareous aggregate as granite for Ecm')
+        if measured_Ecm is not None:
+            raise ValueError('Select either laboratory Ecm or source Table 6.3 basis')
+    else:
+        if measured_Ecm is None:
+            raise ValueError('For non-gravel/granite aggregate, Ecm from tests must be given')
+        measured_Ecm=_finite(measured_Ecm,'measured_Ecm_GPa',positive=True)
     c=new_column(1)
     c.update({
         'name':str(inputs.get('name') or 'К1').strip(),
@@ -133,7 +143,10 @@ def make_column(inputs:dict):
     c['material_spec']={
         'concrete':{'aggregate_family':family,
             'consistency':consistency,'curing':curing,
-            'modulus_aggregate':'gravel_granite_upto40'},
+            'modulus_aggregate':modulus_basis if modulus_basis=='gravel_granite_upto40'
+                                else None,
+            **({'independently_measured_Ecm_GPa':measured_Ecm}
+               if measured_Ecm is not None else {})},
         'steel':{'product_type':'weldable_bar'}}
     c['thermal_spec']={
         'a_red_mode':'table_K1','exposed_faces':list(inputs['exposed_faces']),
@@ -141,7 +154,7 @@ def make_column(inputs:dict):
         'moisture_mass_pct':_finite(inputs['moisture_mass_pct'],
             'moisture_mass_pct')}
     c['annex_l_spec']={
-        'natural_sand_confirmed':True,
+        'natural_sand_confirmed':inputs['natural_sand_confirmed'],
         'coarse_aggregate_volume_pct':v['coarse_aggregate_pct'],
         'max_aggregate_mm':v['max_aggregate_mm'],
         'relative_humidity_pct':v['relative_humidity_pct'],
