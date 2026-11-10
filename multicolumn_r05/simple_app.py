@@ -24,7 +24,28 @@ st.set_page_config(
     page_title="Огнестойкость железобетонной колонны",
     page_icon="🏗️",layout="wide",initial_sidebar_state="collapsed")
 
+# Multi-column authoring with independent session-state keys per construction.
+# The public interface still has ONE simple set of fields for the selected
+# column; old D-series panels are never exposed.
+count=st.sidebar.number_input("Количество конструкций",
+    min_value=1,max_value=30,value=1,step=1,key="r07_construction_count")
+column_ids=[f"c{i+1}" for i in range(int(count))]
+cid=st.sidebar.radio("Колонна",column_ids,
+    format_func=lambda x:"К"+x[1:],key="r07_construction_select")
+
+
+class _Fields:
+    def __getattr__(self,widget):
+        fn=getattr(st,widget)
+        def keyed(label,*args,**kwargs):
+            kwargs.setdefault("key",f"r07_{cid}_{widget}_{label}")
+            return fn(label,*args,**kwargs)
+        return keyed
+
+
+field=_Fields()
 st.title("Расчёт огнестойкости железобетонной колонны")
+st.caption("Выбрана колонна: "+cid.upper())
 st.caption(
     "Беларусь · СП 2.02.05-2026 · СП 5.03.01-2020 · "
     "ТКП EN 1992-1-2-2009 с национальным приложением")
@@ -33,38 +54,38 @@ st.write(
     "требуемую продолжительность. Все расчёты выполняются по фактически "
     "указанным значениям. Никакие комбинации усилий не создаются повторно.")
 
-with st.form("column_fire_design_v07",clear_on_submit=False):
+with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
     st.subheader("1. Геометрия и армирование")
     a,b,c=st.columns(3)
     with a:
-        name=st.text_input("Обозначение колонны",value="К1")
-        b_mm=st.number_input("Ширина b, мм",min_value=250.,max_value=2000.,
+        name=field.text_input("Обозначение колонны",value="К"+cid[1:])
+        b_mm=field.number_input("Ширина b, мм",min_value=250.,max_value=2000.,
             value=600.,step=25.)
-        h_mm=st.number_input("Высота сечения h, мм",min_value=250.,max_value=2000.,
+        h_mm=field.number_input("Высота сечения h, мм",min_value=250.,max_value=2000.,
             value=600.,step=25.)
     with b:
-        length=st.number_input("Длина колонны L, м",min_value=1.,max_value=40.,
+        length=field.number_input("Длина колонны L, м",min_value=1.,max_value=40.,
             value=3.,step=.25)
-        mu_x=st.number_input("Расчётная длина: μx",min_value=.2,max_value=2.5,
+        mu_x=field.number_input("Расчётная длина: μx",min_value=.2,max_value=2.5,
             value=1.,step=.1,
             help="Подтвердите по реальной схеме закрепления; не определяет автоматически поведение рамы.")
-        mu_y=st.number_input("Расчётная длина: μy",min_value=.2,max_value=2.5,
+        mu_y=field.number_input("Расчётная длина: μy",min_value=.2,max_value=2.5,
             value=1.,step=.1)
     with c:
-        cover=st.number_input("Защитный слой до хомута, мм",min_value=5.,
+        cover=field.number_input("Защитный слой до хомута, мм",min_value=5.,
             max_value=150.,value=20.,step=5.)
-        tie=st.number_input("Диаметр хомута, мм",min_value=6.,max_value=40.,
+        tie=field.number_input("Диаметр хомута, мм",min_value=6.,max_value=40.,
             value=10.,step=2.)
-        dia=st.number_input("Диаметр продольных стержней, мм",min_value=6.,
+        dia=field.number_input("Диаметр продольных стержней, мм",min_value=6.,
             max_value=50.,value=20.,step=2.)
     n1,n2=st.columns(2)
     with n1:
-        count_x=st.number_input("Стержней по верхней/нижней грани",
+        count_x=field.number_input("Стержней по верхней/нижней грани",
             min_value=2,max_value=20,value=3,step=1)
     with n2:
-        count_y=st.number_input("Стержней по левой/правой грани",
+        count_y=field.number_input("Стержней по левой/правой грани",
             min_value=2,max_value=20,value=3,step=1)
-    manual=st.checkbox(
+    manual=field.checkbox(
         "Указать координаты отдельных стержней вместо равномерной схемы",
         value=False)
     rows=None
@@ -81,7 +102,7 @@ with st.form("column_fire_design_v07",clear_on_submit=False):
                     "x_mm":st.column_config.NumberColumn("x, мм",required=True),
                     "y_mm":st.column_config.NumberColumn("y, мм",required=True),
                     "diameter_mm":st.column_config.NumberColumn("Ø, мм",required=True)},
-                key="r07_custom_bar_positions")
+                key=f"r07_custom_bar_positions_{cid}")
             rows=data.to_dict("records")
         except (TypeError,ValueError) as exc:
             st.error("Геометрия арматуры: "+str(exc))
@@ -90,57 +111,57 @@ with st.form("column_fire_design_v07",clear_on_submit=False):
     st.subheader("2. Материалы")
     c1,c2,c3=st.columns(3)
     with c1:
-        strength=st.selectbox("Класс бетона",(
+        strength=field.selectbox("Класс бетона",(
             "C20/25","C25/30","C30/37","C35/45","C40/50"),index=2)
-        agg=st.selectbox("Тип крупного заполнителя",(
+        agg=field.selectbox("Тип крупного заполнителя",(
             "siliceous","calcareous"),
             format_func=lambda v:"Силикатный" if v=="siliceous" else "Карбонатный")
-        density=st.number_input("Сухая плотность, кг/м³",min_value=800.,
+        density=field.number_input("Сухая плотность, кг/м³",min_value=800.,
             max_value=3000.,value=2200.,step=50.)
-        consistency=st.selectbox("Консистенция бетонной смеси",(
+        consistency=field.selectbox("Консистенция бетонной смеси",(
             "V3_V4","V1_V2","S1_S2","S3_S5"),index=0,
             help="Для определения Ecm по таблице 6.3 СП 5.03.01-2020.")
-        curing=st.selectbox("Твердение",("natural","heat"),
+        curing=field.selectbox("Твердение",("natural","heat"),
             format_func=lambda x:"Естественное" if x=="natural"
                                       else "Тепловая обработка")
-        ecm_basis=st.selectbox("Основание для модуля Ecm",(
+        ecm_basis=field.selectbox("Основание для модуля Ecm",(
             "gravel_granite_upto40","measured"),
             format_func=lambda x:"СП 5.03.01, табл. 6.3 (гравий/гранит до 40 мм)"
                                  if x=="gravel_granite_upto40" else
                                  "Результат испытания бетона")
-        measured_ecm=(st.number_input("Измеренный Ecm, ГПа",
+        measured_ecm=(field.number_input("Измеренный Ecm, ГПа",
             min_value=5.,max_value=90.,value=35.,step=1.)
             if ecm_basis=="measured" else None)
         if agg=="calcareous" and ecm_basis=="gravel_granite_upto40":
             st.caption("Для карбонатного заполнителя потребуется указать "
                        "доказанный модуль Ecm по испытанию.")
     with c2:
-        st.text_input("Класс арматуры",value="S500",disabled=True,
+        field.text_input("Класс арматуры",value="S500",disabled=True,
             help="В этой версии нормативная библиотека допускает S500.")
-        steel_route=st.selectbox("Изготовление арматуры",
+        steel_route=field.selectbox("Изготовление арматуры",
             ("Не установлено","hot_rolled","cold_worked"),
             format_func=lambda x:{"Не установлено":"Выберите по паспорту",
                 "hot_rolled":"Горячекатаная","cold_worked":"Холоднодеформированная"}[x],
             help="Разные температурные диаграммы по ТКП EN 1992-1-2.")
-        duct=st.selectbox("Класс пластичности",
+        duct=field.selectbox("Класс пластичности",
             ("Не установлен","A","B","C"))
-        moisture=st.number_input("Массовая влажность бетона, %",min_value=0.,
+        moisture=field.number_input("Массовая влажность бетона, %",min_value=0.,
             max_value=3.,value=1.5,step=.1,
             help="1,5% — исходное значение для демонстрационного сценария, "
                  "НЕ измеренное значение для вашей колонны.")
         st.caption("Тип арматуры и влажность должны соответствовать фактическим данным.")
     with c3:
-        coarse_pct=st.number_input("Объёмная доля крупного заполнителя, %",
+        coarse_pct=field.number_input("Объёмная доля крупного заполнителя, %",
             min_value=1.,max_value=100.,value=40.,step=5.)
-        grain=st.number_input("Наибольшая крупность заполнителя, мм",
+        grain=field.number_input("Наибольшая крупность заполнителя, мм",
             min_value=5.,max_value=80.,value=30.,step=5.)
-        cement=st.number_input("Расход цемента, кг/м³",
+        cement=field.number_input("Расход цемента, кг/м³",
             min_value=100.,max_value=800.,value=500.,step=25.)
-        wc=st.number_input("Водоцементное отношение В/Ц",
+        wc=field.number_input("Водоцементное отношение В/Ц",
             min_value=.1,max_value=1.,value=.45,step=.05)
-        relative_humidity=st.number_input("Относительная влажность среды, %",
+        relative_humidity=field.number_input("Относительная влажность среды, %",
             min_value=1.,max_value=100.,value=44.,step=1.)
-        natural_sand=st.checkbox(
+        natural_sand=field.checkbox(
             "Природный песок подтверждён",value=False,
             help="Влияет на оценку хрупкого разрушения по приложению Л.")
 
@@ -148,29 +169,29 @@ with st.form("column_fire_design_v07",clear_on_submit=False):
     st.subheader("3. Пожар и действующие усилия")
     x,y,z=st.columns(3)
     with x:
-        n_txt=st.text_input("Nᶠⁱ, кН (сжатие положительно)",
+        n_txt=field.text_input("Nᶠⁱ, кН (сжатие положительно)",
             value="",placeholder="Введите действующую силу",
             help="Готовое расчётное пожарное усилие, не нормативная обычная нагрузка.")
     with y:
-        mx_txt=st.text_input("Mxᶠⁱ, кН·м",value="",
+        mx_txt=field.text_input("Mxᶠⁱ, кН·м",value="",
             placeholder="Можно указать 0",
             help="Момент в рассматриваемом сечении.")
     with z:
-        my_txt=st.text_input("Myᶠⁱ, кН·м",value="",
+        my_txt=field.text_input("Myᶠⁱ, кН·м",value="",
             placeholder="Можно указать 0",
             help="Момент в рассматриваемом сечении.")
     e1,e2=st.columns([1,2])
     with e1:
-        required=st.selectbox("Требуемая огнестойкость",
+        required=field.selectbox("Требуемая огнестойкость",
             (30,45,60,90,120),index=3,
             format_func=lambda v:f"R{v} · {v} мин")
     with e2:
         st.caption("Обогреваемые поверхности:")
         sx,sy,sz,sw=st.columns(4)
-        with sx:left=st.checkbox("Слева",value=True)
-        with sy:right=st.checkbox("Справа",value=True)
-        with sz:bottom=st.checkbox("Снизу",value=True)
-        with sw:top=st.checkbox("Сверху",value=True)
+        with sx:left=field.checkbox("Слева",value=True)
+        with sy:right=field.checkbox("Справа",value=True)
+        with sz:bottom=field.checkbox("Снизу",value=True)
+        with sw:top=field.checkbox("Сверху",value=True)
     st.caption("Для подтверждения огнестойкости всей колонны также "
                "необходима согласованная схема усилий по её длине и закрепления. "
                "Введённые моменты относятся к одному расчётному сечению.")
@@ -215,18 +236,18 @@ if run:
                 steel_route=steel_route,ductility_class=duct,
                 moisture_mass_pct=float(moisture),
                 grid=12,dt_minutes=5.,assess_member=False)
-        st.session_state["r07_last_public_result"]={
+        st.session_state[f"r07_last_public_result_{cid}"]={
             "column":column,"result":result}
     except (ValueError,TypeError,KeyError,
             PublicFireInputError) as exc:
         st.error("Не удалось выполнить расчёт: "+str(exc))
-        st.session_state.pop("r07_last_public_result",None)
+        st.session_state.pop(f"r07_last_public_result_{cid}",None)
     except Exception as exc:
         st.error("Расчёт остановлен. Нормативный результат не сформирован: "
                  +type(exc).__name__+": "+str(exc))
-        st.session_state.pop("r07_last_public_result",None)
+        st.session_state.pop(f"r07_last_public_result_{cid}",None)
 
-record=st.session_state.get("r07_last_public_result")
+record=st.session_state.get(f"r07_last_public_result_{cid}")
 if record:
     c=record["column"];r=record["result"]
     st.divider()
