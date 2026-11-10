@@ -22,7 +22,7 @@ from rc_fire.integration.r07_public import (
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
 from rc_fire.integration.r073_plot_contract import (
     prepare_temperature_chart,prepare_optional_percent_chart,
-    engineering_input_help)
+    split_temperature_chart,engineering_input_help)
 
 st.set_page_config(
     page_title="Огнестойкость железобетонной колонны",
@@ -346,19 +346,31 @@ if record:
                "Это НЕ означает, что колонна не соответствует требованиям.")
     col1,col2=st.columns([1.2,1])
     with col1:
-        st.markdown("**Температуры бетона и арматуры во времени**")
         timeline=pd.DataFrame(r.get("timeline") or [])
         plot,missing_bars,audit_rows=prepare_temperature_chart(
             r,[bar["id"] for bar in c.get("bars",[])])
-        if not plot.empty:
-            st.line_chart(plot,x_label="Продолжительность пожара, мин",
+        concrete_plot,steel_plot=split_temperature_chart(plot)
+        st.markdown("**Газовая среда и температура бетона**")
+        if not concrete_plot.empty:
+            st.line_chart(concrete_plot,
+                          x_label="Продолжительность пожара, мин",
                           y_label="Температура, °C")
-            st.caption("Температуры отдельных стержней S1…Sn показаны на "
-                       "том же графике. Совпадающие кривые соответствуют "
-                       "одинаковому нагреву симметричных стержней.")
         else:
             st.warning("В сохранённом результате нет временных температур. "
                        "Выполните расчёт ещё раз.")
+        st.markdown("**Температура продольной арматуры**")
+        if not steel_plot.empty:
+            st.line_chart(steel_plot,
+                          x_label="Продолжительность пожара, мин",
+                          y_label="Температура арматуры, °C")
+            st.caption("Стержни с одинаковой историей температур объединены "
+                       "в одну кривую. Каждый стержень S1…Sn сохраняется "
+                       "в таблице температур и выгруженном JSON.")
+        if r.get("thermal_timeline_independent_of_mechanics"):
+            st.caption("Температуры рассчитаны через 5 минут, включая "
+                       "начальное состояние t=0 при 20 °C. "
+                       "Механическое равновесие проверяется отдельно "
+                       "в выбранные моменты времени.")
         if audit_rows:
             st.caption("Температуры арматуры восстановлены из сохранённого "
                        "расчётного аудита в те же моменты времени, без интерполяции.")
@@ -377,6 +389,32 @@ if record:
                         f"{i['sampled_strain_exceeded_time_minutes']:g} мин"
                         for i in transition)
                     +". Это не эквивалент разрушения всей колонны.")
+        st.markdown("**Механический ответ при заданных N–Mx–My**")
+        forces=r.get("fire_design_actions") or []
+        if forces:
+            force=forces[0]
+            st.write("Расчётные усилия при пожаре: "
+                     f"N = {force.get('N_kN',0):g} кН; "
+                     f"Mx = {force.get('Mx_kNm',0):g} кН·м; "
+                     f"My = {force.get('My_kNm',0):g} кН·м.")
+        strain_ratio=r.get("design_action_strain_demand_pct_at_required_time")
+        if strain_ratio is not None:
+            st.metric("Отношение расчётной деформации к предельной "
+                      "при Rrequired",f"{strain_ratio:.2f}%")
+        strain_plot=prepare_optional_percent_chart(r,{
+            "design_action_strain_demand_pct":
+                "Максимальная деформация / предельная, %"})
+        if not strain_plot.empty:
+            strain_plot["Предел деформации, 100%"]=100.
+            st.line_chart(strain_plot,
+                x_label="Продолжительность пожара, мин",
+                y_label="Деформационный критерий, %")
+        st.caption("Эти деформации получены из равновесия N–Mx–My "
+                   "при фактических введённых нагрузках. "
+                   "Это нагрузкозависимый показатель расчётной модели "
+                   "сечения, но НЕ процент использования несущей "
+                   "способности всей колонны и НЕ нормативный R(t). "
+                   "Отсутствующее состояние не приравнивается к нулю.")
         st.markdown("**Численное состояние сечения на Rrequired**")
         status_text={
             WITHIN:"Равновесие сечения найдено; в проверенной точке "
