@@ -131,7 +131,7 @@ if _stale:
 # newer fire result engine after Streamlit Cloud redeployment.
 for _name, _release in (
     ("rc_fire.integration.r07_inputs","R0.7-simple-physical-column-inputs-v1"),
-    ("rc_fire.integration.r07_public","R0.7-public-fire-workflow-v1")):
+    ("rc_fire.integration.r07_public","R0.7-public-fire-workflow-v2")):
     _loaded=sys.modules.get(_name)
     if _loaded is not None:
         _cached_path=getattr(_loaded,"__file__",None)
@@ -142,6 +142,15 @@ for _name, _release in (
             getattr(_loaded,"VERSION",None)!=_release)
         if _stale_public:
             sys.modules.pop(_name,None)
+            # The previous public facade can hold an older R0.6.9D3
+            # coupling implementation without bars_C, even after the
+            # Streamlit script itself was redeployed. Refresh its exact
+            # dependent calculation modules at the same time.
+            if _name=="rc_fire.integration.r07_public":
+                for _dependency in (
+                    "rc_fire.integration.r069d3",
+                    "rc_fire.integration.r072_strength_evidence"):
+                    sys.modules.pop(_dependency,None)
             importlib.invalidate_caches()
 
 # run_module, not import_module: rerun the UI on every Streamlit interaction.
