@@ -20,6 +20,9 @@ from rc_fire.integration.r07_inputs import make_column,perimeter_bars
 from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
+from rc_fire.integration.r073_plot_contract import (
+    prepare_temperature_chart,prepare_optional_percent_chart,
+    engineering_input_help)
 
 st.set_page_config(
     page_title="Огнестойкость железобетонной колонны",
@@ -92,10 +95,24 @@ class _Fields:
         fn=getattr(st,widget)
         def keyed(label,*args,**kwargs):
             kwargs.setdefault("key",f"r07_{cid}_{widget}_{label}")
-            info=_INPUT_HELP.get(label)
-            if info:
-                previous=kwargs.get("help")
-                kwargs["help"]=(previous+" "+info) if previous else info
+            description=_INPUT_HELP.get(label,"")
+            previous=kwargs.get("help","")
+            context="\n\n".join(x for x in (description,previous) if x)
+            help_settings=dict(kwargs)
+            if widget=="selectbox":
+                help_settings["_options_for_tooltip"]=(
+                    args[0] if args else kwargs.get("options"))
+            if widget=="text_input" and label in (
+                "Nᶠⁱ, кН (сжатие положительно)",
+                "Mxᶠⁱ, кН·м","Myᶠⁱ, кН·м"):
+                context+=("\n\nДопустимый диапазон: N > 0 кН (сжатие). "
+                          "Максимум зависит от расчётной схемы и не "
+                          "задаётся искусственным пределом ввода."
+                          if label.startswith("Nᶠⁱ") else
+                          "\n\nДопустимый диапазон: любое конечное число "
+                          "кН·м, включая ноль; знак определяет направление.")
+            kwargs["help"]=engineering_input_help(
+                label,widget,help_settings,context)
             return fn(label,*args,**kwargs)
         return keyed
 
@@ -330,22 +347,27 @@ if record:
     col1,col2=st.columns([1.2,1])
     with col1:
         st.markdown("**Температуры бетона и арматуры во времени**")
-        timeline=pd.DataFrame(r["timeline"])
-        if not timeline.empty:
-            plot=timeline.set_index("minute")[[
-                "gas_C","concrete_surface_C","concrete_centre_C"]].copy()
-            plot.columns=["Температура газа","Поверхность бетона","Центр бетона"]
-            for bar in c["bars"]:
-                bar_id=str(bar["id"])
-                plot["Арматура "+bar_id]=[
-                    float(record[bar_id]) if isinstance(record,dict) and
-                    bar_id in record else float("nan")
-                    for record in timeline["bars_C"]]
+        timeline=pd.DataFrame(r.get("timeline") or [])
+        plot,missing_bars,audit_rows=prepare_temperature_chart(
+            r,[bar["id"] for bar in c.get("bars",[])])
+        if not plot.empty:
             st.line_chart(plot,x_label="Продолжительность пожара, мин",
                           y_label="Температура, °C")
-            st.caption("Температуры всех фактически заданных стержней S1…Sn "
-                       "показаны на одном графике. Совпадающие кривые "
-                       "означают одинаковый нагрев симметричных стержней.")
+            st.caption("Температуры отдельных стержней S1…Sn показаны на "
+                       "том же графике. Совпадающие кривые соответствуют "
+                       "одинаковому нагреву симметричных стержней.")
+        else:
+            st.warning("В сохранённом результате нет временных температур. "
+                       "Выполните расчёт ещё раз.")
+        if audit_rows:
+            st.caption("Температуры арматуры восстановлены из сохранённого "
+                       "расчётного аудита в те же моменты времени, без интерполяции.")
+        if missing_bars:
+            st.info("Для следующих стержней в сохранённом результате нет "
+                    "достоверной истории температур: "+", ".join(missing_bars)
+                    +". Повторно нажмите «Рассчитать огнестойкость», "
+                    "чтобы обновить результат. Отсутствующие значения "
+                    "не заменены нулями.")
         transition=r["observed_strain_limit_transition"]
         if transition:
             st.info("Обнаружен численный интервал достижения предельной "
@@ -384,18 +406,17 @@ if record:
     strengths=r.get("material_strength_at_required_time") or {}
     a,b=st.columns(2)
     with a:
-        if strengths:
+        if strengths.get("concrete_uniaxial_strength_retained_pct") is not None:
             st.metric("Сохранение прочности бетона при Rrequired",
                 f"{strengths['concrete_uniaxial_strength_retained_pct']:.1f}%")
     with b:
-        if strengths:
+        if strengths.get("steel_yield_strength_retained_pct") is not None:
             st.metric("Сохранение предела текучести арматуры при Rrequired",
                 f"{strengths['steel_yield_strength_retained_pct']:.1f}%")
     strength_columns={
         "concrete_retained_uniaxial_pct":"Бетон: сохранение fck, %",
         "steel_retained_yield_pct":"Арматура: сохранение fyk, %"}
-    strength_history=timeline[["minute",*strength_columns]].rename(
-        columns=strength_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    strength_history=prepare_optional_percent_chart(r,strength_columns)
     if not strength_history.empty and strength_history.notna().any().any():
         st.line_chart(strength_history,
             x_label="Продолжительность пожара, мин",
@@ -422,8 +443,7 @@ if record:
         "discrete_checked_section_extra_load_pct":"Доп. нагрузка, проверенная дискретно, %",
         "ratio_to_max_checked_load_pct_not_utilization":
              "Отношение к проверенному уровню, % (не ULS)"}
-    reserve_history=timeline[["minute",*sample_columns]].rename(
-        columns=sample_columns).set_index("minute") if not timeline.empty else pd.DataFrame()
+    reserve_history=prepare_optional_percent_chart(r,sample_columns)
     if not reserve_history.empty and reserve_history.notna().any().any():
         st.line_chart(reserve_history,x_label="Продолжительность пожара, мин",
                       y_label="Проверенные доли, %")
