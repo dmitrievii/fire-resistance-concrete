@@ -173,8 +173,9 @@ class OneFireResultTest(unittest.TestCase):
         inp['natural_sand_provenance']='hidden_default_assumed_natural_unverified'
         c=make_column(inp)
         self.assertIs(c['annex_l_spec']['natural_sand_confirmed'],True)
-        self.assertEqual(c['annex_l_spec']['natural_sand_selection_provenance'],
+        self.assertEqual(c['source_assumptions']['natural_sand'],
                          'hidden_default_assumed_natural_unverified')
+        self.assertEqual(validate_column(c),[])
 
     def test_never_certify_member_R_by_section_equilibrium(self):
         r=self.r
