@@ -20,6 +20,7 @@ from multicolumn_r05.project_model import validate_column
 from rc_fire.integration.r069d3 import evaluate_tkp_thermal_mechanical_history
 from rc_fire.thermal.tkp_heat import reference_annex_a_boundary
 from rc_fire.mechanics.action_capacity import WITHIN, EXCEEDED, UNKNOWN
+from rc_fire.spalling.annex_l import evaluate_annex_l
 
 VERSION="R0.7-public-fire-workflow-v1"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
@@ -138,6 +139,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
     any_unknown=any(s==UNKNOWN for s in statuses)
     any_exceeded=any(s==EXCEEDED for s in statuses)
     member=(at.get("member") or {}) if assess_member else {}
+    spalling=evaluate_annex_l(column)
     blockers=[
        "FULL_COLUMN_FIRE_ULS_NOT_VALIDATED_TKP_4_3_4",
        "TEMPERATURE_AND_MECHANICAL_MESH_CONVERGENCE_NOT_ESTABLISHED",
@@ -145,6 +147,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
        "LONGITUDINAL_SUPPORT_RESTRAINT_AND_ACTION_PATH_MUST_BE_QUALIFIED",
        "OBSERVED_SECTION_STRAIN_IS_NOT_PHYSICAL_MEMBER_COLLAPSE",
     ]
+    if spalling.get("status")!="calculated_method_scope":
+        blockers.append("SP2026_ANNEX_L_SPALLING_NOT_RESOLVED")
+    elif spalling.get("protection_required"):
+        blockers.append("SP2026_ANNEX_L_SPALLING_PROTECTION_REQUIRED")
+    if not spalling.get("moisture_method_qualified"):
+        blockers.append("SP2026_ANNEX_L_MOISTURE_METHOD_REQUIRES_REVIEW")
     if at.get("status")!="FVM_TKP_FIBRES_NUMERICAL_DIAGNOSTIC":
         blockers.append("REQUIRED_TIME_SECTION_EQUILIBRIUM_NOT_SOLVED")
     if not assess_member or member.get("status")!="MEMBER_DIAGNOSTIC_EQUILIBRATED":
@@ -173,6 +181,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "concrete_centre_C":at.get("T_concrete_center_C"),
           "bars_C":at.get("T_reinforcement_C")},
       "energy_balance":history.get("thermal_energy_balance"),
+      "spalling_annex_L":spalling,
       "timeline":[{
           "minute":p["time_minutes"],
           "gas_C":p.get("T_gas_C"),
