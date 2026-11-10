@@ -103,6 +103,17 @@ with st.form("column_fire_design_v07",clear_on_submit=False):
         curing=st.selectbox("Твердение",("natural","heat"),
             format_func=lambda x:"Естественное" if x=="natural"
                                       else "Тепловая обработка")
+        ecm_basis=st.selectbox("Основание для модуля Ecm",(
+            "gravel_granite_upto40","measured"),
+            format_func=lambda x:"СП 5.03.01, табл. 6.3 (гравий/гранит до 40 мм)"
+                                 if x=="gravel_granite_upto40" else
+                                 "Результат испытания бетона")
+        measured_ecm=(st.number_input("Измеренный Ecm, ГПа",
+            min_value=5.,max_value=90.,value=35.,step=1.)
+            if ecm_basis=="measured" else None)
+        if agg=="calcareous" and ecm_basis=="gravel_granite_upto40":
+            st.caption("Для карбонатного заполнителя потребуется указать "
+                       "доказанный модуль Ecm по испытанию.")
     with c2:
         st.text_input("Класс арматуры",value="S500",disabled=True,
             help="В этой версии нормативная библиотека допускает S500.")
@@ -184,7 +195,8 @@ if run:
             "bars":rows if manual else None,
             "concrete_class":strength,"aggregate_family":agg,
             "dry_density_kg_m3":density,"consistency":consistency,
-            "curing":curing,"steel_route":steel_route,
+            "curing":curing,"modulus_aggregate":ecm_basis,
+            "measured_Ecm_GPa":measured_ecm,"steel_route":steel_route,
             "ductility_class":duct,"moisture_mass_pct":moisture,
             "coarse_aggregate_pct":coarse_pct,
             "max_aggregate_mm":grain,"cement_kg_m3":cement,
