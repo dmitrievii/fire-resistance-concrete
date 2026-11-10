@@ -19,6 +19,7 @@ from multicolumn_r05.section_preview import make_section_figure
 from rc_fire.integration.r07_inputs import make_column,perimeter_bars
 from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
+from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
 
 st.set_page_config(
     page_title="Огнестойкость железобетонной колонны",
@@ -45,7 +46,7 @@ class _Fields:
 
 field=_Fields()
 st.title("Расчёт огнестойкости железобетонной колонны")
-st.caption("Выбрана колонна: "+cid.upper())
+st.caption("Выбрана колонна: К"+cid[1:])
 st.caption(
     "Беларусь · СП 2.02.05-2026 · СП 5.03.01-2020 · "
     "ТКП EN 1992-1-2-2009 с национальным приложением")
@@ -282,7 +283,14 @@ if record:
                         for i in transition)
                     +". Это не эквивалент разрушения всей колонны.")
         st.markdown("**Численное состояние сечения на Rrequired**")
-        st.write(r["numerical_section_at_required_time"])
+        status_text={
+            WITHIN:"Равновесие сечения найдено; в проверенной точке "
+                   "предельные деформации не превышены",
+            EXCEEDED:"Расчёт сечения показывает превышение предельной "
+                     "деформации (не определяет момент обрушения)",
+            UNKNOWN:"Состояние сечения не удалось достоверно определить"}
+        st.write(status_text.get(r["numerical_section_at_required_time"],
+                                  "Численное состояние не определено"))
     with col2:
         st.plotly_chart(make_section_figure(c),
             use_container_width=True,key="r07_section_diagram")
