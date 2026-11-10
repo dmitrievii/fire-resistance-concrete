@@ -153,6 +153,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
     ]
     if not steel_confirmed:
         blockers.append("STEEL_S500_PRODUCTION_AND_DUCTILITY_NOT_DOCUMENTED")
+    sand_source=(column.get("annex_l_spec") or {}).get(
+        "natural_sand_selection_provenance","unspecified")
+    if sand_source=="hidden_default_assumed_natural_unverified":
+        blockers.append("NATURAL_SAND_IS_ASSUMED_NOT_DOCUMENTED")
     if spalling.get("status")!="calculated_method_scope":
         blockers.append("SP2026_ANNEX_L_SPALLING_NOT_RESOLVED")
     elif spalling.get("protection_required"):
@@ -192,6 +196,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
           "bars_C":at.get("T_reinforcement_C")},
       "energy_balance":history.get("thermal_energy_balance"),
       "spalling_annex_L":spalling,
+      "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
+      "natural_sand_selection_provenance":sand_source,
       "timeline":[{
           "minute":p["time_minutes"],
           "gas_C":p.get("T_gas_C"),
