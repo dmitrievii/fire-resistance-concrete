@@ -234,6 +234,30 @@ class SP2026RefinementAndNormativeReference(unittest.TestCase):
             "status":r["status"],
         },sort_keys=True),flush=True)
 
+    def test_K1_R90_refinement_and_hot_concrete_zero_linkage(self):
+        r=compare_sp2026_thermal_refinement(
+            self.column,boundary=self.boundary,
+            sample_time_minutes=90.,grids=(8,12,16),
+            time_steps=(3.,1.5))
+        self.assertEqual(len(r["models"]),4)
+        self.assertTrue(all(x["energy_residual"]<3e-4
+                            for x in r["models"]))
+        self.assertFalse(r["sp2026_823_model_fully_qualified"])
+        self.assertEqual(len(r["intermediate_to_fine"][
+            "bar_temperature_differences_C"]),8)
+        print("SP_R2_K1_R90_REFINEMENT "+json.dumps({
+            "first_grid_8_to_12_max_steel_delta_C":
+                r["coarse_to_intermediate"]["max_bar_delta_abs_C"],
+            "second_grid_12_to_16_max_steel_delta_C":
+                r["intermediate_to_fine"]["max_bar_delta_abs_C"],
+            "fine_grid_time_step_3_to_1_5_max_steel_delta_C":
+                r["fine_temporal_refinement"]["max_bar_delta_abs_C"],
+            "grid16_final_bar_temperature_C":r["models"][2]["bars_C"],
+            "grid16_final_centre_C":r["models"][2]["centre_C"],
+            "grid16_final_surface_max_C":r["models"][2]["surface_max_C"],
+            "status":r["status"]},
+            sort_keys=True),flush=True)
+
     def test_independent_SP_Zh7_reference_is_compared_without_calibration(self):
         c=make_column(user_inputs())
         c["b_mm"]=400.
@@ -256,6 +280,7 @@ class SP2026RefinementAndNormativeReference(unittest.TestCase):
             "RMSE_C":result["RMSE_C"],
             "max_abs_error_C":result["max_abs_error_C"],
             "rows":result["pointwise"],
+            "inputs":result["comparison_inputs"],
             "comparison_status":result["status"],
         },ensure_ascii=False,sort_keys=True),flush=True)
 
