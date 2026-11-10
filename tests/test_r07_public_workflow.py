@@ -135,6 +135,15 @@ class OneFireResultTest(unittest.TestCase):
         self.assertIn('FULL_MEMBER_EQUILIBRIUM_NOT_SOLVED',
                       r['remaining_normative_blockers'])
 
+    def test_belarus_spalling_is_a_real_separate_calculation_not_a_rating(self):
+        sp=self.r['spalling_annex_L']
+        self.assertIn(sp['status'],('calculated_method_scope','blocked_input_or_scope'))
+        self.assertIn('source',sp)
+        self.assertIsNone(self.r['R_t_minutes'])
+        if sp['status']=='calculated_method_scope':
+            self.assertGreaterEqual(sp['F'],0.)
+            self.assertEqual(sp['normative_claim'],False)
+
     def test_missing_steel_and_outside_engine_scope_fail_before_heat(self):
         with self.assertRaises(PublicFireInputError):
             fire_assessment(self.c,required_minutes=30.,
