@@ -128,4 +128,4 @@ if _stale:
     importlib.invalidate_caches()
 
 # run_module, not import_module: rerun the UI on every Streamlit interaction.
-runpy.run_module("multicolumn_r05.app", run_name="__main__")
+runpy.run_module("multicolumn_r05.simple_app", run_name="__main__")
