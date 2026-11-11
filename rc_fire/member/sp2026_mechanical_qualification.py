@@ -139,6 +139,62 @@ def verify_euler_critical_load(*, length_m=3., EI_x_kNm2=1200.,
     }
 
 
+def verify_biaxial_euler_coupling(*, length_m=3.,
+                                   D_xx_kNm2=1200.,D_yy_kNm2=800.,
+                                   D_xy_kNm2=250.,node_count=17):
+    """Check independent coupled-axes analytical eigenvalues of a 2x2 D.
+
+    In uniform pin-pin beams, material bending stiffness D has two
+    orthogonal principal eigenvalues. The first bending eigenmode about
+    each principal axis has Euler load pi²*eig(D)/L². The largest two
+    positive eigenvalues of inv(K)G correspond to these first modes only
+    when eig(D)_max < 4*eig(D)_min (other modes then come later).
+    This is a *linear* coupled-axes FE benchmark, not a hot RC law.
+    """
+    L=_finite_positive(length_m,"length")
+    if type(node_count) is not int or not 3<=node_count<=129:
+        raise ValueError("node_count must be integer 3..129")
+    D=np.array([[_finite_positive(D_xx_kNm2,"Dxx"),
+                 float(D_xy_kNm2)],
+                [float(D_xy_kNm2),
+                 _finite_positive(D_yy_kNm2,"Dyy")]])
+    if not np.all(np.isfinite(D)) or np.linalg.eigvalsh(D)[0]<=0:
+        raise ValueError("biaxial reference D must be symmetric positive definite")
+    deig=np.linalg.eigvalsh(D)
+    if deig[1]>=4*deig[0]:
+        raise ValueError("biaxial stiffness contrast aliases higher beam modes")
+    n=node_count
+    z=np.linspace(0.,L,n)
+    law=LinearSectionLaw(D,provenance="analytic coupled Euler benchmark")
+    _,K,G,_,_=_beam_assembly(
+        z,0.,lambda i,j:law,np.zeros(4*n),np.zeros(4*n),
+        np.zeros((n,2)),np.zeros(4*n))
+    fixed,_=_boundary_matrix(EndSupport("pinned"),EndSupport("pinned"),n)
+    free=np.asarray([i for i in range(4*n) if i not in fixed],dtype=int)
+    A=np.linalg.solve(K[np.ix_(free,free)],G[np.ix_(free,free)])
+    eigen=np.linalg.eigvals(A)
+    if np.max(np.abs(eigen.imag))>1.e-8:
+        raise ValueError("coupled Euler spectrum is not real")
+    invN=sorted((float(x) for x in eigen.real if x>1.e-14),reverse=True)
+    if len(invN)<2:
+        raise ValueError("missing coupled principal Euler modes")
+    FE=np.array([1./invN[0],1./invN[1]])
+    analytic=math.pi**2*deig/L**2
+    errors=np.abs(FE-analytic)/analytic
+    return {
+        "version":VERSION,
+        "status":"BIAXIAL_COUPLED_EULER_ANALYTIC_REFERENCE_COMPUTED",
+        "D_kNm2":D.tolist(),
+        "first_two_FE_Ncrit_kN":FE.tolist(),
+        "first_two_analytical_Ncrit_kN":analytic.tolist(),
+        "relative_errors":errors.tolist(),
+        "maximum_relative_error":float(np.max(errors)),
+        "source":"independent Euler principal-stiffness eigensystem",
+        "is_hot_RC_material_qualification":False,
+        "normative_mechanical_fire_qualified":False,
+    }
+
+
 def verify_pdelta_midspan(*, length_m=3., EI_kNm2=1200.,
                           distributed_q_kNpm=2., axial_ratio_to_euler=.4,
                           node_count=17):
@@ -302,6 +358,7 @@ def mechanical_uls_admissibility(column,member_spec, *,
                       "detail":detail,"source":source})
     euler=numeric_evidence.get("euler")
     pdelta=numeric_evidence.get("pdelta")
+    coupled=numeric_evidence.get("coupled_euler")
     jac=numeric_evidence.get("jacobian")
     condensed=numeric_evidence.get("condensed_tangent")
     gate("FE_EULER_BUCKLING",isinstance(euler,dict) and
@@ -314,6 +371,10 @@ def mechanical_uls_admissibility(column,member_spec, *,
          pdelta.get("other_axis_leakage_m",math.inf)<1.e-9,
          "pinned uniform-q P-Delta deflection requires <0.5% and axis isolation",
          "independent analytic pin-pin beam")
+    gate("FE_COUPLED_BIAXIAL_EULER",isinstance(coupled,dict) and
+         coupled.get("maximum_relative_error",math.inf)<.005,
+         "coupled principal-direction Euler eigenvalues require <0.5% error",
+         "independent analytic 2x2 bending-stiffness eigenstructure")
     gate("SP_HOT_FIBRE_JACOBIAN",isinstance(jac,dict) and
          jac.get("max_relative_global_scale_error",math.inf)<.001,
          "section Jacobian requires <0.1% global-scale FD consistency",
@@ -353,7 +414,7 @@ def mechanical_uls_admissibility(column,member_spec, *,
         "status":"NUMERICAL_MECHANICS_PARTIALLY_VERIFIED_NONQUALIFIED_FIRE_ULS"
              if len(blockers)<len(gates) else "MECHANICAL_QUALIFICATION_BLOCKED",
         "gate_results":gates,
-        "numerical_pass_count":sum(g["status"]=="PASS" for g in gates[:4]),
+        "numerical_pass_count":sum(g["status"]=="PASS" for g in gates[:5]),
         "normative_mechanical_uls_qualified":False,
         "source_qualified_fire_R":False,
         "U_member_t":None,
