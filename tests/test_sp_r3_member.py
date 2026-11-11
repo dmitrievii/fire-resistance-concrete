@@ -105,6 +105,28 @@ class SPR3ActualMemberNumerics(unittest.TestCase):
         if data["status"] != UNKNOWN:
             self.assertGreater(max(abs(x) for x in data["member"]["total_w_x_m"]),0.)
 
+    def test_public_facade_requires_explicit_member_contract_and_integrates(self):
+        from rc_fire.integration.r07_public import fire_assessment
+        c = copy.deepcopy(self.column)
+        c["fire_minutes"] = 30.
+        standard = dict(required_minutes=30.,steel_route="hot_rolled",
+                        ductility_class="B",moisture_mass_pct=1.5,
+                        grid=8,dt_minutes=3.)
+        missing = fire_assessment(c,**standard)
+        self.assertEqual(missing["sp2026_stage3_member_status"],
+                         "SP_R3_EXPLICIT_MEMBER_INPUT_REQUIRED")
+        self.assertIsNone(missing["sp2026_stage3_member_at_required_time"])
+        c["member_spec"] = copy.deepcopy(self.spec)
+        # Explicitly evaluate the available SP field at the true required
+        # time, no generic TKP member result recast as SP.
+        report = fire_assessment(c,**standard)
+        state = report["sp2026_stage3_member_at_required_time"]
+        self.assertIsNotNone(state,report["sp2026_stage3_member_blocker"])
+        self.assertEqual(state["temperature_method"],"SP2026_8.2.23_FVM")
+        self.assertIn(state["status"],(WITHIN,EXCEEDED,UNKNOWN))
+        self.assertIsNone(report["R_t_minutes"])
+        self.assertEqual(report["regulatory_result"],"NOT_ESTABLISHED")
+
     def test_uniformity_and_end_fixity_never_assumed(self):
         snap = select_sp2026_snapshot(self.heat, 5.)
         for field, value in (
