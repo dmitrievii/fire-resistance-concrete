@@ -302,6 +302,7 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
             "explicit short-term fire phi=0 numerical comparison scenario")
         spec["nominal_sp5_history_requested"]=True
         spec["nominal_sp5_grid_study_requested"]=True
+        spec["nominal_sp5_load_scan_requested"]=True
         c["member_spec"]=spec
         report=fire_assessment(
             c,required_minutes=30.,steel_route="hot_rolled",
@@ -327,6 +328,11 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
         self.assertEqual([p["fibre_grid"] for p in convergence["grids"]],
                          [8,12,16])
         self.assertFalse(convergence["normative_member_qualification"])
+        load=report["sp2026_stage6_sp5_nominal_load_scan"]
+        self.assertIsNotNone(load,report["sp2026_stage6_sp5_nominal_load_blocker"])
+        self.assertTrue(load["kc_nominal_and_Ncrit_recomputed_per_load_factor"])
+        self.assertIsNone(load["actual_U_member_t"])
+        self.assertIsNone(load["actual_R_t_minutes"])
         self.assertIsNone(history["actual_t_R"])
         self.assertIsNone(report["sp2026_stage6_certified_U_member_t"])
         self.assertIsNone(report["sp2026_stage6_certified_R_t_minutes"])
