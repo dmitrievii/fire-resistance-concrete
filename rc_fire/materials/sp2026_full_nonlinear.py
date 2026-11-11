@@ -61,8 +61,10 @@ def full_concrete_sp_parameters(theta_C, concrete:ConcreteMix, normal=None):
     ecmn_theta=ecmn0*mat.modulus_factor
     eu=(min(3.5,2.8+27.*((98.-fcm0)/100.)**4))/1000.
     k=(1.1*ecmn_theta*e1/fcm) if fcm>0. else None
-    if fcm>0. and (k is None or not math.isfinite(k) or k<=1.):
-        raise SPFireMaterialError("Full SP5 law shape k<=1: no admissible source-compatible nonlinear curve")
+    # Preserve the *measured* impossibility as inspectable diagnostic
+    # evidence. Using the full curve at k<=1 is still blocked downstream.
+    admissible=(fcm<=0. or (
+        k is not None and math.isfinite(k) and k>1.))
     return {
         "source":SOURCE,"mode":MODE,
         "theta_C":t,"fcm_normal_MPa":fcm0,"fcm_theta_MPa":fcm,
@@ -74,6 +76,7 @@ def full_concrete_sp_parameters(theta_C, concrete:ConcreteMix, normal=None):
         "epsilon_c1_assumed_temperature_invariant":e1,
         "epsilon_cu1_assumed_temperature_invariant":eu,
         "shape_parameter_k":k,
+        "fixed_ambient_peak_shape_admissible":admissible,
         "temperature_strain_limits_qualified":False,
         "temperature_peak_strain_qualified":False,
         "creep_transient_and_unloading_qualified":False,
