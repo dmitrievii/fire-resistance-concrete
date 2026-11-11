@@ -16,7 +16,8 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     prepare_sp2026_design_section)
 from rc_fire.mechanics.sp2026_coupled_rigidity import (
     coupled_sp5_hot_section_stiffness,
-    magnify_coupled_first_order_moments)
+    magnify_coupled_first_order_moments,
+    audit_independent_global_coupled_euler)
 from rc_fire.mechanics.sp2026_coupled_first_limit import (
     assess_coupled_sp5_nominal_at_time,
     scan_coupled_first_model_limit,WITHIN,EXCEEDED,NOMINAL,UNKNOWN)
@@ -103,6 +104,21 @@ class TestCoupledSP5SourceMatrix(unittest.TestCase):
         status=magnify_coupled_first_order_moments(over,[5.,10.])
         self.assertIsNone(status["M2_kNm"])
         self.assertFalse(status["normative_claim"])
+
+    def test_full_global_FE_eigen_solver_qualifies_first_coupled_ideal_mode(self):
+        p=synthetic_source_section()
+        p.theta_c[0]=300.
+        r=coupled_sp5_hot_section_stiffness(
+            p,N_kN=100.,length_m=3.,effective_creep_phi=.3)
+        audit=audit_independent_global_coupled_euler(
+            r,length_m=3.,node_counts=(9,17))
+        self.assertEqual(audit["status"],
+                         "GLOBAL_COUPLED_FE_FIRST_MODE_NUMERICALLY_VERIFIED")
+        self.assertEqual([row["beam_nodes"] for row in audit[
+            "global_FE_grid_study"]],[9,17])
+        self.assertLess(audit["max_relative_error"],.005)
+        self.assertFalse(audit["complete_hot_RC_member_first_failure_qualified"])
+        self.assertFalse(audit["regulatory_claim"])
 
     def test_coupled_amplification_eigenvalues_match_exact_principal_modes(self):
         p=synthetic_source_section()
@@ -273,6 +289,83 @@ class TestThermalCreepAndExperimentalAdmissibility(unittest.TestCase):
         self.assertIsNone(combined["actual_t_R_minutes"])
         self.assertFalse(combined["normative_claim"])
         self.assertEqual(combined["regulatory_result"],"NOT_ESTABLISHED")
+
+
+class TestSP7PublicEndToEnd(unittest.TestCase):
+    def test_source_coupled_and_thermal_and_experiment_public_workflow(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        c["fire_minutes"]=30.
+        spec=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec.update({
+            "nominal_sp5_requested":True,
+            "nominal_sp5_phi_eff":0.,
+            "nominal_sp5_creep_provenance":
+                "explicit research short-term phi=0, not derived from real load history",
+            "coupled_sp5_requested":True,
+            "coupled_sp5_history_requested":True,
+            "coupled_sp5_thermal_audit_requested":True,
+            "coupled_sp5_experiment_audit_requested":True})
+        c["member_spec"]=spec
+        report=fire_assessment(
+            c,required_minutes=30.,steel_route="hot_rolled",
+            ductility_class="B",moisture_mass_pct=1.5,
+            grid=8,dt_minutes=3.)
+        self.assertIn(report["sp2026_stage7_coupled_status"],
+                      (WITHIN,EXCEEDED,NOMINAL,UNKNOWN),
+                      report["sp2026_stage7_coupled_blocker"])
+        model=report["sp2026_stage7_coupled_at_required_time"]
+        self.assertIsNotNone(model)
+        eigen=model["independent_global_FE_Euler_evidence"]
+        self.assertIsNotNone(eigen)
+        self.assertLess(eigen["max_relative_error"],.005)
+        history=report["sp2026_stage7_first_model_limit_history"]
+        self.assertIsNotNone(history,
+                             report["sp2026_stage7_first_model_limit_blocker"])
+        self.assertEqual([round(v["time_minutes"])
+                          for v in history["samples"]],[10,20,30])
+        self.assertIsNone(history["t_R_minutes"])
+        thermal=report["sp2026_stage7_thermal_mesh_time_audit"]
+        self.assertIsNotNone(
+            thermal,report["sp2026_stage7_thermal_mesh_time_audit_blocker"])
+        self.assertEqual(thermal["time_minutes"],15.)
+        self.assertFalse(thermal["thermal_regulatory_qualification"])
+        experiments=report["sp2026_stage7_experiment_admissibility"]
+        self.assertEqual(experiments["source_matched_cases_ready"],0)
+        ledger=report["sp2026_stage7_qualification_ledger"]
+        self.assertEqual(ledger["status"],"NORMATIVE_FIRE_R_QUALIFICATION_BLOCKED")
+        self.assertIsNone(report["sp2026_stage7_actual_U_t"])
+        self.assertIsNone(report["sp2026_stage7_actual_t_R_minutes"])
+        self.assertIsNone(report["R_t_minutes"])
+        self.assertEqual(report["regulatory_result"],"NOT_ESTABLISHED")
+
+    def test_schema_rejects_independent_audits_without_coupled_branch(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r067 import validate_member_spec
+        c=make_column(user_inputs())
+        spec=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec["coupled_sp5_requested"]=True
+        with self.assertRaises(ValueError):
+            validate_member_spec(spec)
+        spec["nominal_sp5_requested"]=True
+        spec["nominal_sp5_phi_eff"]=0.
+        spec["nominal_sp5_creep_provenance"]="explicit user scenario"
+        self.assertTrue(validate_member_spec(spec)["coupled_sp5_requested"])
+        spec["coupled_sp5_requested"]=False
+        spec["coupled_sp5_thermal_audit_requested"]=True
+        with self.assertRaises(ValueError):
+            validate_member_spec(spec)
 
 
 if __name__=="__main__":
