@@ -130,5 +130,54 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
         self.assertFalse(result["normative_mechanical_uls_qualified"])
 
 
+class TestPublicAndExternalEvidence(unittest.TestCase):
+    def test_experimental_source_metadata_is_not_model_validation(self):
+        import json
+        from pathlib import Path
+        file=Path(__file__).resolve().parents[1]/"validation"/(
+            "sp_r4q_fire_column_reference_cases.json")
+        record=json.loads(file.read_text(encoding="utf-8"))
+        self.assertEqual(record["schema_version"],
+                         "SP-R4Q-EXPERIMENT-CATALOG-v1")
+        self.assertEqual([x["id"] for x in record["cases"]],
+                         ["I3","T3","II10"])
+        self.assertEqual([x["observed_fire_failure_time_min"]
+                          for x in record["cases"]],[218,221,262])
+        self.assertTrue(record["no_assumed_equivalence_with_SP_standard_fire"])
+        self.assertTrue(record["no_model_fitting_or_tuning_to_measured_failures"])
+        for case in record["cases"]:
+            self.assertEqual(case["sp_r4q_test_execution"],"NOT_EXECUTED")
+            self.assertEqual(case["independent_full_validation"],"NOT_ESTABLISHED")
+            self.assertGreaterEqual(len(case["missing_preanalysis"]),5)
+
+    def test_public_report_retains_mechanical_qualification_gates(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        c["fire_minutes"]=30.
+        c["member_spec"]=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        r=fire_assessment(
+            c,required_minutes=30.,steel_route="hot_rolled",
+            ductility_class="B",moisture_mass_pct=1.5,
+            grid=8,dt_minutes=3.)
+        q=r["sp2026_stage4q_mechanical_qualification"]
+        self.assertIsNotNone(
+            q,r["sp2026_stage4q_mechanical_qualification_blocker"])
+        self.assertEqual(len(q["gate_results"]),12)
+        self.assertIn(q["numerical_pass_count"],range(5))
+        self.assertFalse(q["normative_mechanical_uls_qualified"])
+        self.assertFalse(r["sp2026_stage4q_mechanical_uls_qualified"])
+        self.assertIn("SP_BETA_ELASTIC_VS_CONSTITUTIVE_STIFFNESS",
+                      q["remaining_blockers"])
+        self.assertIsNone(q["U_member_t"])
+        self.assertIsNone(r["R_t_minutes"])
+        self.assertEqual(r["regulatory_result"],"NOT_ESTABLISHED")
+
+
 if __name__=="__main__":
     unittest.main()
