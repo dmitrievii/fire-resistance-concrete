@@ -53,7 +53,8 @@ def validate_member_spec(spec):
             "uniform_exposure_confirmed", "history_times_minutes",
             "thermal_longitudinal_mode","resistance_scan_requested",
             "resistance_scan_max_factor","resistance_scan_step",
-            "resistance_scan_first_factor","resistance_time_history_requested"}
+            "resistance_scan_first_factor","resistance_time_history_requested",
+            "constitutive_model","global_stability_requested"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
@@ -61,7 +62,8 @@ def validate_member_spec(spec):
         required = expected - {"history_times_minutes", "thermal_longitudinal_mode",
             "resistance_scan_requested","resistance_scan_max_factor",
             "resistance_scan_step","resistance_scan_first_factor",
-            "resistance_time_history_requested"}
+            "resistance_time_history_requested","constitutive_model",
+            "global_stability_requested"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -113,6 +115,12 @@ def validate_member_spec(spec):
             vals=[_number(v,"history time") for v in times]
             if vals[0]<=0 or any(b<=a for a,b in zip(vals,vals[1:])):
                 raise MemberEvidenceInputError("SP-R3 history times must be positive/increasing")
+        if "constitutive_model" in spec and spec["constitutive_model"] not in (
+                "SP5_6_1_5_4_SECTION_CHECK",
+                "SP5_6_1_5_2_FULL_HOT_EXPLORATORY"):
+            raise MemberEvidenceInputError("SP-R5 unknown full/simplified SP5 constitutive mode")
+        if "global_stability_requested" in spec and type(spec["global_stability_requested"]) is not bool:
+            raise MemberEvidenceInputError("SP-R5 global stability must be explicit Boolean")
         if "resistance_time_history_requested" in spec:
             if type(spec["resistance_time_history_requested"]) is not bool:
                 raise MemberEvidenceInputError("SP-R4 resistance history request must be Boolean")

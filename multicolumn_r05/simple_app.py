@@ -319,12 +319,25 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                 min_value=0.,max_value=200.,value=0.,step=1.,
                 help="Вторая независимая ось. Значение должно "
                 "соответствовать проекту и применимой нормативной модели.")
+        sp5_full_law=field.checkbox(
+            "SP-R.5: исследовать полную нелинейную диаграмму бетона по СП 5",
+            value=False,
+            help="Формулы 6.13–6.16 + температурные коэффициенты СП2026. "
+                 "Предельные деформации и пик кривой при пожаре еще "
+                 "не квалифицированы; высокие температуры могут блокироваться.")
         sp4_scan=field.checkbox(
             "SP-R.4: исследовать несущую способность по нагрузочному множителю",
             value=False,
             help="Дополнительные независимые расчёты полной колонны при масштабировании "
                  "N, qx, qy. Результат — численная огибающая и возможный интервал "
                  "деформационного предела модели, НЕ нормативная U(t) или R(t).")
+        sp5_global_requested=field.checkbox(
+            "SP-R.5: независимая проверка глобальной устойчивости",
+            value=False,
+            disabled=not sp4_scan,
+            help="Только для полной нагрузочной модели SP-R4: проверяет "
+                 "свободную глобальную матрицу K−N G в фактическом "
+                 "сошедшемся состоянии. Не является сертификатом t_R.")
         sp4_history_requested=False
         if sp4_scan:
             sp4_history_requested=field.checkbox(
@@ -378,6 +391,8 @@ if run:
             "My_kNm":needed(my_txt,"My"),
         }
         column=make_column(physical)
+        if sp5_full_law and not (sp3_action_confirm and sp3_heat_confirm):
+            raise ValueError("SP-R.5 полная диаграмма требует полной подтвержденной схемы")
         if sp4_scan and not (sp3_action_confirm and sp3_heat_confirm):
             raise ValueError("SP-R.4 требует подтверждения опор и равномерного прогрева")
         if sp3_action_confirm or sp3_heat_confirm:
@@ -386,6 +401,11 @@ if run:
                 confirmed_pinned_uniform_action_model=sp3_action_confirm,
                 confirmed_uniform_longitudinal_fire=sp3_heat_confirm,
                 imperfection_x_mm=sp3_ex,imperfection_y_mm=sp3_ey)
+            if sp5_full_law:
+                column["member_spec"]["constitutive_model"]=(
+                    "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
+            if sp5_global_requested:
+                column["member_spec"]["global_stability_requested"]=True
             if sp4_scan:
                 column["member_spec"]["resistance_scan_requested"]=True
                 if sp4_history_requested:
@@ -558,6 +578,27 @@ if record:
                 st.warning("Проверка SP-R.4Q не выполнена: "+str(
                     r.get("sp2026_stage4q_mechanical_qualification_blocker")
                     or qual_status))
+    stage5=r.get("sp2026_stage5_constitutive_status")
+    stage5_global=r.get("sp2026_stage5_global_stability_at_design_actions")
+    if stage5 not in (None,"NOT_REQUESTED"):
+        with st.expander("SP-R.5 · Физический закон и глобальный критерий",
+                         expanded=True):
+            st.write("Полная конститутивная модель:",stage5)
+            if r.get("sp2026_stage5_constitutive_blocker"):
+                st.error("Нормативная область не подтверждена: "+str(
+                    r["sp2026_stage5_constitutive_blocker"]))
+            if stage5_global:
+                st.write("Глобальная устойчивость при введённых нагрузках:",
+                         stage5_global.get("status"))
+                st.write("Остаток равновесия:",
+                         stage5_global.get("equilibrium_relative_residual"))
+                st.write("Минимальное собственное значение глобальной матрицы:",
+                         stage5_global.get("smallest_global_tangent_eigenvalue"))
+            st.caption("Положительная глобальная жесткость означает только "
+                       "локально устойчивую ветвь численной модели. "
+                       "Не подтверждены реальные температурные εc1(T), "
+                       "εcu1(T), ползучесть, история повреждения и первое "
+                       "физическое разрушение. Нормативное t_R отсутствует.")
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",

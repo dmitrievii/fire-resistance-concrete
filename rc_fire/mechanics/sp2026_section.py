@@ -65,21 +65,27 @@ class SPPreparedSection(TKPPreparedFibres):
         sc=np.zeros(len(ec));tc=np.zeros(len(ec))
         sb=np.zeros(len(eb));tb=np.zeros(len(eb))
         ss=np.zeros(len(es));ts=np.zeros(len(es))
+        # Distinct SP5 §6.1.5.2 full-curve research branch. Defaults stay
+        # source-identical to the qualified SP-R1 §6.1.5.4 section law.
+        concrete_law=getattr(self,"sp_concrete_stress_fn",concrete_stress_sp)
+        steel_law=getattr(self,"sp_steel_stress_fn",steel_stress_sp)
+        model_mode=getattr(self,"sp_constitutive_mode",
+                           "SP5_6_1_5_4_SECTION_CHECK")
         max_ratio=0.
         active=0
         for i,(strain,T) in enumerate(zip(ec,self.theta_c)):
-            sc[i],tc[i],eps_u,material=concrete_stress_sp(
+            sc[i],tc[i],eps_u,material=concrete_law(
                 float(strain),float(T),concrete,c_norm)
             if eps_u is not None:
                 active+=1
                 max_ratio=max(max_ratio,max(0.,float(strain))/eps_u)
         for i,(strain,T) in enumerate(zip(eb,self.theta_cb)):
-            sb[i],tb[i],eps_u,material=concrete_stress_sp(
+            sb[i],tb[i],eps_u,material=concrete_law(
                 float(strain),float(T),concrete,c_norm)
             if eps_u is not None:
                 max_ratio=max(max_ratio,max(0.,float(strain))/eps_u)
         for i,(strain,T) in enumerate(zip(es,self.theta_s)):
-            ss[i],ts[i],material=steel_stress_sp(
+            ss[i],ts[i],material=steel_law(
                 float(strain),float(T),steel,s_norm)
         # Check actual hot boundary locations as well as fibre *centres*.
         # The governing surface may crush before any centre sample does.
@@ -89,7 +95,7 @@ class SPPreparedSection(TKPPreparedFibres):
         for j,T in enumerate(self.sp_boundary_temperature):
             eps=(e0+kx*self.sp_boundary_v[j]+ky*self.sp_boundary_u[j]
                  +self.sp_boundary_free_strain[j])
-            _,_,eps_u,_=concrete_stress_sp(
+            _,_,eps_u,_=concrete_law(
                 float(eps),float(T),concrete,c_norm)
             if eps_u is not None:
                 boundary_ratio=max(boundary_ratio,max(0.,float(eps))/eps_u)
@@ -100,8 +106,14 @@ class SPPreparedSection(TKPPreparedFibres):
         # This is not an eps_ud validation of a full nonlinear analysis,
         # and is not used to infer member fire endurance.
         steel_tensile_strain=max(0.,-float(np.min(es)))
-        steel_check_ratio=steel_tensile_strain/.010
-        max_ratio=max(max_ratio,steel_check_ratio)
+        # SP5 §8.1.2 section-check 10‰ is NOT the steel limit of the
+        # full §6.1.5.2 nonlinear structural branch. Without certified
+        # hot εud no FULL-branch member ULS may be declared "within".
+        if model_mode=="SP5_6_1_5_4_SECTION_CHECK":
+            steel_check_ratio=steel_tensile_strain/.010
+            max_ratio=max(max_ratio,steel_check_ratio)
+        else:
+            steel_check_ratio=None
         # Identical force conventions, shapes and units to the existing
         # 3-DOF section equilibrium. Gross concrete plus steel stress
         # minus displaced-concrete stress at each physical bar.
@@ -116,9 +128,12 @@ class SPPreparedSection(TKPPreparedFibres):
         F=mc@(A*sc)+ms@(B*(ss-sb))
         J=(mc*(A*tc)[None,:])@shape_c.T+(
             ms*(B*(ts-tb))[None,:])@shape_s.T
-        status=bool(max_ratio<=1.+1e-12)
+        status=(bool(max_ratio<=1.+1e-12)
+                if model_mode=="SP5_6_1_5_4_SECTION_CHECK" else None)
         meta={
             "model":VERSION,
+            "constitutive_mode":model_mode,
+            "temperature_dependent_peak_and_ultimate_strain_qualified":False,
             "source":self.source,
             "normative_claim":False,
             "critical_mechanical_strain_ratio":float(max_ratio),
@@ -131,9 +146,15 @@ class SPPreparedSection(TKPPreparedFibres):
             "source_steel_temperatures_all_le800":bool(
                 np.all(self.theta_s<=800.)),
             "steel_check_tension_strain_limit":.010,
-            "steel_check_tension_ratio":float(steel_check_ratio),
-            "steel_check_source":"СП 5.03.01-2020 §8.1.2.1 verification section, 10 permille",
+            "steel_check_tension_ratio":(float(steel_check_ratio)
+                if steel_check_ratio is not None else None),
+            "steel_check_source":(
+                "СП 5.03.01-2020 §8.1.2.1 section-check 10‰"
+                if steel_check_ratio is not None
+                else "NOT_APPLICABLE_FULL_NONLINEAR_STEEL_EPS_UD_UNQUALIFIED"),
             "steel_eps_ud_full_nonlinear_analysis_qualified":False,
+            "full_hot_constitutive_physical_qualification":False,
+            "model_uls_evidence_complete":status is not None,
             "max_steel_tensile_strain":steel_tensile_strain,
             "maximum_concrete_fibre_ratio":float(fibre_ratio),
             "maximum_concrete_boundary_ratio":float(boundary_ratio),
@@ -282,6 +303,44 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
     b.sp_concrete_normal=cb
     b.sp_steel_normal=ss
     return b
+
+
+def prepare_sp2026_full_nonlinear_section(column, thermal_snapshot, *, grid=12):
+    """Prepare full SP5 §6.1.5.2 instantaneous rational curve separately.
+
+    The assumed hot invariance of εc1 and εcu1 is NOT in SP2026.
+    No direct normative ULS may be inferred; full curve does not
+    override the existing simplified SP5 §6.1.5.4 section branch.
+    """
+    from rc_fire.materials.sp2026_full_nonlinear import (
+        MODE, concrete_full_nonlinear_stress_sp,
+        full_concrete_sp_parameters)
+    prepared=prepare_sp2026_section(column,thermal_snapshot,grid=grid)
+    if thermal_snapshot.get("thermal_method")!="SP2026_8.2.23_FVM":
+        raise SPSectionInputError("full nonlinear SP requires independent SP heat")
+    # Audit material domain before giving any law to Newton. In particular,
+    # a hot beta/k combination with fixed ambient εc1 can make the SP5
+    # rational denominator singular. Never 'repair' by inventing εc1(T).
+    material_data=[]
+    for t in set(float(x) for x in np.concatenate((
+            prepared.theta_c,prepared.theta_cb,prepared.sp_boundary_temperature))):
+        p=full_concrete_sp_parameters(
+            t,prepared.sp_concrete,prepared.sp_concrete_normal)
+        if p["fcm_theta_MPa"]>0 and p["shape_parameter_k"]<=1.:
+            raise SPSectionInputError(
+                "full SP5 hot constitutive mapping singular: k<=1 "
+                f"at {t:.2f} C; computed k={p['shape_parameter_k']:.4f}, "
+                f"k_c={p['SP_table9_kc']:.4f}, beta={p['SP_table9_beta']:.4f}; "
+                "source-matched hot epsilon_c1(T) needed, no invented strain")
+        material_data.append(p)
+    prepared.sp_concrete_stress_fn=concrete_full_nonlinear_stress_sp
+    prepared.sp_constitutive_mode=MODE
+    prepared.sp_full_nonlinear_material_evidence=material_data
+    prepared.source={**prepared.source,
+        "SP5_full_nonlinear":"§6.1.5.2 Eq (6.13)-(6.16)",
+        "temperature_peak_strain_assumption":"AMBIENT_EPS_C1_AND_CU1_UNCHANGED_NOT_NORMATIVE",
+        "normative_fire_constitutive_qualified":False}
+    return prepared
 
 
 def evaluate_sp2026_section_at_time(column,thermal_snapshot,*,grid=12):

@@ -18,7 +18,8 @@ import math
 import numpy as np
 
 from rc_fire.mechanics.sp2026_section import (
-    SPSectionInputError, prepare_sp2026_section)
+    SPSectionInputError,prepare_sp2026_section,
+    prepare_sp2026_full_nonlinear_section)
 from rc_fire.thermal.sp2026_heat import SPHeatError
 from rc_fire.member.coupled import (
     EndSupport, CoupledMemberError, solve_coupled_beam)
@@ -133,11 +134,12 @@ class SP2026MemberFiberLaw:
             "source": SOURCE,
             "axial_strain": float(e0),
             "critical_mechanical_strain_ratio": ratio,
-            "strain_limits_satisfied": bool(meta["model_only_strain_limits_satisfied"]),
+            "strain_limits_satisfied": meta["model_only_strain_limits_satisfied"],
             # True means the numerical law is resolved over its DECLARED
             # domain, including the explicit user concrete-zero tail.
             # This is NOT thermal/constitutive normative qualification.
-            "constitutive_domain_qualified": True,
+            "constitutive_domain_qualified": bool(
+                meta["model_uls_evidence_complete"]),
             "normative_claim": False,
             "steel_ultimate_failure_criterion_qualified": False,
             "thermal_shrinkage_history_qualified": False,
@@ -255,7 +257,15 @@ def evaluate_sp2026_member_at_time(column, thermal_snapshot, member_spec, *,
         def prepared(field):
             key = id(field)
             if key not in cache:
-                cache[key] = prepare_sp2026_section(column, field, grid=grid)
+                physical_mode=member_spec.get(
+                    "constitutive_model","SP5_6_1_5_4_SECTION_CHECK")
+                if physical_mode=="SP5_6_1_5_4_SECTION_CHECK":
+                    prepare=prepare_sp2026_section
+                elif physical_mode=="SP5_6_1_5_2_FULL_HOT_EXPLORATORY":
+                    prepare=prepare_sp2026_full_nonlinear_section
+                else:
+                    raise SP2026MemberInputError("unsupported source SP5 constitutive mode")
+                cache[key]=prepare(column,field,grid=grid)
             return cache[key]
         gauss_laws = [[SP2026MemberFiberLaw(prepared(field)) for field in row]
                       for row in gauss]
