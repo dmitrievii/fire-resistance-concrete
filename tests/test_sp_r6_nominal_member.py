@@ -184,6 +184,29 @@ class SP5ActualHeatedColumn(unittest.TestCase):
         self.assertEqual(r["regulatory_result"],"NOT_ESTABLISHED")
         self.assertFalse(r["normative_claim"])
 
+    def test_true_asymmetric_sp_heat_blocks_independent_scalar_eta(self):
+        from rc_fire.thermal.sp2026_heat import (
+            solve_sp2026_2d_heat,reference_sp2026_boundary)
+        from test_sp_r3_member import make_explicit_spec
+        case=copy.deepcopy(self.column)
+        case["thermal_spec"]["exposed_faces"]=["left","top"]
+        actual=solve_sp2026_2d_heat(
+            case,boundary=reference_sp2026_boundary(moisture_mass_pct=1.5),
+            cell_count_x=8,cell_count_y=8,max_step_minutes=2.5,
+            sample_times_minutes=[10.])
+        local=select_sp2026_snapshot(actual,10.)
+        result=assess_sp5_nominal_column_at_fire(
+            case,local,make_explicit_spec(case),grid=8,
+            effective_creep_phi=0.)
+        nominal=result["nominal_second_order"]
+        self.assertEqual(result["status"],
+                         "BLOCKED_BIAXIAL_NOMINAL_AXIS_COUPLING")
+        self.assertFalse(nominal["axis_decoupling_verified_numerically"])
+        self.assertIsNone(nominal["x"]["eta_a"])
+        self.assertIsNone(nominal["y"]["Ncrit_kN"])
+        self.assertIsNone(result["actual_t_R_minutes"])
+        self.assertFalse(result["normative_claim"])
+
     def test_actual_thermal_fibre_resolution_three_mesh_qualification(self):
         result=verify_sp5_nominal_grid_convergence(
             self.column,self.snapshot,self.spec,grids=(8,12,16),
