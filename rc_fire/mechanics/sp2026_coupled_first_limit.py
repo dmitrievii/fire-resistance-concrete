@@ -16,7 +16,8 @@ import numpy as np
 from rc_fire.mechanics.sp2026_nominal_member import (
     SP5NominalMemberError,prepare_sp2026_design_section)
 from rc_fire.mechanics.sp2026_coupled_rigidity import (
-    coupled_sp5_hot_section_stiffness,magnify_coupled_first_order_moments)
+    coupled_sp5_hot_section_stiffness,magnify_coupled_first_order_moments,
+    audit_independent_global_coupled_euler)
 from rc_fire.thermal.sp2026_heat import (
     SPHeatError,select_sp2026_snapshot)
 
@@ -85,7 +86,8 @@ def _public_pinned_actions(column,spec):
 
 
 def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
-                                       grid=12,effective_creep_phi):
+                                       grid=12,effective_creep_phi,
+                                       global_euler_audit=False):
     N,L,m0,actions=_public_pinned_actions(column,member_spec)
     if snapshot.get("thermal_method")!="SP2026_8.2.23_FVM":
         raise SP5NominalMemberError("SP-R2 time-matched heat only")
@@ -94,6 +96,9 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
         prep,N_kN=N,length_m=L,
         effective_creep_phi=effective_creep_phi)
     coupled=magnify_coupled_first_order_moments(r,m0)
+    global_audit=(
+        audit_independent_global_coupled_euler(r,length_m=L)
+        if global_euler_audit else None)
     section=None
     if coupled["status"]!="COUPLED_NOMINAL_MOMENTS_COMPUTED":
         status=NOMINAL
@@ -127,6 +132,7 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
                 None,"unresolved_numerical_or_physical_state")
             and section.get("unknowns") is not None else None),
         "nominal_coupled_evidence":r,
+        "independent_global_FE_Euler_evidence":global_audit,
         "coupled_action_transformation":coupled,
         "SP5_8_1_2_source_secant_not_equal_8_1_6_nominal":True,
         "thermal_free_curvature_effect_not_qualified":True,
