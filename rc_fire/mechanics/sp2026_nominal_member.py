@@ -138,6 +138,35 @@ def prepare_sp2026_design_section(column,snapshot,*,grid=12):
     return prepared
 
 
+def effective_creep_coefficient_sp5(*,phi_infty,M0Eqp_kNm,M0Ed_kNm):
+    """SP5 §8.1.6.5 Eq8.64, no invented quasi-permanent actions.
+
+    Both moments are FIRST-order in the SAME bending direction and
+    referred to the same critical section. A zero design moment cannot
+    be used as divisor; signed reversal requires independent resolution.
+    """
+    phi=_finite(phi_infty,"phi infinity")
+    mqp=_finite(M0Eqp_kNm,"M0Eqp")
+    md=_finite(M0Ed_kNm,"M0Ed")
+    if phi<0. or abs(md)<1e-12:
+        raise SP5NominalMemberError("SP5 Eq8.64 requires phi_infty>=0 and M0Ed nonzero")
+    r=mqp/md
+    if r<0:
+        raise SP5NominalMemberError(
+            "SP5 Eq8.64 opposite-sign quasi-permanent/design moments need explicit sign analysis")
+    eff=phi*r
+    if not math.isfinite(eff):
+        raise SP5NominalMemberError("SP5 phi_eff not finite")
+    return {
+        "source":"SP5 §8.1.6.5 Eq8.64",
+        "phi_infty":phi,
+        "M0Eqp_kNm":mqp,"M0Ed_kNm":md,
+        "moment_ratio":r,"phi_eff":eff,
+        "same_section_load_combination_provenance_required":True,
+        "fire_temperature_creep_history_qualified":False,
+        "normative_claim":False}
+
+
 def exact_sp5_nominal_axis(*,N_kN, fck_MPa, fcd_MPa,
                            Ecd_MPa, Es_MPa, Ic_m4, Is_m4,
                            Ac_m2, length_m, mu=1.,
