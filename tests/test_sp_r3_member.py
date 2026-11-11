@@ -9,7 +9,8 @@ import unittest
 import numpy as np
 
 from test_r07_public_workflow import user_inputs
-from rc_fire.integration.r07_inputs import make_column
+from rc_fire.integration.r07_inputs import (
+    make_column,explicit_pinned_uniform_sp2026_member)
 from rc_fire.member.sp2026_member import (
     SP2026MemberInputError, SP2026MemberFiberLaw,
     evaluate_sp2026_member_at_time, scan_sp2026_member_history,
@@ -128,6 +129,38 @@ class SPR3ActualMemberNumerics(unittest.TestCase):
         self.assertIsNone(data["R_t_minutes"])
         if data["status"] != UNKNOWN:
             self.assertGreater(max(abs(x) for x in data["member"]["total_w_x_m"]),0.)
+
+    def test_ui_pinned_uniform_builder_is_opt_in_and_physically_traceable(self):
+        with self.assertRaises(ValueError):
+            explicit_pinned_uniform_sp2026_member(
+                self.column,
+                confirmed_pinned_uniform_action_model=False,
+                confirmed_uniform_longitudinal_fire=True,
+                imperfection_x_mm=0.,imperfection_y_mm=0.)
+        spec=explicit_pinned_uniform_sp2026_member(
+            self.column,
+            confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        L=self.column["length_m"]
+        Mx=self.column["sections"][0]["Mx_kNm"]
+        My=self.column["sections"][0]["My_kNm"]
+        self.assertAlmostEqual(spec["distributed_load_kNpm"][0][0],
+                               8.*Mx/L**2)
+        self.assertAlmostEqual(spec["distributed_load_kNpm"][0][1],
+                               8.*My/L**2)
+        self.assertAlmostEqual(spec["initial_imperfection"][2],.006)
+        self.assertAlmostEqual(spec["initial_imperfection"][8],.003)
+        self.assertEqual(spec["z_m"],[0.,L/2.,L])
+        self.assertEqual(spec["longitudinal_thermal_mode"],
+                         "explicit_uniform_full_length")
+        c=copy.deepcopy(self.column)
+        c["mu_x"]=.7
+        with self.assertRaises(ValueError):
+            explicit_pinned_uniform_sp2026_member(
+                c,confirmed_pinned_uniform_action_model=True,
+                confirmed_uniform_longitudinal_fire=True,
+                imperfection_x_mm=6.,imperfection_y_mm=3.)
 
     def test_public_facade_requires_explicit_member_contract_and_integrates(self):
         from rc_fire.integration.r07_public import fire_assessment
