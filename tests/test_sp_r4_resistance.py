@@ -148,5 +148,52 @@ class SPR4TrueHotMember(unittest.TestCase):
                 self.column,self.thermal,spec,grid=8)
 
 
+class SPR4PublicFacade(unittest.TestCase):
+    def test_explicit_pinned_case_reaches_resistance_output_without_fake_U(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column, explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        c["fire_minutes"]=30.
+        c["member_spec"]=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec=c["member_spec"]
+        spec["resistance_scan_requested"]=True
+        spec["resistance_scan_first_factor"]=.25
+        spec["resistance_scan_step"]=.25
+        spec["resistance_scan_max_factor"]=.75
+        report=fire_assessment(
+            c,required_minutes=30.,steel_route="hot_rolled",
+            ductility_class="B",moisture_mass_pct=1.5,
+            grid=8,dt_minutes=3.)
+        self.assertEqual(report["regulatory_result"],"NOT_ESTABLISHED")
+        self.assertIsNone(report["R_t_minutes"])
+        self.assertIsNone(report["sp2026_stage4_actual_member_utilisation_U_t"])
+        data=report["sp2026_stage4_resistance_scan_at_required_time"]
+        self.assertIsNotNone(
+            data,report["sp2026_stage4_resistance_scan_blocker"])
+        self.assertEqual(data["temperature_station_count"],9)
+        self.assertGreaterEqual(len(data["evaluations"]),1)
+        self.assertIsNone(data["actual_U_member_t"])
+        self.assertIsNone(data["R_t_minutes"])
+        self.assertFalse(data["normative_claim"])
+
+    def test_absent_member_contract_never_launches_sp_r4_scan(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import make_column
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        r=fire_assessment(c,required_minutes=30.,steel_route="hot_rolled",
+                ductility_class="B",moisture_mass_pct=1.5,
+                grid=8,dt_minutes=3.)
+        self.assertEqual(r["sp2026_stage4_resistance_scan_status"],
+                         "SP_R4_NOT_REQUESTED")
+        self.assertIsNone(r["sp2026_stage4_resistance_scan_at_required_time"])
+        self.assertIsNone(r["R_t_minutes"])
+
+
 if __name__=="__main__":
     unittest.main()
