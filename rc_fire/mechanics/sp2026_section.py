@@ -106,8 +106,14 @@ class SPPreparedSection(TKPPreparedFibres):
         # This is not an eps_ud validation of a full nonlinear analysis,
         # and is not used to infer member fire endurance.
         steel_tensile_strain=max(0.,-float(np.min(es)))
-        steel_check_ratio=steel_tensile_strain/.010
-        max_ratio=max(max_ratio,steel_check_ratio)
+        # SP5 §8.1.2 section-check 10‰ is NOT the steel limit of the
+        # full §6.1.5.2 nonlinear structural branch. Without certified
+        # hot εud no FULL-branch member ULS may be declared "within".
+        if model_mode=="SP5_6_1_5_4_SECTION_CHECK":
+            steel_check_ratio=steel_tensile_strain/.010
+            max_ratio=max(max_ratio,steel_check_ratio)
+        else:
+            steel_check_ratio=None
         # Identical force conventions, shapes and units to the existing
         # 3-DOF section equilibrium. Gross concrete plus steel stress
         # minus displaced-concrete stress at each physical bar.
@@ -122,7 +128,8 @@ class SPPreparedSection(TKPPreparedFibres):
         F=mc@(A*sc)+ms@(B*(ss-sb))
         J=(mc*(A*tc)[None,:])@shape_c.T+(
             ms*(B*(ts-tb))[None,:])@shape_s.T
-        status=bool(max_ratio<=1.+1e-12)
+        status=(bool(max_ratio<=1.+1e-12)
+                if model_mode=="SP5_6_1_5_4_SECTION_CHECK" else None)
         meta={
             "model":VERSION,
             "constitutive_mode":model_mode,
@@ -140,8 +147,13 @@ class SPPreparedSection(TKPPreparedFibres):
                 np.all(self.theta_s<=800.)),
             "steel_check_tension_strain_limit":.010,
             "steel_check_tension_ratio":float(steel_check_ratio),
-            "steel_check_source":"СП 5.03.01-2020 §8.1.2.1 verification section, 10 permille",
+            "steel_check_source":(
+                "СП 5.03.01-2020 §8.1.2.1 section-check 10‰"
+                if steel_check_ratio is not None
+                else "NOT_APPLICABLE_FULL_NONLINEAR_STEEL_EPS_UD_UNQUALIFIED"),
             "steel_eps_ud_full_nonlinear_analysis_qualified":False,
+            "full_hot_constitutive_physical_qualification":False,
+            "model_uls_evidence_complete":status is not None,
             "max_steel_tensile_strain":steel_tensile_strain,
             "maximum_concrete_fibre_ratio":float(fibre_ratio),
             "maximum_concrete_boundary_ratio":float(boundary_ratio),
