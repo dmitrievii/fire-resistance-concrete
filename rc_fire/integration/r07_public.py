@@ -29,8 +29,11 @@ from rc_fire.thermal.sp2026_heat import (
     SPHeatError,solve_sp2026_2d_heat,select_sp2026_snapshot,
     sample_sp2026_temperature,standard_fire_sp,
     reference_sp2026_boundary)
+from rc_fire.member.sp2026_member import (
+    SP2026MemberInputError,evaluate_sp2026_member_at_time,
+    scan_sp2026_member_history)
 
-VERSION="R0.7-public-fire-workflow-v8"
+VERSION="R0.7-public-fire-workflow-v9-SP-R3-explicit-member"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -284,6 +287,39 @@ def fire_assessment(column:dict,*,required_minutes:float,
             "source":"SP2026_TABLE9_10_SP5",
             "reason":sp_heat_problem,"R_t_minutes":None,
             "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
+    # SP-R.3: evaluate actual SP 2D fibre member only with a complete
+    # explicit longitudinal load/support/imperfection/temperature contract.
+    # A single N/Mx/My section from the public form is NOT a member model.
+    stage3_spec=c_sp.get("member_spec") or {}
+    sp3_status="SP_R3_EXPLICIT_MEMBER_INPUT_REQUIRED"
+    sp3_at_required=None
+    sp3_history=None
+    sp3_blocker=None
+    if stage3_spec.get("load_mode")=="explicit_sp2026_beam":
+        if sp_heat is None:
+            sp3_status="BLOCKED_SP_R3_NO_SOURCE_MATCHED_THERMAL_FIELD"
+            sp3_blocker=sp_heat_problem or "SP-R2 heat unavailable"
+        else:
+            try:
+                stage3_snapshot=select_sp2026_snapshot(sp_heat,required)
+                sp3_at_required=evaluate_sp2026_member_at_time(
+                    c_sp,stage3_snapshot,stage3_spec,grid=grid)
+                sp3_status=sp3_at_required["status"]
+                requested_times=stage3_spec.get("history_times_minutes")
+                if requested_times is not None:
+                    if (not isinstance(requested_times,(list,tuple)) or
+                        not 1<=len(requested_times)<=24):
+                        raise SP2026MemberInputError(
+                            "explicit member history requires 1..24 times")
+                    sp3_history=scan_sp2026_member_history(
+                        c_sp,sp_heat,stage3_spec,requested_times,grid=grid)
+            except (SP2026MemberInputError,SPHeatError,
+                    ValueError,TypeError,KeyError) as exc:
+                sp3_status="BLOCKED_SP_R3_MEMBER_INPUT_OR_SOLVER"
+                sp3_blocker=str(exc)
+                sp3_at_required=None
+                sp3_history=None
+
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -351,7 +387,13 @@ def fire_assessment(column:dict,*,required_minutes:float,
           sp_heat.get("external_boundary_source") if sp_heat else None),
       "sp2026_stage2_moisture_model":(
           sp_heat.get("moisture_model") if sp_heat else None),
-      "sp2026_calculated_R_t_status":"NOT_ESTABLISHED_SP2026_MEMBER_NOT_IMPLEMENTED",
+      "sp2026_stage3_member_status":sp3_status,
+      "sp2026_stage3_member_blocker":sp3_blocker,
+      "sp2026_stage3_member_at_required_time":sp3_at_required,
+      "sp2026_stage3_member_history":sp3_history,
+      "sp2026_calculated_R_t_status":(
+          "NOT_ESTABLISHED_SP2026_MEMBER_ULS_QUALIFICATION_PENDING"
+          if sp3_at_required else "NOT_ESTABLISHED_SP2026_MEMBER_INPUT_REQUIRED"),
       "spalling_annex_L":spalling,
       "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
       "natural_sand_selection_provenance":sand_source,
