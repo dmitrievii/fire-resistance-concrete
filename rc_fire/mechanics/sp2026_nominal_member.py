@@ -383,3 +383,51 @@ def assess_sp5_nominal_column_at_fire(column,snapshot,member_spec, *,
             "SP5_8_1_1_5_ECCENTRICITY_AND_IMPERFECTION_ACTION_RECONCILIATION",
             "SP2026_8_2_23_THERMAL_SPALLING_AND_VALIDATION",
             "SP5_8_1_2_SECTION_LIMIT_FIRST_FAILURE_AND_LONGITUDINAL_VALIDATION"] }
+
+
+def scan_sp5_nominal_member_history(column,heat,member_spec,times_minutes,
+                                   *,grid=12,effective_creep_phi):
+    """Repeated design section + nominal-B at exact stored SP-R2 time samples.
+
+    Does not interpolate between stored thermal times and cannot declare
+    a first fire failure from interval sampling, unresolved equilibria,
+    or nonuniform homogenization lacking normative qualification.
+    """
+    from rc_fire.thermal.sp2026_heat import select_sp2026_snapshot
+    if heat.get("thermal_method")!="SP2026_8.2.23_FVM":
+        raise SP5NominalMemberError("source-matched SP thermal history required")
+    if not isinstance(times_minutes,(list,tuple)) or not 1<=len(times_minutes)<=12:
+        raise SP5NominalMemberError("1..12 exact SP-R2 stored times required")
+    times=[_finite(t,"time",positive=True) for t in times_minutes]
+    if any(b<=a for a,b in zip(times,times[1:])):
+        raise SP5NominalMemberError("requested SP-R2 times must strictly increase")
+    rows=[]
+    for t in times:
+        record=assess_sp5_nominal_column_at_fire(
+            column,select_sp2026_snapshot(heat,t),member_spec,grid=grid,
+            effective_creep_phi=effective_creep_phi)
+        nominal=record["nominal_second_order"]
+        rows.append({
+            "time_minutes":t,
+            "status":record["status"],
+            "x_nominal":nominal.get("x"),
+            "y_nominal":nominal.get("y"),
+            "M_first_and_second":record["first_order_moment_reconciliation"],
+            "section":record["section"],
+            "nonuniform_method_qualified":False,
+            "normative_claim":False})
+    transitions=[]
+    for earlier,later in zip(rows,rows[1:]):
+        if earlier["status"]==WITHIN and later["status"]==EXCEEDED:
+            transitions.append({
+                "last_sampled_admissible_minute":earlier["time_minutes"],
+                "first_sampled_exceedance_minute":later["time_minutes"],
+                "physical_first_failure_proved":False})
+    return {
+        "version":VERSION,
+        "source":"SP5 §6.1.5.4 + §8.1.6, SP2026 §8.2.18 actual heat",
+        "status":"RESEARCH_NOMINAL_HISTORY_SOURCE_NONUNIFORM_NOT_CERTIFIED",
+        "samples":rows,"observed_strain_check_transitions":transitions,
+        "temperature_interpolation_used":False,
+        "actual_U_t":None,"actual_t_R":None,
+        "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
