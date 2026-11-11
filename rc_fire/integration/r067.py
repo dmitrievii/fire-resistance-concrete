@@ -53,14 +53,15 @@ def validate_member_spec(spec):
             "uniform_exposure_confirmed", "history_times_minutes",
             "thermal_longitudinal_mode","resistance_scan_requested",
             "resistance_scan_max_factor","resistance_scan_step",
-            "resistance_scan_first_factor"}
+            "resistance_scan_first_factor","resistance_time_history_requested"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
                 ", ".join(sorted(unknown)))
         required = expected - {"history_times_minutes", "thermal_longitudinal_mode",
             "resistance_scan_requested","resistance_scan_max_factor",
-            "resistance_scan_step","resistance_scan_first_factor"}
+            "resistance_scan_step","resistance_scan_first_factor",
+            "resistance_time_history_requested"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -112,6 +113,11 @@ def validate_member_spec(spec):
             vals=[_number(v,"history time") for v in times]
             if vals[0]<=0 or any(b<=a for a,b in zip(vals,vals[1:])):
                 raise MemberEvidenceInputError("SP-R3 history times must be positive/increasing")
+        if "resistance_time_history_requested" in spec:
+            if type(spec["resistance_time_history_requested"]) is not bool:
+                raise MemberEvidenceInputError("SP-R4 resistance history request must be Boolean")
+            if spec["resistance_time_history_requested"] and spec.get("resistance_scan_requested") is not True:
+                raise MemberEvidenceInputError("SP-R4 time-dependent capacity requires capacity scan activation")
         if "resistance_scan_requested" in spec and type(spec["resistance_scan_requested"]) is not bool:
             raise MemberEvidenceInputError("SP-R4 resistance scan activation must be Boolean")
         if any(k in spec for k in (
