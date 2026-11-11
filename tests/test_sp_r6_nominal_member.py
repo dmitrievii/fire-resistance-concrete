@@ -17,6 +17,7 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     effective_creep_coefficient_sp5,
     prepare_sp2026_design_section,nonuniform_sp5_nominal_axis,
     assess_sp5_nominal_column_at_fire,scan_sp5_nominal_member_history,
+    verify_sp5_nominal_grid_convergence,
     WITHIN,EXCEEDED,UNKNOWN)
 
 
@@ -182,6 +183,19 @@ class SP5ActualHeatedColumn(unittest.TestCase):
         self.assertIsNone(r["actual_member_capacity_U_t"])
         self.assertEqual(r["regulatory_result"],"NOT_ESTABLISHED")
         self.assertFalse(r["normative_claim"])
+
+    def test_actual_thermal_fibre_resolution_three_mesh_qualification(self):
+        result=verify_sp5_nominal_grid_convergence(
+            self.column,self.snapshot,self.spec,grids=(8,12,16),
+            effective_creep_phi=0.,relative_tolerance=.05)
+        self.assertEqual([p["fibre_grid"] for p in result["grids"]],
+                         [8,12,16])
+        self.assertEqual(len(result["pairwise_comparisons"]),4)
+        self.assertTrue(result["source_SP2D_thermal_grid_is_frozen"])
+        self.assertFalse(result["independent_heat_mesh_or_time_convergence_qualified"])
+        self.assertFalse(result["normative_member_qualification"])
+        self.assertIsNone(result["actual_t_R_minutes"])
+        self.assertFalse(result["normative_claim"])
 
     def test_reject_non_pin_or_unreconciled_eccentricity(self):
         spec=copy.deepcopy(self.spec)
