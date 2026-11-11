@@ -18,6 +18,7 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     prepare_sp2026_design_section,nonuniform_sp5_nominal_axis,
     assess_sp5_nominal_column_at_fire,scan_sp5_nominal_member_history,
     verify_sp5_nominal_grid_convergence,
+    scan_sp5_nominal_member_load_path,
     WITHIN,EXCEEDED,UNKNOWN)
 
 
@@ -219,6 +220,57 @@ class SP5ActualHeatedColumn(unittest.TestCase):
         self.assertFalse(result["normative_member_qualification"])
         self.assertIsNone(result["actual_t_R_minutes"])
         self.assertFalse(result["normative_claim"])
+
+    def test_actual_nominal_SP5_load_ray_with_fresh_rigidity_each_factor(self):
+        from unittest.mock import patch
+        baseline=self.spec["N_kN"]
+        seen=[]
+        def model(column,snapshot,spec,*,grid,effective_creep_phi):
+            lam=spec["N_kN"]/baseline
+            seen.append({
+                "N":spec["N_kN"],
+                "q":spec["distributed_load_kNpm"],
+                "bow":spec["initial_imperfection"]})
+            category=WITHIN if lam<1.30 else EXCEEDED
+            return {
+                "status":category,
+                "time_minutes":5.,
+                "nominal_second_order":{
+                    "x":{"Ncrit_kN":900.+lam,"eta_a":1.+lam*.01},
+                    "y":{"Ncrit_kN":950.+lam,"eta_a":1.+lam*.02}},
+                "section":{"critical_ratio":lam/1.30}}
+        with patch("rc_fire.mechanics.sp2026_nominal_member."
+                   "assess_sp5_nominal_column_at_fire",side_effect=model):
+            evidence=scan_sp5_nominal_member_load_path(
+                self.column,self.snapshot,self.spec,grid=8,
+                effective_creep_phi=0.,first_factor=.25,step=.25,
+                max_factor=2.,relative_tolerance=.002)
+        self.assertEqual(evidence["status"],
+                         "OBSERVED_MODEL_STRAIN_LIMIT_BRACKET")
+        bound=evidence["observed_conditional_SP5_section_factor_bracket"]
+        self.assertLess(bound["last_admissible_sample_factor"],1.30)
+        self.assertGreaterEqual(bound["first_observed_exceedance_factor"],1.30)
+        self.assertGreater(len(seen),5)
+        for sample in seen:
+            lam=sample["N"]/baseline
+            self.assertAlmostEqual(sample["q"][0][0],
+                self.spec["distributed_load_kNpm"][0][0]*lam)
+            self.assertEqual(sample["bow"],self.spec["initial_imperfection"])
+        self.assertIsNone(evidence["actual_U_member_t"])
+        self.assertIsNone(evidence["actual_R_t_minutes"])
+        self.assertFalse(evidence["normative_claim"])
+
+    def test_actual_hot_load_ray_remains_non_normative(self):
+        result=scan_sp5_nominal_member_load_path(
+            self.column,self.snapshot,self.spec,grid=8,
+            effective_creep_phi=0.,first_factor=.25,step=.25,
+            max_factor=.75,relative_tolerance=.01)
+        self.assertIsNotNone(result["at_reference_design_load_factor"])
+        self.assertGreaterEqual(len(result["evaluations"]),1)
+        self.assertTrue(result["kc_nominal_and_Ncrit_recomputed_per_load_factor"])
+        self.assertIsNone(result["actual_U_member_t"])
+        self.assertIsNone(result["actual_R_t_minutes"])
+        self.assertEqual(result["regulatory_result"],"NOT_ESTABLISHED")
 
     def test_reject_non_pin_or_unreconciled_eccentricity(self):
         spec=copy.deepcopy(self.spec)
