@@ -250,3 +250,67 @@ def magnify_coupled_first_order_moments(rigidity,moments_kNm):
         "SP5_8_1_6_nonuniform_fire_qualified":False,
         "actual_member_failed":None,
         "normative_claim":False}
+
+
+def audit_independent_global_coupled_euler(rigidity,*,length_m,
+                                           node_counts=(9,17),
+                                           target_relative_error=.005):
+    """Actual 2x2 heated nominal D embedded into independent BEAM FE.
+
+    K and geometric G are assembled by production beam shape functions,
+    while the reference is the closed-form first principal Euler load
+    pi²*eig_min(D)/L². The first eigenvalue is valid regardless of
+    whether the *second* bending mode aliases a higher harmonic.
+    This verifies FE/global geometry, not physical heated RC collapse.
+    """
+    from rc_fire.member.coupled import (
+        LinearSectionLaw,EndSupport,_beam_assembly,_boundary_matrix)
+    L=_finite(length_m,"length_m",positive=True)
+    D=np.asarray(rigidity.get("nominal_2x2_D_kNm2"),dtype=float)
+    if (D.shape!=(2,2) or not np.all(np.isfinite(D)) or
+        not np.allclose(D,D.T,atol=1e-9,rtol=1e-10) or
+        np.linalg.eigvalsh(D)[0]<=0):
+        raise SP5NominalMemberError("valid symmetric positive 2x2 rigidity required")
+    target=_finite(target_relative_error,"relative tolerance",positive=True)
+    if target>.1 or type(node_counts) not in (tuple,list) or (
+            len(node_counts)<2 or any(type(x) is not int or x<3 or x>65
+            for x in node_counts) or
+            any(a>=b for a,b in zip(node_counts,node_counts[1:]))):
+        raise SP5NominalMemberError("increasing 3..65 FE grid nodes required")
+    exact=float(math.pi**2*np.linalg.eigvalsh(D)[0]/L**2)
+    trials=[]
+    for count in node_counts:
+        z=np.linspace(0.,L,count)
+        law=LinearSectionLaw(
+            D,provenance="SP-R7 actual temperature-dependent coupled nominal D")
+        zeros=np.zeros(4*count)
+        _,K,G,_,_=_beam_assembly(
+            z,0.,lambda i,j:law,zeros,zeros,
+            np.zeros((count,2)),zeros)
+        fixed,_=_boundary_matrix(
+            EndSupport("pinned"),EndSupport("pinned"),count)
+        free=[i for i in range(4*count) if i not in fixed]
+        A=np.linalg.solve(K[np.ix_(free,free)],G[np.ix_(free,free)])
+        spectrum=np.linalg.eigvals(A)
+        if np.max(np.abs(spectrum.imag))>1e-7:
+            raise SP5NominalMemberError("complex FE buckling eigenvalues")
+        inverse_loads=[float(x) for x in spectrum.real if x>1e-13]
+        if not inverse_loads:
+            raise SP5NominalMemberError("FE global positive Euler mode absent")
+        fe=1./max(inverse_loads)
+        trials.append({
+            "beam_nodes":count,"Ncrit_FE_kN":fe,
+            "Ncrit_analytic_min_principal_kN":exact,
+            "relative_error":abs(fe-exact)/exact,
+            "within_numerical_study_tolerance":abs(fe-exact)/exact<=target})
+    return {
+        "version":VERSION,
+        "status":("GLOBAL_COUPLED_FE_FIRST_MODE_NUMERICALLY_VERIFIED" if
+                  all(x["within_numerical_study_tolerance"] for x in trials)
+                  else "GLOBAL_COUPLED_FE_FIRST_MODE_NOT_CONVERGED"),
+        "Ncrit_first_principal_analytic_kN":exact,
+        "global_FE_grid_study":trials,
+        "max_relative_error":max(x["relative_error"] for x in trials),
+        "complete_hot_RC_member_first_failure_qualified":False,
+        "source_nonuniform_nominal_method_qualified":False,
+        "regulatory_claim":False}
