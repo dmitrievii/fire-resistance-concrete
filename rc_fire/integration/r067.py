@@ -51,12 +51,16 @@ def validate_member_spec(spec):
             "initial_imperfection", "imperfection_source",
             "entered_section_moments_reconciled", "longitudinal_thermal_mode",
             "uniform_exposure_confirmed", "history_times_minutes",
-            "thermal_longitudinal_mode"}
+            "thermal_longitudinal_mode","resistance_scan_requested",
+            "resistance_scan_max_factor","resistance_scan_step",
+            "resistance_scan_first_factor"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
                 ", ".join(sorted(unknown)))
-        required = expected - {"history_times_minutes", "thermal_longitudinal_mode"}
+        required = expected - {"history_times_minutes", "thermal_longitudinal_mode",
+            "resistance_scan_requested","resistance_scan_max_factor",
+            "resistance_scan_step","resistance_scan_first_factor"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -108,6 +112,18 @@ def validate_member_spec(spec):
             vals=[_number(v,"history time") for v in times]
             if vals[0]<=0 or any(b<=a for a,b in zip(vals,vals[1:])):
                 raise MemberEvidenceInputError("SP-R3 history times must be positive/increasing")
+        if "resistance_scan_requested" in spec and type(spec["resistance_scan_requested"]) is not bool:
+            raise MemberEvidenceInputError("SP-R4 resistance scan activation must be Boolean")
+        if any(k in spec for k in (
+                "resistance_scan_max_factor","resistance_scan_step",
+                "resistance_scan_first_factor")):
+            if spec.get("resistance_scan_requested") is not True:
+                raise MemberEvidenceInputError("SP-R4 scan controls require explicit activation")
+            start=_number(spec.get("resistance_scan_first_factor",.25),"SP-R4 first factor")
+            step=_number(spec.get("resistance_scan_step",.25),"SP-R4 step")
+            stop=_number(spec.get("resistance_scan_max_factor",2.),"SP-R4 maximum")
+            if not 0<start<=stop<=5. or not 0<step<=stop:
+                raise MemberEvidenceInputError("SP-R4 factor-scan controls out of range")
         return copy.deepcopy(spec)
 
     keys = {"thermal_longitudinal_mode", "uniform_fire_basis", "left_support",
