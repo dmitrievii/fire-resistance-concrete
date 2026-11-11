@@ -32,6 +32,7 @@ from rc_fire.thermal.sp2026_heat import (
 from rc_fire.member.sp2026_member import (
     SP2026MemberInputError,evaluate_sp2026_member_at_time,
     scan_sp2026_member_history)
+from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
 
 VERSION="R0.7-public-fire-workflow-v9-SP-R3-explicit-member"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
@@ -287,6 +288,13 @@ def fire_assessment(column:dict,*,required_minutes:float,
             "source":"SP2026_TABLE9_10_SP5",
             "reason":sp_heat_problem,"R_t_minutes":None,
             "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
+    try:
+        sp3_beta_audit=audit_sp2026_concrete_stiffness(c_sp)
+        sp3_beta_problem=None
+    except (ValueError,KeyError,TypeError) as exc:
+        sp3_beta_audit=None
+        sp3_beta_problem=str(exc)
+
     # SP-R.3: evaluate actual SP 2D fibre member only with a complete
     # explicit longitudinal load/support/imperfection/temperature contract.
     # A single N/Mx/My section from the public form is NOT a member model.
@@ -387,6 +395,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
           sp_heat.get("external_boundary_source") if sp_heat else None),
       "sp2026_stage2_moisture_model":(
           sp_heat.get("moisture_model") if sp_heat else None),
+      "sp2026_stage3_beta_stiffness_audit":sp3_beta_audit,
+      "sp2026_stage3_beta_stiffness_audit_blocker":sp3_beta_problem,
       "sp2026_stage3_member_status":sp3_status,
       "sp2026_stage3_member_blocker":sp3_blocker,
       "sp2026_stage3_member_at_required_time":sp3_at_required,
