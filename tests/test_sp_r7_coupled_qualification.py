@@ -20,7 +20,9 @@ from rc_fire.mechanics.sp2026_coupled_rigidity import (
     audit_independent_global_coupled_euler)
 from rc_fire.mechanics.sp2026_coupled_first_limit import (
     assess_coupled_sp5_nominal_at_time,
-    scan_coupled_first_model_limit,WITHIN,EXCEEDED,NOMINAL,UNKNOWN)
+    scan_coupled_first_model_limit,
+    refine_first_coupled_model_limit_with_new_sp_heat,
+    WITHIN,EXCEEDED,NOMINAL,UNKNOWN)
 from rc_fire.thermal.sp2026_heat import (
     solve_sp2026_2d_heat,reference_sp2026_boundary,
     select_sp2026_snapshot)
@@ -219,6 +221,48 @@ class TestSP5RealFireSecantAndModelLimit(unittest.TestCase):
                     grid=8,effective_creep_phi=0.)
         self.assertIsNone(r2["observed_first_model_limit_interval"])
         self.assertIsNone(r2["t_R_minutes"])
+
+    def test_first_model_event_refines_with_new_FVM_not_time_interpolation(self):
+        original=self.heat
+        history={
+            "observed_first_model_limit_interval":{
+                "last_sampled_model_within_min":5.,
+                "first_sampled_model_limit_min":10.},
+            "samples":[{"time_minutes":5.,"status":WITHIN},
+                       {"time_minutes":10.,"status":EXCEEDED}]}
+        new_heat_calls=[]
+        def heat_solver(col,*,boundary,cell_count_x,cell_count_y,
+                        max_step_minutes,sample_times_minutes):
+            t=float(col["fire_minutes"])
+            new_heat_calls.append(t)
+            self.assertEqual(sample_times_minutes,[t])
+            self.assertEqual(cell_count_x,original["grid"]["nx"])
+            return {"source_fresh_time":t}
+        with patch("rc_fire.thermal.sp2026_heat.solve_sp2026_2d_heat",
+                   side_effect=heat_solver):
+            with patch("rc_fire.mechanics.sp2026_coupled_first_limit."
+                       "select_sp2026_snapshot",
+                       side_effect=lambda heat,t:{"snapshot":{"time_minutes":t}}):
+                with patch("rc_fire.mechanics.sp2026_coupled_first_limit."
+                           "assess_coupled_sp5_nominal_at_time",
+                           side_effect=lambda col,snap,spec,**kw:{
+                               "status":WITHIN if snap["snapshot"]["time_minutes"]<7.5
+                               else EXCEEDED}):
+                    result=refine_first_coupled_model_limit_with_new_sp_heat(
+                        self.column,original,self.member_spec,history,
+                        effective_creep_phi=0.,
+                        mechanical_grid=8,time_step_minutes=2.,
+                        max_refinements=6,time_bracket_tolerance_minutes=.25)
+        self.assertEqual(result["status"],
+                         "FRESH_SP_FVM_FIRST_MODEL_EVENT_BRACKET_REFINED")
+        bracket=result["strict_refined_model_event_interval_min"]
+        self.assertLess(bracket[0],7.5)
+        self.assertGreaterEqual(bracket[1],7.5)
+        self.assertLess(bracket[1]-bracket[0],.26)
+        self.assertGreater(len(new_heat_calls),1)
+        self.assertTrue(all(v["fresh_SP_FVM_solve"] for v in result["attempts"]))
+        self.assertIsNone(result["actual_t_R_minutes"])
+        self.assertFalse(result["normative_claim"])
 
     def test_public_single_time_coupled_model_fails_closed_for_physical_R(self):
         r=assess_coupled_sp5_nominal_at_time(
