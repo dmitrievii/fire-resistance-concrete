@@ -151,6 +151,17 @@ class TestSP5RealFireSecantAndModelLimit(unittest.TestCase):
         cls.snap=select_sp2026_snapshot(cls.heat,5.)
         cls.member_spec=make_explicit_spec(cls.column)
 
+    def test_SP5_design_section_mode_actually_enforces_steel_10permille_ULS(self):
+        p=prepare_sp2026_design_section(self.column,self.snap,grid=8)
+        _,_,small=p.force_and_tangent([.0006,0.,0.])
+        _,_,large=p.force_and_tangent([-.02,0.,0.])
+        self.assertIsInstance(small["model_only_strain_limits_satisfied"],bool)
+        self.assertFalse(large["model_only_strain_limits_satisfied"])
+        self.assertIsNotNone(large["steel_check_tension_ratio"])
+        self.assertGreater(large["steel_check_tension_ratio"],1.)
+        self.assertTrue(large["model_uls_evidence_complete"])
+        self.assertFalse(large["normative_claim"])
+
     def test_source_section_secant_and_hot_elastic_beta_are_not_same_quantity(self):
         p=prepare_sp2026_design_section(self.column,self.snap,grid=8)
         u=np.array([.0005,0.,0.])
