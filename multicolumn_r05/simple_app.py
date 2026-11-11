@@ -332,7 +332,7 @@ if run:
                 column,required_minutes=float(required),
                 steel_route=steel_route,ductility_class=duct,
                 moisture_mass_pct=float(moisture),
-                grid=12,dt_minutes=5.,assess_member=False)
+                grid=16,dt_minutes=3.,assess_member=False)
         st.session_state[f"r07_last_public_result_{cid}"]={
             "column":column,"result":result}
     except (ValueError,TypeError,KeyError,
