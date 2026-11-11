@@ -57,7 +57,9 @@ def validate_member_spec(spec):
             "constitutive_model","global_stability_requested",
             "nominal_sp5_requested","nominal_sp5_phi_eff",
             "nominal_sp5_creep_provenance","nominal_sp5_history_requested",
-            "nominal_sp5_grid_study_requested","nominal_sp5_load_scan_requested"}
+            "nominal_sp5_grid_study_requested","nominal_sp5_load_scan_requested",
+            "coupled_sp5_requested","coupled_sp5_history_requested",
+            "coupled_sp5_thermal_audit_requested","coupled_sp5_experiment_audit_requested"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
@@ -69,7 +71,9 @@ def validate_member_spec(spec):
             "global_stability_requested","nominal_sp5_requested",
             "nominal_sp5_phi_eff","nominal_sp5_creep_provenance",
             "nominal_sp5_history_requested","nominal_sp5_grid_study_requested",
-            "nominal_sp5_load_scan_requested"}
+            "nominal_sp5_load_scan_requested","coupled_sp5_requested",
+            "coupled_sp5_history_requested","coupled_sp5_thermal_audit_requested",
+            "coupled_sp5_experiment_audit_requested"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -132,6 +136,21 @@ def validate_member_spec(spec):
                 raise MemberEvidenceInputError("SP-R4 resistance history request must be Boolean")
             if spec["resistance_time_history_requested"] and spec.get("resistance_scan_requested") is not True:
                 raise MemberEvidenceInputError("SP-R4 time-dependent capacity requires capacity scan activation")
+        for key in ("coupled_sp5_requested","coupled_sp5_history_requested",
+                    "coupled_sp5_thermal_audit_requested",
+                    "coupled_sp5_experiment_audit_requested"):
+            if key in spec and type(spec[key]) is not bool:
+                raise MemberEvidenceInputError("SP-R7 "+key+" must be Boolean")
+        if any(spec.get(k) is True for k in (
+                "coupled_sp5_history_requested",
+                "coupled_sp5_thermal_audit_requested",
+                "coupled_sp5_experiment_audit_requested")) and (
+                    spec.get("coupled_sp5_requested") is not True):
+            raise MemberEvidenceInputError("SP-R7 audits/history require coupled stiffness route")
+        if spec.get("coupled_sp5_requested") is True and (
+                spec.get("nominal_sp5_requested") is not True):
+            raise MemberEvidenceInputError(
+                "SP-R7 coupled model needs explicit SP-R6 nominal phi_eff and source")
         if "nominal_sp5_requested" in spec and type(spec["nominal_sp5_requested"]) is not bool:
             raise MemberEvidenceInputError("SP-R6 nominal route requires Boolean opt-in")
         if "nominal_sp5_load_scan_requested" in spec:
