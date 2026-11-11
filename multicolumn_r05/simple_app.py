@@ -330,6 +330,7 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
         sp6_phi=0.
         sp6_history=False
         sp6_grid=False
+        sp6_capacity=False
         if sp6_nominal:
             sp6_phi=field.number_input(
                 "Эффективный коэффициент ползучести φef, СП 5 §8.1.6.5",
@@ -343,6 +344,13 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                 help="Для сохранённых моментов времени 1/3, 2/3 "
                      "и требуемой продолжительности. "
                      "Не интерполирует температурные поля.")
+            sp6_capacity=field.checkbox(
+                "SP-R.6: найти коэффициент предельной нагрузки",
+                value=False,
+                help="В каждом расчёте по СП5 заново вычисляются "
+                     "n, kc,ном, Ncrit и η, затем проверяются деформации "
+                     "сечения. Выдаётся только условный интервал "
+                     "сопротивления данной модели, не нормативное U(t).")
             sp6_grid=field.checkbox(
                 "SP-R.6: проверить сходимость сетки волокон (8/12/16)",
                 value=False,
@@ -449,6 +457,8 @@ if run:
                     column["member_spec"]["nominal_sp5_history_requested"]=True
                 if sp6_grid:
                     column["member_spec"]["nominal_sp5_grid_study_requested"]=True
+                if sp6_capacity:
+                    column["member_spec"]["nominal_sp5_load_scan_requested"]=True
             if sp5_full_law:
                 column["member_spec"]["constitutive_model"]=(
                     "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
@@ -688,6 +698,34 @@ if record:
                            "учтён один раз; минимум e0≥max(h/30,20 мм) "
                            "применён как нижний предел, не добавлением "
                            "к уже учтённому эксцентриситету.")
+                load_study=r.get("sp2026_stage6_sp5_nominal_load_scan") or {}
+                if load_study:
+                    st.markdown("**Нагрузочная огибающая именно по методу СП5**")
+                    st.write("Состояние поиска:",
+                             load_study["status"])
+                    band=load_study.get(
+                        "observed_conditional_SP5_section_factor_bracket")
+                    if band:
+                        st.write("Численный интервал предельного множителя:",
+                                 {
+                                    "λ внутри модели":
+                                        band["last_admissible_sample_factor"],
+                                    "λ превышение":
+                                        band["first_observed_exceedance_factor"]})
+                        u=band["model_only_utilisation_interval"]
+                        st.write("Условный модельный U по этой ветви:",
+                                 (round(u["lower"],4),round(u["upper"],4)))
+                    st.caption("Ncrit и коэффициент η пересчитываются "
+                               "для КАЖДОЙ величины λ; неизменным "
+                               "остаётся только температурное поле. "
+                               "Найденная граница относится к модели "
+                               "сечения и не является подтверждённым "
+                               "моментом разрушения колонны.")
+                elif r.get("sp2026_stage6_sp5_nominal_load_status") not in (
+                        None,"SP_R6_NOMINAL_LOAD_SCAN_NOT_REQUESTED"):
+                    st.warning("Поиск предельной нагрузки: "+str(
+                        r.get("sp2026_stage6_sp5_nominal_load_blocker") or
+                        r.get("sp2026_stage6_sp5_nominal_load_status")))
                 mesh_report=r.get("sp2026_stage6_sp5_nominal_grid_study") or {}
                 if mesh_report.get("grids"):
                     st.markdown("**Численная сходимость механического сечения**")
