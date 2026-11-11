@@ -91,6 +91,38 @@ not an arbitrarily huge η or an independently proven real column
 failure. If no valid equilibrium is found, the result is UNKNOWN,
 not structural collapse.
 
+## Explicit creep and numerical discretisation qualification tools
+
+The source-literal helper
+`effective_creep_coefficient_sp5(phi_infty,M0Eqp_kNm,M0Ed_kNm)`
+evaluates Eq8.64 with independent finite-domain checks. It rejects a
+zero denominator and an opposite-sign quasi-permanent moment rather
+than silently assigning `phi_eff=0`. The fire input may also declare
+`phi_eff` directly with an audit trail. Neither is a replacement for
+project-specific identification of long-term loads and temperature-
+dependent concrete creep.
+
+The research tool `verify_sp5_nominal_grid_convergence` evaluates
+exactly the same SP-R2 source thermal field using 8×8, 12×12 and
+16×16 *mechanical* fibre quadratures. It compares axis-specific nominal
+`Ncrit` values and produces pairwise relative changes, using a
+user-designated numerical tolerance. Passing this study demonstrates
+only numerical stability of section integration **for that specific
+fixed temperature field**, not convergence of the SP-R2 heat mesh or
+time, validation of exposure coefficients, physical material strength,
+or ultimate fire endurance. Public API/UI exposes an independent
+optional study with all three grid results and a separate visible
+`normative_member_qualification=false` status.
+
+SP5 Eq8.56 applies scalar flexural stiffness about a prescribed axis.
+A 2D heated section can have significant `EIxy` and/or an
+E-weighted axial stiffness centre shifted from the concrete centroid.
+Before permitting scalar `eta_x` and `eta_y`, this implementation
+computes both couplings and rejects states beyond a **strict numerical
+decoupling** tolerance 10⁻⁶. That threshold is an algorithmic
+preflight, **not** a SP-prescribed permitted eccentricity or a proof
+that the remaining nonuniform EI homogenization is normative.
+
 ## Numerical evidence and integration
 
 - `tests/test_sp_r6_nominal_member.py`:
