@@ -643,7 +643,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp7_ledger=qualification_ledger(
         coupled_model=sp7_at_required,thermal_audit=sp7_thermal,
         creep_audit=sp7_creep_audit,experiment_audit=sp7_experiments,
-        first_limit_history=sp7_history)
+        first_limit_history=sp7_history,spalling_audit=spalling)
 
     thermal_timeline=[{
         "minute":row["time_minutes"],
