@@ -37,7 +37,8 @@ from rc_fire.member.sp2026_resistance import (
     evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
 from rc_fire.member.sp2026_mechanical_qualification import (
-    verify_euler_critical_load,verify_pdelta_midspan,
+    verify_euler_critical_load,verify_biaxial_euler_coupling,
+    verify_pdelta_midspan,
     verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
     mechanical_uls_admissibility)
 
@@ -403,6 +404,7 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 numeric={
                     "euler":verify_euler_critical_load(
                         left_kind="pinned",right_kind="pinned",node_count=17),
+                    "coupled_euler":verify_biaxial_euler_coupling(node_count=17),
                     "pdelta":verify_pdelta_midspan(node_count=17),
                     "jacobian":verify_hot_section_jacobian(source_section),
                     "condensed_tangent":verify_condensed_hot_member_tangent(
