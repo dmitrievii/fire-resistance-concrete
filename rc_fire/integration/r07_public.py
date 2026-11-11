@@ -43,7 +43,7 @@ from rc_fire.mechanics.sp2026_coupled_first_limit import (
     assess_coupled_sp5_nominal_at_time,scan_coupled_first_model_limit)
 from rc_fire.verification.sp2026_r7_qualification import (
     audit_sp2026_heat_mesh_and_time,load_existing_fire_column_catalog,
-    qualification_ledger)
+    audit_effective_creep_source,qualification_ledger)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section,prepare_sp2026_full_nonlinear_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_biaxial_euler_coupling,
@@ -557,6 +557,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp7_thermal_problem=None
     sp7_experiments=None
     sp7_experiments_problem=None
+    sp7_creep_audit=None
+    sp7_creep_problem=None
     if stage3_spec.get("coupled_sp5_requested") is True:
         if sp_heat is None:
             sp7_status="BLOCKED_SP_R7_SOURCE_HEAT_UNAVAILABLE"
@@ -564,11 +566,25 @@ def fire_assessment(column:dict,*,required_minutes:float,
         else:
             try:
                 sp7_phi=stage3_spec["nominal_sp5_phi_eff"]
+                hot_creep_input=stage3_spec.get("coupled_sp5_creep_input")
+                if hot_creep_input is not None:
+                    args={key:val for key,val in hot_creep_input.items()
+                          if key!="first_order_moment_source"}
+                    sp7_creep_audit=audit_effective_creep_source(**args)
+                    sp7_creep_audit["first_order_moment_source"]=hot_creep_input[
+                        "first_order_moment_source"]
+                    sp7_phi=[
+                        sp7_creep_audit["axes"]["x"]["phi_eff"],
+                        sp7_creep_audit["axes"]["y"]["phi_eff"]]
                 sp7_at_required=assess_coupled_sp5_nominal_at_time(
                     c_sp,select_sp2026_snapshot(sp_heat,required),
                     stage3_spec,grid=grid,effective_creep_phi=sp7_phi,
                     global_euler_audit=True)
                 sp7_status=sp7_at_required["status"]
+                sp7_at_required["effective_creep_source"]=(
+                    "SP5 Eq8.64 computed axis-specific user first-order moments"
+                    if sp7_creep_audit is not None else
+                    "explicit SP-R6 nominal single phi value, history unqualified")
                 if stage3_spec.get("coupled_sp5_history_requested") is True:
                     try:
                         sp7_times=stage3_spec.get("history_times_minutes")
@@ -605,9 +621,11 @@ def fire_assessment(column:dict,*,required_minutes:float,
                     ArithmeticError) as exc:
                 sp7_status="BLOCKED_SP_R7_COUPLED_SOURCE_OR_SOLVER"
                 sp7_problem=type(exc).__name__+": "+str(exc)
+                if stage3_spec.get("coupled_sp5_creep_input") is not None:
+                    sp7_creep_problem=sp7_problem
     sp7_ledger=qualification_ledger(
         coupled_model=sp7_at_required,thermal_audit=sp7_thermal,
-        experiment_audit=sp7_experiments,
+        creep_audit=sp7_creep_audit,experiment_audit=sp7_experiments,
         first_limit_history=sp7_history)
 
     thermal_timeline=[{
@@ -721,6 +739,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage7_thermal_mesh_time_audit_blocker":sp7_thermal_problem,
       "sp2026_stage7_experiment_admissibility":sp7_experiments,
       "sp2026_stage7_experiment_admissibility_blocker":sp7_experiments_problem,
+      "sp2026_stage7_sp5_864_creep_source_audit":sp7_creep_audit,
+      "sp2026_stage7_sp5_864_creep_source_blocker":sp7_creep_problem,
       "sp2026_stage7_qualification_ledger":sp7_ledger,
       "sp2026_stage7_actual_U_t":None,
       "sp2026_stage7_actual_t_R_minutes":None,
