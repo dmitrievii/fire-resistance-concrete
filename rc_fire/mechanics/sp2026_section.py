@@ -146,7 +146,8 @@ class SPPreparedSection(TKPPreparedFibres):
             "source_steel_temperatures_all_le800":bool(
                 np.all(self.theta_s<=800.)),
             "steel_check_tension_strain_limit":.010,
-            "steel_check_tension_ratio":float(steel_check_ratio),
+            "steel_check_tension_ratio":(float(steel_check_ratio)
+                if steel_check_ratio is not None else None),
             "steel_check_source":(
                 "СП 5.03.01-2020 §8.1.2.1 section-check 10‰"
                 if steel_check_ratio is not None
