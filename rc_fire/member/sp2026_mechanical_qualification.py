@@ -237,6 +237,51 @@ def verify_hot_section_jacobian(prepared, *,
     }
 
 
+def verify_condensed_hot_member_tangent(prepared, N_kN, *,
+                                        curvature_1pm=(1.e-5,-2.e-5),
+                                        perturbation_1pm=1.e-7):
+    """Check independently the full axial Schur 2-axis bending tangent.
+
+    Each finite-difference trial instantiates a fresh section law, so an
+    axial Newton warm-start from another trial cannot give false agreement.
+    The perturbation is in PHYSICAL curvature [1/m], not dimensionless
+    normalized fibre curvature. This explicitly validates the h/2,b/2
+    geometric mapping and the kN*m -> kN*m² derivative.
+    """
+    from rc_fire.member.sp2026_member import SP2026MemberFiberLaw
+    N = _finite_positive(N_kN,"N")
+    k = np.asarray(curvature_1pm,dtype=float)
+    if k.shape!=(2,) or not np.all(np.isfinite(k)):
+        raise ValueError("2 finite physical curvatures required")
+    h=_finite_positive(perturbation_1pm,"curvature difference step")
+    if not 1.e-10<=h<=1.e-4:
+        raise ValueError("curvature finite-difference step out of range")
+    M,D,meta=SP2026MemberFiberLaw(prepared).evaluate(k,N)
+    fd=np.zeros((2,2))
+    for j in range(2):
+        plus=k.copy();minus=k.copy()
+        plus[j]+=h;minus[j]-=h
+        mp,_,_=SP2026MemberFiberLaw(prepared).evaluate(plus,N)
+        mm,_,_=SP2026MemberFiberLaw(prepared).evaluate(minus,N)
+        fd[:,j]=(mp-mm)/(2.*h)
+    denom=max(1.,float(np.max(np.abs(D))),float(np.max(np.abs(fd))))
+    symmetry=np.max(np.abs(D-D.T))/denom
+    return {
+        "version":VERSION,
+        "status":"SP_HEATED_CONDENSED_TANGENT_FINITE_DIFFERENCE_COMPUTED",
+        "N_kN":N,
+        "physical_curvatures_1pm":k.tolist(),
+        "member_tangent_kNm2":D.tolist(),
+        "finite_difference_tangent_kNm2":fd.tolist(),
+        "relative_global_scale_error":float(np.max(np.abs(D-fd)))/denom,
+        "relative_symmetry_error":float(symmetry),
+        "axial_force_solved_on_every_trial":True,
+        "model_strain_ratio_at_state":meta["critical_mechanical_strain_ratio"],
+        "thermal_eigenstrain_and_units_checked_numerically":True,
+        "normative_mechanical_fire_qualified":False,
+    }
+
+
 def mechanical_uls_admissibility(column,member_spec, *,
                                 numeric_evidence=None,
                                 external_evidence=None):
@@ -258,6 +303,7 @@ def mechanical_uls_admissibility(column,member_spec, *,
     euler=numeric_evidence.get("euler")
     pdelta=numeric_evidence.get("pdelta")
     jac=numeric_evidence.get("jacobian")
+    condensed=numeric_evidence.get("condensed_tangent")
     gate("FE_EULER_BUCKLING",isinstance(euler,dict) and
          all(abs(euler.get("axes",{}).get(ax,{}).get("relative_error",float("inf")))<.005
              for ax in ("x","y")),
@@ -271,6 +317,11 @@ def mechanical_uls_admissibility(column,member_spec, *,
     gate("SP_HOT_FIBRE_JACOBIAN",isinstance(jac,dict) and
          jac.get("max_relative_global_scale_error",math.inf)<.001,
          "section Jacobian requires <0.1% global-scale FD consistency",
+         SP_MECHANICS)
+    gate("SP_HOT_CONDENSED_MEMBER_TANGENT",isinstance(condensed,dict) and
+         condensed.get("relative_global_scale_error",math.inf)<.001 and
+         condensed.get("relative_symmetry_error",math.inf)<.00001,
+         "Schur 2-axis dM/dκ physically dimensional tangent must match independent finite differences",
          SP_MECHANICS)
     gate("ACTUAL_MIN_ECCENTRICITY",False,
          "source §8.1.1.5 e>=max(h/30,20mm) not independently reconciled with N/M and user imperfection",
@@ -302,7 +353,7 @@ def mechanical_uls_admissibility(column,member_spec, *,
         "status":"NUMERICAL_MECHANICS_PARTIALLY_VERIFIED_NONQUALIFIED_FIRE_ULS"
              if len(blockers)<len(gates) else "MECHANICAL_QUALIFICATION_BLOCKED",
         "gate_results":gates,
-        "numerical_pass_count":sum(g["status"]=="PASS" for g in gates[:3]),
+        "numerical_pass_count":sum(g["status"]=="PASS" for g in gates[:4]),
         "normative_mechanical_uls_qualified":False,
         "source_qualified_fire_R":False,
         "U_member_t":None,
