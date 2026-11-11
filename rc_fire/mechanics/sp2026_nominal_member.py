@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import copy
 from typing import Any
 import numpy as np
 
@@ -555,3 +556,96 @@ def verify_sp5_nominal_grid_convergence(column,snapshot,member_spec, *,
         "independent_heat_mesh_or_time_convergence_qualified":False,
         "normative_member_qualification":False,
         "actual_t_R_minutes":None,"normative_claim":False}
+
+
+def scan_sp5_nominal_member_load_path(column,snapshot,member_spec, *,
+                                     grid=12,effective_creep_phi=0.,
+                                     first_factor=.25,step=.25,
+                                     max_factor=2.,relative_tolerance=.005):
+    """Search SOURCE-SP5 nominal stiffness + section-check action ray.
+
+    All first-order N, qx, qy and nodal actions scale together;
+    the initial geometric imperfection does NOT scale. For each
+    factor, recalculate n, k2a, kc_nominal, Bnom, Ncrit, eta_a,
+    design bending moments and the nonlinear 3-unknown section
+    equilibrium. Reusing an eta or Ncrit computed at lambda=1
+    would be physically inconsistent.
+
+    Branch is valid only where N<Ncrit and decoupling holds.
+    An undefined η, Newton failure or a coupled hot section is
+    UNKNOWN, NOT automatically a physical failure. An interval
+    of the sampled SP5-section model's capacity, if found, is
+    NOT certified U_member(t) nor t_R.
+    """
+    from rc_fire.member.sp2026_resistance import (
+        bracket_model_resistance,
+        WITHIN as R4_WITHIN,EXCEEDED as R4_EXCEEDED,
+        UNKNOWN as R4_UNKNOWN)
+    if not isinstance(member_spec,dict):
+        raise SP5NominalMemberError("explicit member specification required")
+    nominal_N=_finite(member_spec.get("N_kN"),"N",positive=True)
+    raw=np.asarray(member_spec.get("distributed_load_kNpm"),dtype=float)
+    nodal=np.asarray(member_spec.get("nodal_forces"),dtype=float)
+    if not (raw.shape==(3,2) and nodal.shape==(12,) and
+            np.all(np.isfinite(raw)) and np.all(np.isfinite(nodal))):
+        raise SP5NominalMemberError("fixed real source fire action ray required")
+    def evaluate(lam):
+        case=copy.deepcopy(member_spec)
+        case["N_kN"]=nominal_N*lam
+        case["distributed_load_kNpm"]=(raw*lam).tolist()
+        case["nodal_forces"]=(nodal*lam).tolist()
+        try:
+            response=assess_sp5_nominal_column_at_fire(
+                column,snapshot,case,grid=grid,
+                effective_creep_phi=effective_creep_phi)
+            status=response["status"]
+            mapped=(R4_WITHIN if status==WITHIN else
+                    R4_EXCEEDED if status==EXCEEDED else R4_UNKNOWN)
+            solved=response.get("section") or {}
+            return {
+                "state":mapped,
+                "nominal_SP5_section_state":status,
+                "reason":(solved.get("reason") or
+                           str(response["nominal_second_order"].get(
+                               "qualification_blocker") or "")),
+                "Ncrit_x_kN":(response["nominal_second_order"].get("x") or {}).get(
+                    "Ncrit_kN"),
+                "Ncrit_y_kN":(response["nominal_second_order"].get("y") or {}).get(
+                    "Ncrit_kN"),
+                "eta_x":(response["nominal_second_order"].get("x") or {}).get("eta_a"),
+                "eta_y":(response["nominal_second_order"].get("y") or {}).get("eta_a"),
+                "critical_model_strain_ratio":solved.get("critical_ratio"),
+                "critical_sample":{"source":"SP5 §8.1.2.1 check model",
+                                   "time_minutes":response["time_minutes"],
+                                   "strain_ratio":solved.get("critical_ratio")} if (
+                    solved.get("critical_ratio") is not None) else None,
+                "normative_claim":False}
+        except (SP5NominalMemberError,SPSectionInputError,
+                SPFireMaterialError,ValueError,TypeError,ArithmeticError) as exc:
+            return {"state":R4_UNKNOWN,
+                    "reason":type(exc).__name__+": "+str(exc),
+                    "nominal_SP5_section_state":UNKNOWN,
+                    "critical_model_strain_ratio":None,
+                    "normative_claim":False}
+    scan=bracket_model_resistance(
+        evaluate,first_factor=first_factor,step=step,
+        max_factor=max_factor,relative_tolerance=relative_tolerance,
+        max_refinements=12)
+    bracket=scan.get("observed_model_resistance_bracket")
+    required=evaluate(1.)
+    return {**scan,
+        "version":VERSION,
+        "method":"SP5_SECTION_CHECK_AND_SP5_LOAD_DEPENDENT_NOMINAL_STIFFNESS",
+        "source":SOURCE_SP5+"; "+SOURCE_SP2026,
+        "time_minutes":float(snapshot["snapshot"]["time_minutes"]),
+        "reference_design_load_factor":1.,
+        "at_reference_design_load_factor":required,
+        "nominal_N_and_transverse_actions_scaled_together":True,
+        "initial_geometric_imperfection_not_scaled":True,
+        "kc_nominal_and_Ncrit_recomputed_per_load_factor":True,
+        "observed_conditional_SP5_section_factor_bracket":bracket,
+        "nonuniform_fire_equivalence_to_SP5_8_56_qualified":False,
+        "actual_U_member_t":None,
+        "actual_R_t_minutes":None,
+        "regulatory_result":"NOT_ESTABLISHED",
+        "normative_claim":False}
