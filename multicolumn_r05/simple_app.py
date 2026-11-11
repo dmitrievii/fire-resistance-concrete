@@ -331,6 +331,7 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
         sp7_creep_by_moments=False
         sp7_creep_values={}
         sp7_history=False
+        sp7_refine=False
         sp7_heat=False
         sp7_experiment=False
         sp6_phi=0.
@@ -405,6 +406,15 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                     help="Проверяет каждый сохранённый момент пожара. "
                          "Неточно датированный переход или неизвестное состояние "
                          "не объявляется физическим разрушением.")
+                if sp7_history:
+                    sp7_refine=field.checkbox(
+                        "SP-R.7: уточнить наблюдаемый предел новыми тепловыми расчётами",
+                        value=False,
+                        help="При обнаружении интервала между двумя "
+                             "известными состояниями повторяет решение "
+                             "СП 2.02.05-2026 для каждого промежуточного "
+                             "времени. Не интерполирует температуры и "
+                             "не объявляет модельный предел фактическим t_R.")
                 sp7_heat=field.checkbox(
                     "SP-R.7: аудит сходимости прогрева по сетке и шагу времени",
                     value=False,
@@ -532,6 +542,8 @@ if run:
                         column["member_spec"]["coupled_sp5_creep_input"]=sp7_creep_values
                     if sp7_history:
                         column["member_spec"]["coupled_sp5_history_requested"]=True
+                    if sp7_refine:
+                        column["member_spec"]["coupled_sp5_refine_time_requested"]=True
                     if sp7_heat:
                         column["member_spec"]["coupled_sp5_thermal_audit_requested"]=True
                     if sp7_experiment:
@@ -903,6 +915,19 @@ if record:
                     st.warning("Обнаружен только интервал модельного предела: "+
                         str(history["observed_first_model_limit_interval"])+
                         ". Фактическое t_R НЕ установлено.")
+            refined=r.get("sp2026_stage7_first_model_limit_heat_refinement")
+            if refined:
+                st.markdown("**Уточнение времени только модельного предела**")
+                st.write(refined["status"])
+                if refined.get("strict_refined_model_event_interval_min"):
+                    st.write("Уточнённый интервал, мин:",
+                             refined["strict_refined_model_event_interval_min"])
+                st.caption("Для каждой промежуточной точки повторно "
+                           "рассчитано поле температур. Первое "
+                           "физическое t_R не доказано.")
+            elif r.get("sp2026_stage7_first_model_limit_heat_refinement_blocker"):
+                st.warning("Уточнение времени: "+str(
+                    r["sp2026_stage7_first_model_limit_heat_refinement_blocker"]))
             thermal=r.get("sp2026_stage7_thermal_mesh_time_audit")
             if thermal:
                 st.markdown("**Независимая проверка тепловой сетки и шага**")
