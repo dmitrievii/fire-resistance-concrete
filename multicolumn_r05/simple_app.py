@@ -488,6 +488,7 @@ if record:
                     "λ превышение":s["model_load_factor_high"],
                     "U модель, нижняя":(
                         (s["model_only_utilisation_interval"] or {}).get("lower")),
+                    "N верхний предел модели, кН":s.get("source_model_N_kN_upper_bound"),
                     "U модель, верхняя":(
                         (s["model_only_utilisation_interval"] or {}).get("upper"))}
                     for s in history4["samples"]]),
@@ -500,6 +501,14 @@ if record:
                 st.warning("SP-R.4 временная серия: "+str(
                     r.get("sp2026_stage4_resistance_time_history_blocker") or
                     r.get("sp2026_stage4_resistance_time_history_status")))
+            bound=sp4_data.get("stress_relaxed_axial_strength_upper_bound") or {}
+            if bound.get("source_model_N_kN_upper_bound") is not None:
+                st.metric("Верхняя оценка N в дискретной SP-модели",
+                          f'{bound["source_model_N_kN_upper_bound"]:.1f} кН')
+                st.caption("Это сумма индивидуальных максимальных сопротивлений "
+                           "бетона и арматуры без совместности деформаций. "
+                           "Она завышает фактическое сопротивление модели "
+                           "и НЕ является несущей способностью колонны или R(t).")
             eccentric=sp4_data["minimum_eccentricity_check"]
             st.caption("СП 5.03.01-2020, §8.1.1.5: минимальный "
                        "эксцентриситет — "
