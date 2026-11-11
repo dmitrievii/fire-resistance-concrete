@@ -44,6 +44,16 @@ It is **not** U_member(t) until the verified physical capacity on that action ra
 
 The source of a minimum eccentricity requirement, e0 >= max(h/30, 20 mm), is recorded with explicit N*e0 moments in each axis. These moments are **not automatically superimposed** on already precombined fire-design loads (which could double-count them). Reconciliation of initial/load eccentricity and of full longitudinal first-order moment diagrams is still a qualification blocker.
 
+## Independent source-model axial stress-relaxed overbound
+
+For each actual heated member Gauss and nodal section, compute a deliberately relaxed axial strength upper bound:
+
+`N_upper,disc(t,z) = Σ_c A_c f_c,SP(T_c) + Σ_s A_s f_s,SP(T_s)` (MPa×m²×1000 gives kN).
+
+This independently maximises each concrete/steel stress and does **not** enforce compatible strain, subtract displaced concrete, account for second-order effects or impose a strength interaction envelope. It therefore **overestimates** the axial resistance of the **discretised source model**. The upper bound for the member is the minimum of these station-wise overestimates; a necessary diagnostic condition for axial equilibrium is `N_fi <= min_z N_upper,disc`. This is not a mathematically certified upper bound for the entire continuous concrete body unless section discretisation and the material/thermal laws have been independently qualified.
+
+The corresponding **lower bound on model-only axial utilisation**, `N_fi/min_z N_upper,disc`, is intentionally distinguished from the conditional two-axis inverse-load-factor interval. It is never represented as the true complete-column `U(t)`. If it exceeds 1, the source model's discretised axial stress envelope is exceeded even before compatibility/stability; a nonlinear solver failure is **not** needed to establish this restricted fact. Values are recorded at each requested fire time.
+
 ## Time-dependent evidence
 
 `scan_sp2026_resistance_time_history(...)` repeats the **entire** independently prepared SP-R.2 → SP-R.1 → SP-R.3 → SP-R.4 capacity search at each requested *stored* fire time. It reports every evaluated time, nominal λ=1 state, optional conditional U_model interval and observed between-sample model strain-limit transitions. It does not generate synthetic temperature histories, smooth the user >800 °C concrete discontinuity, report first physical t_R or label unexamined intervals as safe.
