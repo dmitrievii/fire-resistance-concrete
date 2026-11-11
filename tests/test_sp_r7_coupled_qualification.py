@@ -77,12 +77,10 @@ class TestCoupledSP5SourceMatrix(unittest.TestCase):
                 Ic_m4=Ic,Is_m4=Is,Ac_m2=p.b_m*p.h_m,
                 length_m=L,mu=1.,effective_creep_phi=phi)
             self.assertAlmostEqual(D[i,i],scalar["Bnom_kNm2"],delta=1e-7)
-            self.assertAlmostEqual(
-                r["principal_Euler_Ncrit_kN"][i],
-                (math.pi**2*D[i,i]/L**2) if D[i,i]==
-                min(D[0,0],D[1,1]) else
-                math.pi**2*min(D[0,0],D[1,1])/L**2,
-                delta=4000.) # ordering of principal modes is separate
+        self.assertTrue(np.allclose(
+            np.sort(r["principal_Euler_Ncrit_kN"]),
+            np.sort(math.pi**2*np.diag(D)/L**2),
+            atol=1e-8,rtol=1e-12))
 
     def test_nonuniform_diagonal_cell_hot_EIxy_and_axial_coupling_are_preserved(self):
         p=synthetic_source_section()
