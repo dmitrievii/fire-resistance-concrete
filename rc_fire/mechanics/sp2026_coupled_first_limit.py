@@ -113,6 +113,21 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
             status=EXCEEDED
         else:
             status=UNKNOWN
+    secant_evidence=None
+    secant_problem=None
+    if section is not None and section.get("unknowns") is not None:
+        try:
+            secant_evidence=coupled_sp5_hot_section_stiffness(
+                prep,N_kN=N,length_m=L,
+                effective_creep_phi=effective_creep_phi,
+                kind="SP5_8_1_2_SOURCE_SECANT_AT_EQUILIBRIUM",
+                unknowns=section["unknowns"])
+        except (SP5NominalMemberError,ValueError,
+                ArithmeticError,np.linalg.LinAlgError) as exc:
+            secant_problem=type(exc).__name__+": "+str(exc)
+            # A material secant inversion failing is NOT structural
+            # failure and cannot overwrite a separately equilibrated
+            # checked section strain classification.
     return {
         "version":VERSION,
         "time_minutes":float(snapshot["snapshot"]["time_minutes"]),
@@ -122,16 +137,8 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
         "second_order_coupled_M2_kNm":coupled.get("M2_kNm"),
         "first_order_action_eccentricity_provenance":actions,
         "source_section_check":section,
-        "source_secant_3x3_at_section_root":(
-            coupled_sp5_hot_section_stiffness(
-                prep,N_kN=N,length_m=L,
-                effective_creep_phi=effective_creep_phi,
-                kind="SP5_8_1_2_SOURCE_SECANT_AT_EQUILIBRIUM",
-                unknowns=section["unknowns"])
-            if section is not None and
-            section.get("classification") not in (
-                None,"unresolved_numerical_or_physical_state")
-            and section.get("unknowns") is not None else None),
+        "source_secant_3x3_at_section_root":secant_evidence,
+        "source_secant_3x3_blocker":secant_problem,
         "nominal_coupled_evidence":r,
         "independent_global_FE_Euler_evidence":global_audit,
         "coupled_action_transformation":coupled,
