@@ -13,6 +13,7 @@ from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,
     verify_pdelta_midspan,
     verify_hot_section_jacobian,
+    verify_condensed_hot_member_tangent,
     mechanical_uls_admissibility,
 )
 
@@ -78,13 +79,27 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
                          "SP_FIBRE_JACOBIAN_FINITE_DIFFERENCE_COMPUTED")
         self.assertFalse(result["material_law_is_experimentally_validated"])
 
+    def test_physical_member_tangent_schur_matches_numerical_derivative(self):
+        snap=select_sp2026_snapshot(self.heat,5.)
+        prepared=prepare_sp2026_section(self.column,snap,grid=8)
+        N=self.column["sections"][0]["N_kN"]
+        tested=verify_condensed_hot_member_tangent(
+            prepared,N,curvature_1pm=(1.e-5,-2.e-5),
+            perturbation_1pm=1.e-7)
+        self.assertLess(tested["relative_global_scale_error"],.001)
+        self.assertLess(tested["relative_symmetry_error"],1.e-5)
+        self.assertTrue(tested["axial_force_solved_on_every_trial"])
+        self.assertFalse(tested["normative_mechanical_fire_qualified"])
+
     def test_numerical_verification_cannot_promote_false_normative_R(self):
         snap=select_sp2026_snapshot(self.heat,5.)
         prepared=prepare_sp2026_section(self.column,snap,grid=8)
         numeric={
             "euler":verify_euler_critical_load(node_count=17),
             "pdelta":verify_pdelta_midspan(node_count=17),
-            "jacobian":verify_hot_section_jacobian(prepared)}
+            "jacobian":verify_hot_section_jacobian(prepared),
+            "condensed_tangent":verify_condensed_hot_member_tangent(
+                prepared,self.column["sections"][0]["N_kN"])}
         result=mechanical_uls_admissibility(
             self.column,self.column["member_spec"],
             numeric_evidence=numeric,
@@ -93,7 +108,7 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
                 "first_global_stability_verified":True,
                 "experimental_validation_pass":True,
             })
-        self.assertEqual(result["numerical_pass_count"],3)
+        self.assertEqual(result["numerical_pass_count"],4)
         self.assertFalse(result["normative_mechanical_uls_qualified"])
         self.assertFalse(result["source_qualified_fire_R"])
         self.assertIsNone(result["U_member_t"])
