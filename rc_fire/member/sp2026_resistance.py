@@ -360,3 +360,78 @@ def evaluate_sp2026_member_resistance(column,thermal_snapshot,member_spec, *,
         "at_declared_design_actions":required,
         "minimum_eccentricity_check":_min_eccentricity_audit(column,case.N),
         "actual_R_d_member":None,"actual_U_member_t":None}
+
+
+def scan_sp2026_resistance_time_history(
+        column,heat_result,member_spec,times_minutes, *,
+        grid=12,first_factor=.25,step=.25,max_factor=2.,
+        relative_tolerance=.005,max_refinements=12):
+    """At independently stored SP-R2 times evaluate the *same* physical column.
+
+    Each time is an entirely new thermal/mechanical solution. No interpolation
+    in time, material-history extrapolation, zero-tail discontinuity smoothing,
+    or conversion of nominal-demand nonconvergence into fire failure.
+    """
+    from rc_fire.thermal.sp2026_heat import select_sp2026_snapshot
+    if not isinstance(heat_result,dict) or (
+            heat_result.get("thermal_method")!="SP2026_8.2.23_FVM"):
+        raise SP2026MemberInputError("SP-R4 fire history requires independent SP-R2 heat")
+    if not isinstance(times_minutes,(list,tuple)) or not 1<=len(times_minutes)<=12:
+        raise SP2026MemberInputError("SP-R4 history requires 1..12 specified times")
+    times=[_finite(t,"fire history time",positive=True) for t in times_minutes]
+    if any(b<=a for a,b in zip(times,times[1:])):
+        raise SP2026MemberInputError("SP-R4 fire history times must strictly increase")
+    if member_spec.get("longitudinal_thermal_mode")!="explicit_uniform_full_length":
+        raise SP2026MemberInputError(
+            "SP-R4 history from single 2D source requires affirmed uniform heating")
+    rows=[]
+    for t in times:
+        selected=select_sp2026_snapshot(heat_result,t)
+        evidence=evaluate_sp2026_member_resistance(
+            column,selected,member_spec,grid=grid,
+            first_factor=first_factor,step=step,max_factor=max_factor,
+            relative_tolerance=relative_tolerance,
+            max_refinements=max_refinements)
+        bracket=evidence.get("observed_model_resistance_bracket")
+        rows.append({
+            "time_minutes":t,
+            "model_scan_status":evidence["status"],
+            "nominal_fire_action_state":evidence["at_declared_design_actions"]["state"],
+            "nominal_fire_action_critical_strain_ratio":(
+                evidence["at_declared_design_actions"].get(
+                    "critical_model_strain_ratio")),
+            "model_load_factor_low":(
+                bracket["last_admissible_sample_factor"] if bracket else None),
+            "model_load_factor_high":(
+                bracket["first_observed_exceedance_factor"] if bracket else None),
+            "model_only_utilisation_interval":(
+                bracket["model_only_utilisation_interval"] if bracket else None),
+            "unknown_load_factors":[
+                r["load_factor"] for r in evidence["evaluations"]
+                if r["state"]==UNKNOWN],
+            "model_critical_location":evidence.get(
+                "observed_model_critical_location"),
+            "normative_claim":False})
+    # This is an OBSERVED transition in the sampled model at lambda=1,
+    # not first failure time; an unobserved failure may predate both.
+    observed=[]
+    for a,b in zip(rows,rows[1:]):
+        if (a["nominal_fire_action_state"]==WITHIN and
+                b["nominal_fire_action_state"]==EXCEEDED):
+            observed.append({
+                "last_observed_model_within_minutes":a["time_minutes"],
+                "first_observed_model_exceeded_minutes":b["time_minutes"]})
+    return {
+        "version":VERSION,
+        "status":"SAMPLED_MODEL_HISTORY_WITH_UNRESOLVED_STATES"
+            if any(row["nominal_fire_action_state"]==UNKNOWN
+                   for row in rows)
+            else "SAMPLED_MODEL_HISTORY_EVALUATED",
+        "samples":rows,
+        "observed_model_nominal_action_strain_transitions":observed,
+        "temperature_history_source":"SP2026_8.2.23_FVM_STORED_TIMES_ONLY",
+        "no_temporal_interpolation":True,
+        "U_t":None,"t_R":None,"R_t_minutes":None,
+        "regulatory_result":"NOT_ESTABLISHED","normative_claim":False,
+        "interpretation":"Sampled model strain and conditional resistance envelope history; "
+            "no verified continuous first loss of load-bearing capacity."}
