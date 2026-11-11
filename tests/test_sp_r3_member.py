@@ -15,6 +15,7 @@ from rc_fire.member.sp2026_member import (
     evaluate_sp2026_member_at_time, scan_sp2026_member_history,
     WITHIN, EXCEEDED, UNKNOWN)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
+from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
 from rc_fire.thermal.sp2026_heat import (
     solve_sp2026_2d_heat, select_sp2026_snapshot,
     reference_sp2026_boundary)
@@ -53,6 +54,29 @@ class SPR3ActualMemberNumerics(unittest.TestCase):
             cell_count_y=8, max_step_minutes=2.5,
             sample_times_minutes=[5., 10.])
         cls.spec = make_explicit_spec(cls.column)
+
+    def test_source_beta_reduced_elastic_modulus_is_audited_not_fake_uls_tangent(self):
+        report=audit_sp2026_concrete_stiffness(
+            self.column,temperatures_C=(20.,500.,800.))
+        self.assertEqual(len(report["samples"]),3)
+        cold,hot,_=report["samples"]
+        self.assertAlmostEqual(cold["SP_table9_elastic_modulus_factor_beta"],1.)
+        self.assertLess(hot["SP_table9_elastic_modulus_factor_beta"],1.)
+        self.assertGreater(hot["SP_fire_elastic_modulus_MPa"],0.)
+        self.assertGreater(hot["SP5_6_1_5_4_parabolic_initial_tangent_MPa"],0.)
+        self.assertFalse(report["member_second_order_stiffness_fully_qualified"])
+        self.assertFalse(report["stress_curve_silently_refitted_to_beta"])
+        self.assertFalse(report["normative_claim"])
+
+    def test_sp5_section_check_steel_tension_limit_10_permille(self):
+        snap=select_sp2026_snapshot(self.heat,5.)
+        p=prepare_sp2026_section(self.column,snap,grid=8)
+        F,J,meta=p.force_and_tangent(np.array([-.02,0.,0.]))
+        self.assertGreater(meta["steel_check_tension_ratio"],1.)
+        self.assertAlmostEqual(meta["steel_check_tension_strain_limit"],.010)
+        self.assertFalse(meta["model_only_strain_limits_satisfied"])
+        self.assertFalse(meta["steel_eps_ud_full_nonlinear_analysis_qualified"])
+        self.assertFalse(meta["normative_claim"])
 
     def test_fibre_axial_equilibrium_and_schur_member_tangent(self):
         snap = select_sp2026_snapshot(self.heat, 5.)
