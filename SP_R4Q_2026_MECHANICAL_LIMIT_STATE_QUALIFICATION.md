@@ -45,6 +45,7 @@ The module `rc_fire/member/sp2026_mechanical_qualification.py` implements:
 | ID | Source / verification | Numerical gate |
 |---|---|---|
 | FE_EULER_BUCKLING | analytic exact Euler `Ncr=pi²*EI/(mu*L)²` at ideal pin-pin and fix-fix ends, x and y independently, with mesh refinement | abs error below 0.5% |
+| FE_COUPLED_BIAXIAL_EULER | independent principal-stiffness eigenvalue benchmark with nonzero Dxy, pin-pin and full two-axis coupling | abs error below 0.5% for both first global bending modes |
 | FE_PDELTA_DEFLECTION | exact solution of `EI w''''+N w''=q` for pinned ends under uniform q at 0.1/0.4/0.7 of Ncr | below 0.5% midspan error; no cross-axis leakage |
 | SP_HOT_FIBRE_JACOBIAN | central finite differences of complete actual SP-R1 heated N–Mx–My resultant `F(e0,gx,gy)` vs analytical implemented J | global-scale Jacobian discrepancy below 0.1% away from nonsmooth material kinks |
 | SP_HOT_CONDENSED_MEMBER_TANGENT | independent differences of actual hot member `M(kappa_x,kappa_y,Nfixed)`, re-solving axial equilibrium at every perturbation vs Schur 2×2 member tangent | below 0.1% discrepancy and near-symmetry |
