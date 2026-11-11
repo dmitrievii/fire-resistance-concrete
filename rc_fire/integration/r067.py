@@ -40,6 +40,76 @@ def validate_member_spec(spec):
         return {}
     if not isinstance(spec, dict):
         raise MemberEvidenceInputError("member_spec must be an object")
+    # SP-R.3 is a distinct, stricter source contract. Validate its JSON
+    # structure here BEFORE canonical project validation; the SP-R.3 member
+    # solver additionally validates actual column geometry, stations and N.
+    # Do not discard unknown fields or coerce this contract to legacy R0.6.7.
+    if spec.get("load_mode") == "explicit_sp2026_beam":
+        expected = {"load_mode", "z_m", "N_kN", "left_support",
+            "right_support", "axial_restraint_mode", "fire_design_action_source",
+            "distributed_load_kNpm", "nodal_forces", "transverse_action_source",
+            "initial_imperfection", "imperfection_source",
+            "entered_section_moments_reconciled", "longitudinal_thermal_mode",
+            "uniform_exposure_confirmed", "history_times_minutes",
+            "thermal_longitudinal_mode"}
+        unknown = set(spec) - expected
+        if unknown:
+            raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
+                ", ".join(sorted(unknown)))
+        required = expected - {"history_times_minutes", "thermal_longitudinal_mode"}
+        missing = sorted(required-set(spec))
+        if missing:
+            raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
+                ", ".join(missing))
+        n = len(spec["z_m"]) if isinstance(spec["z_m"],(tuple,list)) else 0
+        if not 3 <= n <= 25:
+            raise MemberEvidenceInputError("SP-R3 requires 3..25 explicit beam stations")
+        z = [_number(v, "z_m") for v in spec["z_m"]]
+        if abs(z[0]) > 1.e-10 or any(b <= a for a,b in zip(z,z[1:])):
+            raise MemberEvidenceInputError("SP-R3 member stations must start at 0 and increase")
+        if _number(spec["N_kN"], "N_kN") <= 0.:
+            raise MemberEvidenceInputError("SP-R3 positive axial compression required")
+        if spec["axial_restraint_mode"] != "free_axial_expansion":
+            raise MemberEvidenceInputError("SP-R3 axial thermal restraint not yet supported")
+        for side in ("left_support", "right_support"):
+            s = spec[side]
+            if (not isinstance(s,dict) or set(s)!={"x","y"} or
+                any(s[a] not in ("pinned","fixed","guided","free") for a in ("x","y"))):
+                raise MemberEvidenceInputError("SP-R3 "+side+" requires explicit x/y conditions")
+        for key,size in (("distributed_load_kNpm",n),
+                         ("nodal_forces",4*n),("initial_imperfection",4*n)):
+            row = spec[key]
+            if not isinstance(row,(tuple,list)) or len(row)!=size:
+                raise MemberEvidenceInputError("SP-R3 "+key+" length mismatch")
+            if key=="distributed_load_kNpm":
+                if any(not isinstance(x,(tuple,list)) or len(x)!=2 for x in row):
+                    raise MemberEvidenceInputError("SP-R3 each distributed load must have x/y")
+                for pair in row:
+                    for v in pair:_number(v,key)
+            else:
+                for v in row:_number(v,key)
+        for key in ("fire_design_action_source","transverse_action_source",
+                    "imperfection_source"):
+            if not isinstance(spec[key],str) or not spec[key].strip():
+                raise MemberEvidenceInputError("SP-R3 "+key+" provenance required")
+        if type(spec["entered_section_moments_reconciled"]) is not bool:
+            raise MemberEvidenceInputError("SP-R3 explicit moment reconciliation flag required")
+        mode = spec["longitudinal_thermal_mode"]
+        if mode not in ("explicit_uniform_full_length","explicit_per_station"):
+            raise MemberEvidenceInputError("SP-R3 longitudinal temperature mode invalid")
+        if type(spec["uniform_exposure_confirmed"]) is not bool:
+            raise MemberEvidenceInputError("SP-R3 uniform heating flag must be Boolean")
+        if mode=="explicit_uniform_full_length" and not spec["uniform_exposure_confirmed"]:
+            raise MemberEvidenceInputError("SP-R3 uniform full-length fire not confirmed")
+        if "history_times_minutes" in spec:
+            times=spec["history_times_minutes"]
+            if not isinstance(times,(tuple,list)) or not 1<=len(times)<=24:
+                raise MemberEvidenceInputError("SP-R3 history requires 1..24 times")
+            vals=[_number(v,"history time") for v in times]
+            if vals[0]<=0 or any(b<=a for a,b in zip(vals,vals[1:])):
+                raise MemberEvidenceInputError("SP-R3 history times must be positive/increasing")
+        return copy.deepcopy(spec)
+
     keys = {"thermal_longitudinal_mode", "uniform_fire_basis", "left_support",
             "right_support", "load_mode", "q_x_kNpm", "q_y_kNpm",
             "fire_actions_source", "support_provenance", "node_count"}

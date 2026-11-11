@@ -81,6 +81,14 @@ class SPPreparedSection(TKPPreparedFibres):
         for i,(strain,T) in enumerate(zip(es,self.theta_s)):
             ss[i],ts[i],material=steel_stress_sp(
                 float(strain),float(T),steel,s_norm)
+        # SP 5.03.01-2020 §8.1.2.1, *section verification* branch:
+        # tensile reinforcing steel has the check limit epsilon_s <=10 per
+        # mille (compression-positive convention => tension negative).
+        # This is not an eps_ud validation of a full nonlinear analysis,
+        # and is not used to infer member fire endurance.
+        steel_tensile_strain=max(0.,-float(np.min(es)))
+        steel_check_ratio=steel_tensile_strain/.010
+        max_ratio=max(max_ratio,steel_check_ratio)
         # Identical force conventions, shapes and units to the existing
         # 3-DOF section equilibrium. Gross concrete plus steel stress
         # minus displaced-concrete stress at each physical bar.
@@ -109,6 +117,11 @@ class SPPreparedSection(TKPPreparedFibres):
                 np.count_nonzero(self.theta_cb>800.)),
             "source_steel_temperatures_all_le800":bool(
                 np.all(self.theta_s<=800.)),
+            "steel_check_tension_strain_limit":.010,
+            "steel_check_tension_ratio":float(steel_check_ratio),
+            "steel_check_source":"СП 5.03.01-2020 §8.1.2.1 verification section, 10 permille",
+            "steel_eps_ud_full_nonlinear_analysis_qualified":False,
+            "max_steel_tensile_strain":steel_tensile_strain,
             "concrete_active_fibre_count":active,
             "max_concrete_temperature_C":float(np.max(self.theta_c)),
             "max_steel_temperature_C":float(np.max(self.theta_s)),

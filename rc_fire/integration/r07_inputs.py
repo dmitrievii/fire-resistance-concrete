@@ -183,3 +183,61 @@ def make_column(inputs:dict):
         'thermal_longitudinal_mode':'explicit_only',
         'load_mode':'not_defined'}
     return c
+
+
+def explicit_pinned_uniform_sp2026_member(column, *,
+    confirmed_pinned_uniform_action_model, confirmed_uniform_longitudinal_fire,
+    imperfection_x_mm, imperfection_y_mm):
+    """Opt-in, restricted *physical* beam load model for a public SP-R3 case.
+
+    First-order midspan moments are created exclusively by uniform q on a
+    pinned-pinned beam: Mx,mid=q_x*L²/8 and My,mid=q_y*L²/8.
+    The user must affirm this schematic: general end moments, N eccentricity
+    or frame effects CANNOT be inferred from one midspan N/Mx/My.
+    Initial geometry is an explicit 2-axis half-sine imperfection with
+    amplitude entered in mm (NOT an automatically normative SP5 value).
+    """
+    if (confirmed_pinned_uniform_action_model is not True or
+            confirmed_uniform_longitudinal_fire is not True):
+        raise ValueError("SP-R3 requires explicit confirmation of action diagram and full-length heating")
+    if not isinstance(column,dict):
+        raise ValueError("physical column is required")
+    L=_finite(column.get("length_m"),"column length",positive=True)
+    if abs(_finite(column.get("mu_x"),"mu_x")-1.)>1.e-8 or abs(
+           _finite(column.get("mu_y"),"mu_y")-1.)>1.e-8:
+        raise ValueError("Pinned-pinned UI model requires mu_x=mu_y=1; other supports need full member specification")
+    ss=column.get("sections") or []
+    if len(ss)!=1 or abs(float(ss[0].get("z_m",-1.))-L/2.)>1.e-8:
+        raise ValueError("Pinned-uniform UI model requires the sole midspan load section")
+    N=_finite(ss[0].get("N_kN"),"fire N",positive=True)
+    mx=_finite(ss[0].get("Mx_kNm"),"first-order Mx")
+    my=_finite(ss[0].get("My_kNm"),"first-order My")
+    ex=_finite(imperfection_x_mm,"initial x imperfection")/1000.
+    ey=_finite(imperfection_y_mm,"initial y imperfection")/1000.
+    if not 0<=ex<=L/10. or not 0<=ey<=L/10.:
+        raise ValueError("explicit geometric imperfection outside 0..L/10")
+    def shape(amp):
+        slope=math.pi*amp/L
+        return [0.,slope,amp,0.,0.,-slope]
+    times=[float(column["fire_minutes"])*frac/3. for frac in (1.,2.,3.)]
+    if not all(abs(round(t/5.)*5.-t)<1.e-8 for t in times):
+        # SP-R2 public history stores five-minute temperatures. Do not
+        # interpolate unsolved times or invent a recorded snapshot.
+        times=[float(column["fire_minutes"])]
+    return {
+        "load_mode":"explicit_sp2026_beam",
+        "z_m":[0.,L/2.,L],
+        "N_kN":N,
+        "left_support":{"x":"pinned","y":"pinned"},
+        "right_support":{"x":"pinned","y":"pinned"},
+        "axial_restraint_mode":"free_axial_expansion",
+        "fire_design_action_source":"user-entered already combined fire action N and first-order midspan M",
+        "distributed_load_kNpm":[[8.*mx/(L*L),8.*my/(L*L)] for _ in range(3)],
+        "nodal_forces":[0.]*12,
+        "transverse_action_source":"user-confirmed pinned-pinned, uniform q from FIRST-ORDER midspan M=qL²/8",
+        "initial_imperfection":shape(ex)+shape(ey),
+        "imperfection_source":"user-entered x/y amplitudes; half-sine initial shape; NOT an SP5-certified imperfection magnitude",
+        "entered_section_moments_reconciled":True,
+        "longitudinal_thermal_mode":"explicit_uniform_full_length",
+        "uniform_exposure_confirmed":True,
+        "history_times_minutes":times}
