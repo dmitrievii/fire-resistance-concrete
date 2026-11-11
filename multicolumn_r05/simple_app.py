@@ -328,6 +328,8 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                  "Неравномерный прогрев учитывается численно, "
                  "но нормативная эквивалентность требует проверки.")
         sp7_coupled=False
+        sp7_creep_by_moments=False
+        sp7_creep_values={}
         sp7_history=False
         sp7_heat=False
         sp7_experiment=False
@@ -364,6 +366,39 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                      "нагрева — явно обозначенное численное расширение, "
                      "не нормативное R(t).")
             if sp7_coupled:
+                sp7_creep_by_moments=field.checkbox(
+                    "SP-R.7: вычислить φef,x и φef,y по формуле (8.64)",
+                    value=False,
+                    help="Требуются φ(∞,t0) и реальные моменты "
+                         "первого порядка от практически постоянного "
+                         "и расчётного сочетаний по обеим осям. "
+                         "Это не моделирование высокотемпературной "
+                         "переходной ползучести бетона.")
+                if sp7_creep_by_moments:
+                    st.caption("Все моменты — в одном расчётном сечении "
+                               "и одной системе знаков. Не вводите "
+                               "неизвестные величины как нулевые.")
+                    sp7_phi_inf=field.number_input(
+                        "φ(∞,t₀), СП 5 §6.1.4.3",
+                        min_value=0.,max_value=100.,value=0.,step=.1)
+                    sp7_mqp_x=field.number_input(
+                        "M₀Eqp,x, кН·м",value=0.,step=1.)
+                    sp7_med_x=field.number_input(
+                        "M₀Ed,x, кН·м",value=0.,step=1.)
+                    sp7_mqp_y=field.number_input(
+                        "M₀Eqp,y, кН·м",value=0.,step=1.)
+                    sp7_med_y=field.number_input(
+                        "M₀Ed,y, кН·м",value=0.,step=1.)
+                    sp7_msource=field.text_input(
+                        "Источник моментов первого порядка",
+                        value="",placeholder="Номер схемы / ведомости нагрузок")
+                    sp7_creep_values={
+                        "phi_infty":float(sp7_phi_inf),
+                        "first_order_M0Eqp_x_kNm":float(sp7_mqp_x),
+                        "first_order_M0Ed_x_kNm":float(sp7_med_x),
+                        "first_order_M0Eqp_y_kNm":float(sp7_mqp_y),
+                        "first_order_M0Ed_y_kNm":float(sp7_med_y),
+                        "first_order_moment_source":sp7_msource}
                 sp7_history=field.checkbox(
                     "SP-R.7: исследовать первый наблюдаемый предел модели по времени",
                     value=False,
@@ -493,6 +528,8 @@ if run:
                     column["member_spec"]["nominal_sp5_load_scan_requested"]=True
                 if sp7_coupled:
                     column["member_spec"]["coupled_sp5_requested"]=True
+                    if sp7_creep_by_moments:
+                        column["member_spec"]["coupled_sp5_creep_input"]=sp7_creep_values
                     if sp7_history:
                         column["member_spec"]["coupled_sp5_history_requested"]=True
                     if sp7_heat:
@@ -890,6 +927,19 @@ if record:
                     "Блокеры":len(x["admissibility_blockers"])}
                     for x in experiments["cases"]]),
                     hide_index=True,use_container_width=True)
+            creep=r.get("sp2026_stage7_sp5_864_creep_source_audit")
+            if creep:
+                st.markdown("**Ползучесть по СП 5 §8.1.6.5**")
+                st.write("φef,x:",
+                         creep["axes"]["x"]["phi_eff"],
+                         "φef,y:",creep["axes"]["y"]["phi_eff"])
+                st.caption("Расчёт по формуле (8.64) выполнен, "
+                           "но при пожаре температурно-зависимая "
+                           "переходная ползучесть остаётся "
+                           "неквалифицированной.")
+            elif r.get("sp2026_stage7_sp5_864_creep_source_blocker"):
+                st.warning("Источник φef: "+str(
+                    r["sp2026_stage7_sp5_864_creep_source_blocker"]))
             ledger=r.get("sp2026_stage7_qualification_ledger") or {}
             st.write("Нормативный статус:",ledger.get("status"))
             st.caption("Собственные значения и пересечение деформационных "
