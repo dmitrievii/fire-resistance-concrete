@@ -14,6 +14,7 @@ from rc_fire.thermal.sp2026_heat import select_sp2026_snapshot
 from rc_fire.mechanics.sp2026_nominal_member import (
     SP5FireDesignFactors,SP5NominalMemberError,
     design_parameters,exact_sp5_nominal_axis,
+    effective_creep_coefficient_sp5,
     prepare_sp2026_design_section,nonuniform_sp5_nominal_axis,
     assess_sp5_nominal_column_at_fire,scan_sp5_nominal_member_history,
     WITHIN,EXCEEDED,UNKNOWN)
@@ -62,6 +63,20 @@ class SP5LiteralNominalStiffness(unittest.TestCase):
         self.assertAlmostEqual(r["Ncr_kN"],ncr)
         self.assertAlmostEqual(r["eta_a"],1./(1.-N/ncr))
         self.assertFalse(r["normative_claim"])
+
+    def test_sp5_864_creep_from_actual_first_order_moment_ratio(self):
+        calculated=effective_creep_coefficient_sp5(
+            phi_infty=2.,M0Eqp_kNm=40.,M0Ed_kNm=100.)
+        self.assertAlmostEqual(calculated["phi_eff"],.8)
+        self.assertAlmostEqual(calculated["moment_ratio"],.4)
+        self.assertFalse(calculated["fire_temperature_creep_history_qualified"])
+        for par in (
+            dict(phi_infty=2.,M0Eqp_kNm=40.,M0Ed_kNm=0.),
+            dict(phi_infty=2.,M0Eqp_kNm=-40.,M0Ed_kNm=100.),
+            dict(phi_infty=-.2,M0Eqp_kNm=40.,M0Ed_kNm=100.)):
+            with self.subTest(params=par):
+                with self.assertRaises(ValueError):
+                    effective_creep_coefficient_sp5(**par)
 
     def test_no_amplification_factor_on_or_beyond_nominal_critical(self):
         r=exact_sp5_nominal_axis(
