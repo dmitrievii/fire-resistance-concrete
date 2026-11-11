@@ -37,7 +37,8 @@ from rc_fire.member.sp2026_resistance import (
     evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
 from rc_fire.mechanics.sp2026_nominal_member import (
     SP5NominalMemberError,assess_sp5_nominal_column_at_fire,
-    scan_sp5_nominal_member_history,verify_sp5_nominal_grid_convergence)
+    scan_sp5_nominal_member_history,verify_sp5_nominal_grid_convergence,
+    scan_sp5_nominal_member_load_path)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section,prepare_sp2026_full_nonlinear_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_biaxial_euler_coupling,
@@ -476,6 +477,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp6_grid_study=None
     sp6_grid_status="SP_R6_GRID_STUDY_NOT_REQUESTED"
     sp6_grid_blocker=None
+    sp6_load_scan=None
+    sp6_load_scan_status="SP_R6_NOMINAL_LOAD_SCAN_NOT_REQUESTED"
+    sp6_load_scan_blocker=None
     if stage3_spec.get("nominal_sp5_requested") is True:
         if sp_heat is None:
             sp6_status="BLOCKED_SP_R6_NO_SP2026_THERMAL_SOURCE"
@@ -489,6 +493,20 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 sp6_result["effective_creep_phi_provenance"]=stage3_spec[
                     "nominal_sp5_creep_provenance"]
                 sp6_status=sp6_result["status"]
+                if stage3_spec.get("nominal_sp5_load_scan_requested") is True:
+                    try:
+                        sp6_load_scan=scan_sp5_nominal_member_load_path(
+                            c_sp,select_sp2026_snapshot(sp_heat,required),
+                            stage3_spec,grid=grid,
+                            effective_creep_phi=phi,
+                            first_factor=.25,step=.25,
+                            max_factor=2.,relative_tolerance=.005)
+                        sp6_load_scan_status=sp6_load_scan["status"]
+                    except (SP5NominalMemberError,SPSectionInputError,
+                            SPFireMaterialError,SPHeatError,
+                            ValueError,TypeError,KeyError) as exc:
+                        sp6_load_scan_status="BLOCKED_SP_R6_LOAD_SCAN"
+                        sp6_load_scan_blocker=type(exc).__name__+": "+str(exc)
                 if stage3_spec.get("nominal_sp5_grid_study_requested") is True:
                     try:
                         sp6_grid_study=verify_sp5_nominal_grid_convergence(
@@ -620,6 +638,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage6_sp5_nominal_grid_status":sp6_grid_status,
       "sp2026_stage6_sp5_nominal_grid_study":sp6_grid_study,
       "sp2026_stage6_sp5_nominal_grid_blocker":sp6_grid_blocker,
+      "sp2026_stage6_sp5_nominal_load_status":sp6_load_scan_status,
+      "sp2026_stage6_sp5_nominal_load_scan":sp6_load_scan,
+      "sp2026_stage6_sp5_nominal_load_blocker":sp6_load_scan_blocker,
       "sp2026_stage6_certified_U_member_t":None,
       "sp2026_stage6_certified_R_t_minutes":None,
       "sp2026_stage4_actual_member_utilisation_U_t":None,
