@@ -200,8 +200,9 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
         self.assertIsNotNone(result,report["sp2026_stage6_sp5_nominal_blocker"])
         self.assertIn(result["status"],(WITHIN,EXCEEDED,UNKNOWN,
              "N_AT_OR_ABOVE_NOMINAL_NCR_UNRESOLVED_MEMBER_CAPACITY"))
-        self.assertIn("nonuniform_sp5",str(result).lower() if False else
-            "nonuniform_sp5 nominal source branch")
+        self.assertIn(result["nominal_second_order"]["scope"],(
+            "NONUNIFORM_NUMERICAL_EXTENSION_NOT_PRESCRIBED",
+            "ISOTHERMAL_NUMERIC_QUADRATURE"))
         self.assertFalse(result["nominal_second_order"]["normative_claim"])
         self.assertEqual(result["effective_creep_phi_provenance"],
                          spec["nominal_sp5_creep_provenance"])
