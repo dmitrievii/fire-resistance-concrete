@@ -399,7 +399,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
             sp4q_blocker=sp_heat_problem or "source-matched SP heat unavailable"
         else:
             try:
-                source_section=prepare_sp2026_section(
+                chosen_source=(
+                    prepare_sp2026_full_nonlinear_section
+                    if stage3_spec.get("constitutive_model")==(
+                        "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
+                    else prepare_sp2026_section)
+                source_section=chosen_source(
                     c_sp,select_sp2026_snapshot(sp_heat,required),grid=grid)
                 numeric={
                     "euler":verify_euler_critical_load(
