@@ -124,6 +124,12 @@ class SP5LiteralNominalStiffness(unittest.TestCase):
         self.assertEqual(other["scope"],
                          "NONUNIFORM_NUMERICAL_EXTENSION_NOT_PRESCRIBED")
         self.assertFalse(other["normative_nonuniform_member_method_qualified"])
+        self.assertFalse(other["axis_decoupling_verified_numerically"])
+        self.assertEqual(other["x"]["status"],"AXIS_COUPLING_UNRESOLVED")
+        self.assertEqual(other["y"]["status"],"AXIS_COUPLING_UNRESOLVED")
+        self.assertIsNone(other["x"]["eta_a"])
+        self.assertIsNone(other["y"]["Ncrit_kN"])
+        self.assertIn("EIxy",other["qualification_blocker"])
 
 
 class SP5ActualHeatedColumn(unittest.TestCase):
