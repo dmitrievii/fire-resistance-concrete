@@ -103,6 +103,19 @@ class SPR4TrueHotMember(unittest.TestCase):
         cls.thermal=select_sp2026_snapshot(
             SPR3ActualMemberNumerics.heat,5.)
 
+    def test_boundary_face_and_corner_strains_checked_not_only_cell_centres(self):
+        from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
+        p=prepare_sp2026_section(self.column,self.thermal,grid=8)
+        _,_,evidence=p.force_and_tangent([0.,.006,0.])
+        self.assertEqual(evidence["concrete_boundary_check_points"],8)
+        self.assertGreater(
+            evidence["maximum_concrete_boundary_ratio"],
+            evidence["maximum_concrete_fibre_ratio"])
+        self.assertFalse(evidence["concrete_boundary_continuum_qualified"])
+        self.assertGreaterEqual(
+            evidence["critical_mechanical_strain_ratio"],
+            evidence["maximum_concrete_boundary_ratio"])
+
     def test_actual_hot_biaxial_member_evaluates_two_distinct_load_factors(self):
         prepared=PreparedSP2026MemberResistance(
             self.column,self.thermal,self.spec,grid=8)
