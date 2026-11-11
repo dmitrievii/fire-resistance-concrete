@@ -123,6 +123,42 @@ decoupling** tolerance 10⁻⁶. That threshold is an algorithmic
 preflight, **not** a SP-prescribed permitted eccentricity or a proof
 that the remaining nonuniform EI homogenization is normative.
 
+## Load-factor search on the SP5 nominal route itself
+
+The optional
+`scan_sp5_nominal_member_load_path(column,snapshot,member_spec,...)`
+**does not borrow** a capacity or geometric stiffness from SP-R3/R4
+hot FE. It scales the complete confirmed first-order action pattern
+`F(λ)=λ{N,qx,qy,F_nodes}` while retaining the **same physical initial
+imperfection**. Every independent trial re-evaluates:
+
+1. The effective hot strength `fcd,eq(θ)` and
+   `n(λ)=N(λ)/(Ac fcd,eq)`.
+2. `k2a(λ)=min(0.20,n(λ) λa /170)`,
+   `kc,nom(λ)=k1a k2a(λ)/(1+φef)`.
+3. Hot `Bnom(λ)`, `Ncrit(λ)`, and therefore
+   `ηa(λ)=1/(1−N(λ)/Ncrit(λ))`.
+4. Source-compatible first-order moment and minimum eccentricity,
+   their second-order magnification, and actual 3×3 SP5
+   `N–Mx–My` design section equilibrium/limit strains.
+
+Neither `ηa` nor `Ncrit` at λ=1 may be held fixed while scaling
+N for a load-capacity calculation. The first known WITHIN and
+known EXCEEDED sample are refined by explicit recalculation; a
+singular `η`, lack of Newton convergence, cross-axis bending
+coupling or invalid hot material stays **UNKNOWN** and invalidates
+any alleged complete failure bracket.
+
+Outputs:
+`observed_conditional_SP5_section_factor_bracket`,
+`model_only_utilisation_interval` where a valid bracket is found,
+and the actual `at_reference_design_load_factor` state. These are
+**sampled conditional model-only indices**, never the normative
+load-bearing `U(t)`, and they do not determine first fire
+`t_R` until physical/thermal source applicability and longitudinal
+member stability are fully qualified. Public UI has a separate
+opt-in SP-R6 capacity-scan switch.
+
 ## Numerical evidence and integration
 
 - `tests/test_sp_r6_nominal_member.py`:
