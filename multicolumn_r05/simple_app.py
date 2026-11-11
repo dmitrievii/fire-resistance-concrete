@@ -538,7 +538,7 @@ if record:
             if qualification:
                 st.write("Статус:",qual_status)
                 passed=qualification.get("numerical_pass_count",0)
-                st.metric("Независимые численные проверки",f"{passed}/4")
+                st.metric("Независимые численные проверки",f"{passed}/5")
                 st.caption("Проверяются независимые решения Эйлера, прогиб "
                            "при P–Δ, якобиан нагретого сечения и двухосная "
                            "конденсированная жесткость. PASS означает "
