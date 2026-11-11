@@ -11,6 +11,7 @@ that claim impermissible. R_t_minutes remains None.
 """
 from __future__ import annotations
 import math
+import copy
 import numpy as np
 
 from rc_fire.mechanics.sp2026_nominal_member import (
@@ -194,3 +195,111 @@ def scan_coupled_first_model_limit(column,heat,member_spec,
         "t_R_minutes":None,
         "U_member_t":None,
         "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
+
+
+def refine_first_coupled_model_limit_with_new_sp_heat(
+        column,source_heat,member_spec,history, *,
+        effective_creep_phi, mechanical_grid=12,
+        time_step_minutes=2.,max_refinements=6,
+        time_bracket_tolerance_minutes=.25):
+    """Refine an OBSERVED model-event bracket using fresh SP2026 FVM.
+
+    Recompute the entire SP standard-fire thermal solution to EACH new
+    candidate time. Do not interpolate from the existing coarse fire
+    snapshots or assume a failed section solver is physical collapse.
+    No automatic t_R: the numerical event is method- and source-
+    dependent and the history before first sampled time is unobserved.
+    """
+    from rc_fire.thermal.sp2026_heat import solve_sp2026_2d_heat
+    if not isinstance(source_heat,dict) or source_heat.get(
+            "thermal_method")!="SP2026_8.2.23_FVM":
+        raise SP5NominalMemberError("actual SP2026 source FVM required")
+    if not isinstance(history,dict) or not isinstance(
+            history.get("observed_first_model_limit_interval"),dict):
+        return {
+            "version":VERSION,"status":"NO_STRICT_MODEL_EVENT_INTERVAL_FOR_REFINEMENT",
+            "numerical_model_event_interval_min":None,
+            "physical_first_failure_qualified":False,
+            "actual_t_R_minutes":None,"normative_claim":False}
+    if type(max_refinements) is not int or not 1<=max_refinements<=16:
+        raise SP5NominalMemberError("1..16 refinement steps required")
+    tol=_finite(time_bracket_tolerance_minutes,"tolerance")
+    dt=_finite(time_step_minutes,"SP FVM timestep")
+    if not 0<tol<=5. or not .25<=dt<=10.:
+        raise SP5NominalMemberError("invalid refinement time/timestep")
+    interval=history["observed_first_model_limit_interval"]
+    lo=_finite(interval["last_sampled_model_within_min"],"stable time")
+    hi=_finite(interval["first_sampled_model_limit_min"],"first limit time")
+    if not 0<lo<hi<=float(source_heat.get("time_minutes",0.))+1e-9:
+        raise SP5NominalMemberError("observed interval outside SP source thermal time")
+    samples=history.get("samples") or []
+    at_lo=next((s for s in samples
+                if abs(s.get("time_minutes",-1.)-lo)<=1e-8),None)
+    at_hi=next((s for s in samples
+                if abs(s.get("time_minutes",-1.)-hi)<=1e-8),None)
+    if (not isinstance(at_lo,dict) or at_lo.get("status")!=WITHIN or
+        not isinstance(at_hi,dict) or at_hi.get("status") not in (NOMINAL,EXCEEDED)):
+        raise SP5NominalMemberError("no verified stable/limit endpoint pair")
+    source_boundary=source_heat.get("boundary_parameters")
+    grid=source_heat.get("grid") or {}
+    if (not isinstance(source_boundary,dict) or
+            grid.get("nx")!=grid.get("ny") or
+            type(grid.get("nx")) is not int):
+        raise SP5NominalMemberError("same SP source boundary and square heat mesh required")
+    evaluated=[]
+    for _ in range(max_refinements):
+        if hi-lo<=tol:break
+        mid=(lo+hi)/2.
+        cc=copy.deepcopy(column)
+        cc["fire_minutes"]=mid
+        heat=solve_sp2026_2d_heat(
+            cc,boundary=source_boundary,
+            cell_count_x=grid["nx"],cell_count_y=grid["ny"],
+            max_step_minutes=dt,sample_times_minutes=[mid])
+        try:
+            trial=assess_coupled_sp5_nominal_at_time(
+                cc,select_sp2026_snapshot(heat,mid),
+                member_spec,grid=mechanical_grid,
+                effective_creep_phi=effective_creep_phi)
+            state=trial["status"]
+            reason=""
+        except (SP5NominalMemberError,SPHeatError,ValueError,
+                ArithmeticError,np.linalg.LinAlgError) as exc:
+            state=UNKNOWN
+            reason=type(exc).__name__+": "+str(exc)
+        evaluated.append({
+            "recomputed_exact_source_time_min":mid,
+            "state":state,"reason":reason,
+            "fresh_SP_FVM_solve":True,
+            "frozen_same_boundary_and_heat_mesh":True,
+            "normative_claim":False})
+        if state==WITHIN:
+            lo=mid
+        elif state in (EXCEEDED,NOMINAL):
+            hi=mid
+        else:
+            return {
+                "version":VERSION,
+                "status":"UNKNOWN_INTERMEDIATE_HEATED_MODEL_STATE_NO_REFINED_FIRST_EVENT",
+                "attempts":evaluated,
+                "strict_refined_model_event_interval_min":None,
+                "unverified_coarse_model_event_interval_min":[
+                    interval["last_sampled_model_within_min"],
+                    interval["first_sampled_model_limit_min"]],
+                "source_boundary_normative_qualified":False,
+                "real_first_failure_qualified":False,
+                "actual_t_R_minutes":None,"normative_claim":False}
+    return {
+        "version":VERSION,
+        "status":"FRESH_SP_FVM_FIRST_MODEL_EVENT_BRACKET_REFINED",
+        "strict_refined_model_event_interval_min":[lo,hi],
+        "refined_model_time_bracket_width_minutes":hi-lo,
+        "first_observed_event_only":True,
+        "unobserved_0_to_first_source_sample":True,
+        "fresh_source_thermal_resolves":len(evaluated),
+        "attempts":evaluated,
+        "model_not_a_physical_first_collapse":True,
+        "source_boundary_normative_qualified":False,
+        "hot_creep_and_spalling_qualified":False,
+        "experimental_first_failure_validation_completed":False,
+        "actual_t_R_minutes":None,"normative_claim":False}
