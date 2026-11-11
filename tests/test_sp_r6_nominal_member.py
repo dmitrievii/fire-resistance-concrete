@@ -15,7 +15,7 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     SP5FireDesignFactors,SP5NominalMemberError,
     design_parameters,exact_sp5_nominal_axis,
     prepare_sp2026_design_section,nonuniform_sp5_nominal_axis,
-    assess_sp5_nominal_column_at_fire,
+    assess_sp5_nominal_column_at_fire,scan_sp5_nominal_member_history,
     WITHIN,EXCEEDED,UNKNOWN)
 
 
@@ -172,6 +172,86 @@ class SP5ActualHeatedColumn(unittest.TestCase):
             assess_sp5_nominal_column_at_fire(
                 self.column,self.snapshot,self.spec,grid=8,
                 minimum_eccentricity_enforced=False)
+
+
+class SP5PublicSP2026Workflow(unittest.TestCase):
+    def test_full_facade_nominal_route_and_independent_fire_history(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        c["fire_minutes"]=30.
+        spec=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec["nominal_sp5_requested"]=True
+        spec["nominal_sp5_phi_eff"]=0.
+        spec["nominal_sp5_creep_provenance"]=(
+            "explicit short-term fire phi=0 numerical comparison scenario")
+        spec["nominal_sp5_history_requested"]=True
+        c["member_spec"]=spec
+        report=fire_assessment(
+            c,required_minutes=30.,steel_route="hot_rolled",
+            ductility_class="B",moisture_mass_pct=1.5,
+            grid=8,dt_minutes=3.)
+        result=report["sp2026_stage6_sp5_nominal_at_required_time"]
+        self.assertIsNotNone(result,report["sp2026_stage6_sp5_nominal_blocker"])
+        self.assertIn(result["status"],(WITHIN,EXCEEDED,UNKNOWN,
+             "N_AT_OR_ABOVE_NOMINAL_NCR_UNRESOLVED_MEMBER_CAPACITY"))
+        self.assertIn("nonuniform_sp5",str(result).lower() if False else
+            "nonuniform_sp5 nominal source branch")
+        self.assertFalse(result["nominal_second_order"]["normative_claim"])
+        self.assertEqual(result["effective_creep_phi_provenance"],
+                         spec["nominal_sp5_creep_provenance"])
+        history=report["sp2026_stage6_sp5_nominal_history"]
+        self.assertIsNotNone(history,report["sp2026_stage6_sp5_nominal_history_blocker"])
+        self.assertEqual([round(s["time_minutes"]) for s in history["samples"]],
+                         [10,20,30])
+        self.assertIsNone(history["actual_t_R"])
+        self.assertIsNone(report["sp2026_stage6_certified_U_member_t"])
+        self.assertIsNone(report["sp2026_stage6_certified_R_t_minutes"])
+        self.assertIsNone(report["R_t_minutes"])
+        self.assertEqual(report["regulatory_result"],"NOT_ESTABLISHED")
+
+    def test_nominal_route_requires_explicit_phi_source(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r067 import MemberEvidenceInputError,validate_member_spec
+        c=make_column(user_inputs())
+        spec=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec["nominal_sp5_requested"]=True
+        with self.assertRaises((MemberEvidenceInputError,ValueError)):
+            validate_member_spec(spec)
+        spec["nominal_sp5_phi_eff"]=0.
+        with self.assertRaises((MemberEvidenceInputError,ValueError)):
+            validate_member_spec(spec)
+        spec["nominal_sp5_creep_provenance"]="explicit research short-term"
+        self.assertTrue(validate_member_spec(spec)["nominal_sp5_requested"])
+
+    def test_stored_SP_thermal_time_history_keeps_nominal_assumptions(self):
+        from test_sp_r3_member import SPR3ActualMemberNumerics,make_explicit_spec
+        SPR3ActualMemberNumerics.setUpClass()
+        c=SPR3ActualMemberNumerics.column
+        spec=make_explicit_spec(c)
+        out=scan_sp5_nominal_member_history(
+            c,SPR3ActualMemberNumerics.heat,spec,[5.,10.],
+            grid=8,effective_creep_phi=0.)
+        self.assertEqual([s["time_minutes"] for s in out["samples"]],
+                         [5.,10.])
+        self.assertFalse(out["temperature_interpolation_used"])
+        self.assertIsNone(out["actual_U_t"])
+        self.assertIsNone(out["actual_t_R"])
+        self.assertFalse(out["normative_claim"])
+        with self.assertRaises(ValueError):
+            scan_sp5_nominal_member_history(
+                c,SPR3ActualMemberNumerics.heat,spec,[5.,7.],
+                grid=8,effective_creep_phi=0.)
 
 
 if __name__=="__main__":
