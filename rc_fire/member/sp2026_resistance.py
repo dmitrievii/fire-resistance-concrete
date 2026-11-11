@@ -162,7 +162,7 @@ class PreparedSP2026MemberResistance:
                 "axial_N_kN_upper_source_discretization":upper})
         critical=min(samples,key=lambda d:d["axial_N_kN_upper_source_discretization"])
         upper=critical["axial_N_kN_upper_source_discretization"]
-        ratio=self.N/upper if upper>0. else math.inf
+        ratio=self.N/upper if upper>0. else None
         return {
             "source":"SP2026 Tables9/10 + SP5 normal strength at actual R2 field",
             "type":"stress_relaxed_section_upper_bound_no_strain_compatibility",
@@ -459,6 +459,12 @@ def scan_sp2026_resistance_time_history(
                 if r["state"]==UNKNOWN],
             "model_critical_location":evidence.get(
                 "observed_model_critical_location"),
+            "source_model_N_kN_upper_bound":evidence[
+                "stress_relaxed_axial_strength_upper_bound"][
+                    "source_model_N_kN_upper_bound"],
+            "source_model_axial_utilisation_lower_bound":evidence[
+                "stress_relaxed_axial_strength_upper_bound"][
+                    "source_model_axial_utilisation_lower_bound"],
             "normative_claim":False})
     # This is an OBSERVED transition in the sampled model at lambda=1,
     # not first failure time; an unobserved failure may predate both.
