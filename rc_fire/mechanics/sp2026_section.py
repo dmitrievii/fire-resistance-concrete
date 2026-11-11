@@ -81,6 +81,19 @@ class SPPreparedSection(TKPPreparedFibres):
         for i,(strain,T) in enumerate(zip(es,self.theta_s)):
             ss[i],ts[i],material=steel_stress_sp(
                 float(strain),float(T),steel,s_norm)
+        # Check actual hot boundary locations as well as fibre *centres*.
+        # The governing surface may crush before any centre sample does.
+        # Exact finite boundary samples do NOT prove a continuous maximum.
+        fibre_ratio=max_ratio
+        boundary_ratio=0.
+        for j,T in enumerate(self.sp_boundary_temperature):
+            eps=(e0+kx*self.sp_boundary_v[j]+ky*self.sp_boundary_u[j]
+                 +self.sp_boundary_free_strain[j])
+            _,_,eps_u,_=concrete_stress_sp(
+                float(eps),float(T),concrete,c_norm)
+            if eps_u is not None:
+                boundary_ratio=max(boundary_ratio,max(0.,float(eps))/eps_u)
+        max_ratio=max(max_ratio,boundary_ratio)
         # SP 5.03.01-2020 §8.1.2.1, *section verification* branch:
         # tensile reinforcing steel has the check limit epsilon_s <=10 per
         # mille (compression-positive convention => tension negative).
@@ -122,6 +135,10 @@ class SPPreparedSection(TKPPreparedFibres):
             "steel_check_source":"СП 5.03.01-2020 §8.1.2.1 verification section, 10 permille",
             "steel_eps_ud_full_nonlinear_analysis_qualified":False,
             "max_steel_tensile_strain":steel_tensile_strain,
+            "maximum_concrete_fibre_ratio":float(fibre_ratio),
+            "maximum_concrete_boundary_ratio":float(boundary_ratio),
+            "concrete_boundary_check_points":len(self.sp_boundary_temperature),
+            "concrete_boundary_continuum_qualified":False,
             "concrete_active_fibre_count":active,
             "max_concrete_temperature_C":float(np.max(self.theta_c)),
             "max_steel_temperature_C":float(np.max(self.theta_s)),
@@ -245,6 +262,21 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
                 else "TKP_4.3.2_FVM_UNQUALIFIED_AS_SP_823"),
             "thermal_property_convergence_qualified":False,
             "full_member_R_t_qualified":False})
+    # Explicit corners + exposed/unexposed face midpoints. Temperature is
+    # sampled from SP-R2 boundary-face heat solution, never TKP guesses.
+    boundary_xy_mm=[(0.,0.),(width*1000.,0.),
+        (0.,height*1000.),(width*1000.,height*1000.),
+        (width*500.,0.),(width*500.,height*1000.),
+        (0.,height*500.),(width*1000.,height*500.)]
+    b.sp_boundary_u=np.asarray([
+        2.*x/(width*1000.)-1. for x,_ in boundary_xy_mm],dtype=float)
+    b.sp_boundary_v=np.asarray([
+        2.*y/(height*1000.)-1. for _,y in boundary_xy_mm],dtype=float)
+    b.sp_boundary_temperature=np.asarray([
+        temperature_at(field,x,y) for x,y in boundary_xy_mm],dtype=float)
+    b.sp_boundary_free_strain=np.asarray([
+        concrete_free_thermal_strain_sp(float(T),aggregate) or 0.
+        for T in b.sp_boundary_temperature],dtype=float)
     b.sp_concrete=concrete
     b.sp_steel=steel
     b.sp_concrete_normal=cb
