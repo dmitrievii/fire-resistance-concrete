@@ -319,6 +319,50 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                 min_value=0.,max_value=200.,value=0.,step=1.,
                 help="Вторая независимая ось. Значение должно "
                 "соответствовать проекту и применимой нормативной модели.")
+        sp6_nominal=field.checkbox(
+            "SP-R.6: расчёт сопротивления по СП 5 — §6.1.5.4 + §8.1.6",
+            value=False,
+            help="Отдельная расчетная ветвь без полной нелинейной "
+                 "диаграммы SP-R5. Проверка N-Mx-My с нормативными "
+                 "расчётными сопротивлениями и номинальной жесткостью. "
+                 "Неравномерный прогрев учитывается численно, "
+                 "но нормативная эквивалентность требует проверки.")
+        sp6_phi=0.
+        sp6_history=False
+        sp6_grid=False
+        sp6_capacity=False
+        if sp6_nominal:
+            sp6_phi=field.number_input(
+                "Эффективный коэффициент ползучести φef, СП 5 §8.1.6.5",
+                min_value=0.,max_value=100.,value=0.,step=.1,
+                help="СП5 Eq8.64: φef=φ(∞,t0)·M0Eqp/M0Ed. "
+                     "Ноль — явно выбранный кратковременный сценарий, "
+                     "не автоматически нормативное значение.")
+            sp6_history=field.checkbox(
+                "SP-R.6: повторить проверку по времени пожара",
+                value=False,
+                help="Для сохранённых моментов времени 1/3, 2/3 "
+                     "и требуемой продолжительности. "
+                     "Не интерполирует температурные поля.")
+            sp6_capacity=field.checkbox(
+                "SP-R.6: найти коэффициент предельной нагрузки",
+                value=False,
+                help="В каждом расчёте по СП5 заново вычисляются "
+                     "n, kc,ном, Ncrit и η, затем проверяются деформации "
+                     "сечения. Выдаётся только условный интервал "
+                     "сопротивления данной модели, не нормативное U(t).")
+            sp6_grid=field.checkbox(
+                "SP-R.6: проверить сходимость сетки волокон (8/12/16)",
+                value=False,
+                help="Исследуется только дискретизация механического "
+                     "сечения при одном замороженном температурном поле. "
+                     "Сходимость тепловой сетки и физическая проверка R "
+                     "этим не подтверждаются.")
+            st.caption("При неравномерном нагреве интегрирование "
+                       "βE(T) по волокнам — расчётная "
+                       "гипотеза, а не буквально предписанная "
+                       "формула §8.1.6.3. Ввод φef должен "
+                       "соответствовать сочетанию нагрузок.")
         sp5_full_law=field.checkbox(
             "SP-R.5: исследовать полную нелинейную диаграмму бетона по СП 5",
             value=False,
@@ -391,6 +435,8 @@ if run:
             "My_kNm":needed(my_txt,"My"),
         }
         column=make_column(physical)
+        if sp6_nominal and not (sp3_action_confirm and sp3_heat_confirm):
+            raise ValueError("SP-R.6 требует подтвержденной расчётной схемы и нагрева")
         if sp5_full_law and not (sp3_action_confirm and sp3_heat_confirm):
             raise ValueError("SP-R.5 полная диаграмма требует полной подтвержденной схемы")
         if sp4_scan and not (sp3_action_confirm and sp3_heat_confirm):
@@ -401,6 +447,18 @@ if run:
                 confirmed_pinned_uniform_action_model=sp3_action_confirm,
                 confirmed_uniform_longitudinal_fire=sp3_heat_confirm,
                 imperfection_x_mm=sp3_ex,imperfection_y_mm=sp3_ey)
+            if sp6_nominal:
+                column["member_spec"]["nominal_sp5_requested"]=True
+                column["member_spec"]["nominal_sp5_phi_eff"]=float(sp6_phi)
+                column["member_spec"]["nominal_sp5_creep_provenance"]=(
+                    "User explicitly selected phi_eff in Streamlit; "
+                    "SP5 Eq8.64 load-combination provenance not independently qualified")
+                if sp6_history:
+                    column["member_spec"]["nominal_sp5_history_requested"]=True
+                if sp6_grid:
+                    column["member_spec"]["nominal_sp5_grid_study_requested"]=True
+                if sp6_capacity:
+                    column["member_spec"]["nominal_sp5_load_scan_requested"]=True
             if sp5_full_law:
                 column["member_spec"]["constitutive_model"]=(
                     "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
@@ -599,6 +657,120 @@ if record:
                        "Не подтверждены реальные температурные εc1(T), "
                        "εcu1(T), ползучесть, история повреждения и первое "
                        "физическое разрушение. Нормативное t_R отсутствует.")
+    sp6=r.get("sp2026_stage6_sp5_nominal_at_required_time")
+    sp6_status=r.get("sp2026_stage6_sp5_nominal_status")
+    if sp6_status not in (None,"SP_R6_NOMINAL_METHOD_NOT_REQUESTED"):
+        with st.expander(
+            "SP-R.6 · Расчётная ветвь СП 5, §6.1.5.4 и §8.1.6",
+            expanded=True):
+            st.write("Результат проверки:",sp6_status)
+            if sp6:
+                st.caption("Бетон fcd=αcc·ktc·fck/γc; арматура "
+                           "fyd=fyk/γs; при пожаре kc(T), ks(T), β(T). "
+                           "Особая расчётная ситуация: γc=1,2, γs=1,0.")
+                para=sp6["design_material_parameters"]
+                st.write("Расчётное сопротивление бетона при 20 °C:",
+                         f'{para["fcd_20_MPa"]:.2f} МПа')
+                nom=sp6["nominal_second_order"]
+                st.caption("Область численной модели: "+str(nom["scope"]))
+                c1,c2=st.columns(2)
+                for region,axis in ((c1,"x"),(c2,"y")):
+                    with region:
+                        v=nom.get(axis) or {}
+                        st.metric("Ncrit, ось "+axis,
+                                  f'{v["Ncrit_kN"]:.1f} кН'
+                                  if v.get("Ncrit_kN") is not None
+                                  else "Не определено")
+                        st.write("Увеличение ηa:",
+                                 f'{v["eta_a"]:.4f}'
+                                 if v.get("eta_a") is not None
+                                 else "Вне области формулы")
+                ma=sp6.get("first_order_moment_reconciliation") or {}
+                if ma:
+                    st.write("Моменты до / после увеличения:",
+                             {k:round(v,3) for k,v in ma.items()})
+                sec=sp6.get("section") or {}
+                st.write("Равновесие N–Mx–My:",
+                         sec.get("model_status","Не установлено"))
+                st.write("Максимальное отношение деформаций:",
+                         sec.get("critical_ratio"))
+                st.caption("Момент от начального отклонения N·e "
+                           "учтён один раз; минимум e0≥max(h/30,20 мм) "
+                           "применён как нижний предел, не добавлением "
+                           "к уже учтённому эксцентриситету.")
+                load_study=r.get("sp2026_stage6_sp5_nominal_load_scan") or {}
+                if load_study:
+                    st.markdown("**Нагрузочная огибающая именно по методу СП5**")
+                    st.write("Состояние поиска:",
+                             load_study["status"])
+                    band=load_study.get(
+                        "observed_conditional_SP5_section_factor_bracket")
+                    if band:
+                        st.write("Численный интервал предельного множителя:",
+                                 {
+                                    "λ внутри модели":
+                                        band["last_admissible_sample_factor"],
+                                    "λ превышение":
+                                        band["first_observed_exceedance_factor"]})
+                        u=band["model_only_utilisation_interval"]
+                        st.write("Условный модельный U по этой ветви:",
+                                 (round(u["lower"],4),round(u["upper"],4)))
+                    st.caption("Ncrit и коэффициент η пересчитываются "
+                               "для КАЖДОЙ величины λ; неизменным "
+                               "остаётся только температурное поле. "
+                               "Найденная граница относится к модели "
+                               "сечения и не является подтверждённым "
+                               "моментом разрушения колонны.")
+                elif r.get("sp2026_stage6_sp5_nominal_load_status") not in (
+                        None,"SP_R6_NOMINAL_LOAD_SCAN_NOT_REQUESTED"):
+                    st.warning("Поиск предельной нагрузки: "+str(
+                        r.get("sp2026_stage6_sp5_nominal_load_blocker") or
+                        r.get("sp2026_stage6_sp5_nominal_load_status")))
+                mesh_report=r.get("sp2026_stage6_sp5_nominal_grid_study") or {}
+                if mesh_report.get("grids"):
+                    st.markdown("**Численная сходимость механического сечения**")
+                    st.dataframe(pd.DataFrame([{
+                        "Сетка":p["fibre_grid"],
+                        "Ncrit,x, кН":p["Ncrit_x_kN"],
+                        "Ncrit,y, кН":p["Ncrit_y_kN"],
+                        "ηa,x":p["eta_x"],"ηa,y":p["eta_y"]}
+                        for p in mesh_report["grids"]]),
+                        hide_index=True,use_container_width=True)
+                    st.write("Изменение Ncrit между сетками:",
+                             mesh_report["pairwise_comparisons"])
+                    st.caption("Тепловая сетка SP-R2 остаётся неизменной; "
+                               "физическая и нормативная сходимость R "
+                               "отсюда не следует.")
+                elif r.get("sp2026_stage6_sp5_nominal_grid_status") not in (
+                        None,"SP_R6_GRID_STUDY_NOT_REQUESTED"):
+                    st.warning("Исследование сетки: "+str(
+                        r.get("sp2026_stage6_sp5_nominal_grid_blocker") or
+                        r.get("sp2026_stage6_sp5_nominal_grid_status")))
+                series=r.get("sp2026_stage6_sp5_nominal_history") or {}
+                if series.get("samples"):
+                    st.dataframe(pd.DataFrame([{
+                        "Время, мин":s["time_minutes"],
+                        "Статус сечения":s["status"],
+                        "Ncrit,x, кН":(s["x_nominal"] or {}).get("Ncrit_kN"),
+                        "Ncrit,y, кН":(s["y_nominal"] or {}).get("Ncrit_kN"),
+                        "ηa,x":(s["x_nominal"] or {}).get("eta_a"),
+                        "ηa,y":(s["y_nominal"] or {}).get("eta_a")}
+                        for s in series["samples"]]),
+                        hide_index=True,use_container_width=True)
+                    if series.get("observed_strain_check_transitions"):
+                        st.warning(
+                            "Наблюдаемые между отсчётами переходы "
+                            "деформационного критерия модели: "+
+                            str(series["observed_strain_check_transitions"])+
+                            ". Это НЕ первое физическое разрушение t_R.")
+            else:
+                st.warning("Ветвь не выполнена: "+str(
+                    r.get("sp2026_stage6_sp5_nominal_blocker") or sp6_status))
+            st.caption("Для неравномерных T(x,y) номинальная жёсткость "
+                       "сформирована численной интеграцией; "
+                       "нормативная эквивалентность, тепловая квалификация "
+                       "и первое t_R ещё не доказаны. "
+                       "Нормативный R PASS не выдаётся.")
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",
