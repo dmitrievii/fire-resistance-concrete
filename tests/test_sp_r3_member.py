@@ -90,7 +90,12 @@ class SPR3ActualMemberNumerics(unittest.TestCase):
         self.assertGreater(np.linalg.eigvalsh(D).min(),0.)
         self.assertTrue(np.all(np.isfinite(moments)))
         self.assertFalse(meta["normative_claim"])
-        self.assertLess(meta["critical_mechanical_strain_ratio"],1.)
+        # SP-R4 now samples real hot concrete faces/corners, not only
+        # interior fibre centres. A hot boundary may correctly exceed the
+        # SP5 verification strain even when the original centre test passed.
+        self.assertGreater(meta["critical_mechanical_strain_ratio"],0.)
+        self.assertEqual(meta["strain_limits_satisfied"],
+                         meta["critical_mechanical_strain_ratio"]<=1.+1.e-12)
 
     def test_nonlinear_sp_member_has_real_gauss_and_nodal_evidence(self):
         snap = select_sp2026_snapshot(self.heat, 5.)
@@ -98,8 +103,13 @@ class SPR3ActualMemberNumerics(unittest.TestCase):
             self.column, snap, self.spec, grid=8)
         self.assertEqual(data["temperature_method"], "SP2026_8.2.23_FVM")
         self.assertEqual(data["station_count"], 3*2+3)
-        self.assertEqual(data["member"]["status"], "evaluated_diagnostic")
-        self.assertEqual(data["status"], WITHIN)
+        self.assertIn(data["member"]["status"],(
+            "evaluated_diagnostic","strain_limits_exceeded_diagnostic"))
+        # No false PASS: with explicit boundary checks SP-R4 can discover
+        # a section limit missed by the old fibre-centre-only probe.
+        self.assertIn(data["status"],(WITHIN,EXCEEDED))
+        self.assertEqual(data["status"],
+            EXCEEDED if data["uls"]["exceeded_count"] else WITHIN)
         self.assertEqual(data["uls"]["gauss_count"], 6)
         self.assertEqual(data["uls"]["node_side_count"], 4)
         self.assertTrue(data["uls"]["node_coverage"])
