@@ -16,7 +16,8 @@ import streamlit as st
 
 from multicolumn_r05.project_model import new_column
 from multicolumn_r05.section_preview import make_section_figure
-from rc_fire.integration.r07_inputs import make_column,perimeter_bars
+from rc_fire.integration.r07_inputs import (
+    make_column,perimeter_bars,explicit_pinned_uniform_sp2026_member)
 from rc_fire.integration.r07_public import (
     fire_assessment,PublicFireInputError)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED,UNKNOWN
@@ -290,6 +291,38 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
     st.caption("Для подтверждения огнестойкости всей колонны также "
                "необходима согласованная схема усилий по её длине и закрепления. "
                "Введённые моменты относятся к одному расчётному сечению.")
+    with st.expander("SP-R.3 · Полная колонна: подтверждённая расчётная схема",
+                     expanded=False):
+        st.caption("Дополнительный численный расчёт P–Δ по СП: только схема "
+                   "шарнир–шарнир по двум осям, постоянная N, "
+                   "равномерная поперечная нагрузка. Указанные Mx/My должны "
+                   "быть моментами ПЕРВОГО порядка в середине пролёта, "
+                   "созданными исключительно q=8M/L². Другие схемы требуют "
+                   "отдельного задания всех узлов и нагрузок. "
+                   "Это пока не подтверждённый нормативный R(t).")
+        sp3_action_confirm=field.checkbox(
+            "Подтверждаю: оба конца шарнирные, Mx/My от равномерных q",
+            value=False,help="Никаких неучтённых концевых моментов, "
+            "поперечных сил в узлах, рамных связей либо эксцентриситетов N.")
+        sp3_heat_confirm=field.checkbox(
+            "Подтверждаю равномерный прогрев колонны по всей длине",
+            value=False,help="SP-R.2 2D поле распространяется на все "
+            "узловые и гауссовы сечения только по вашему подтверждению.")
+        sp3_cx,sp3_cy=st.columns(2)
+        with sp3_cx:
+            sp3_ex=field.number_input("Начальное отклонение по x, мм",
+                min_value=0.,max_value=200.,value=0.,step=1.,
+                help="Амплитуда полусинусоидального начального несовершенства; "
+                "ноль допустим только как явно выбранный численный сценарий.")
+        with sp3_cy:
+            sp3_ey=field.number_input("Начальное отклонение по y, мм",
+                min_value=0.,max_value=200.,value=0.,step=1.,
+                help="Вторая независимая ось. Значение должно "
+                "соответствовать проекту и применимой нормативной модели.")
+        st.caption("При включении схемы используются μx=μy=1. "
+                   "Проверка эксплуатационной/пожарной несущей способности "
+                   "остается НЕ УСТАНОВЛЕНА до завершения квалификации материалов "
+                   "и критерия первого отказа.")
     run=st.form_submit_button("Рассчитать огнестойкость",type="primary",
                                use_container_width=True)
 
@@ -327,6 +360,12 @@ if run:
             "My_kNm":needed(my_txt,"My"),
         }
         column=make_column(physical)
+        if sp3_action_confirm or sp3_heat_confirm:
+            column["member_spec"]=explicit_pinned_uniform_sp2026_member(
+                column,
+                confirmed_pinned_uniform_action_model=sp3_action_confirm,
+                confirmed_uniform_longitudinal_fire=sp3_heat_confirm,
+                imperfection_x_mm=sp3_ex,imperfection_y_mm=sp3_ey)
         with st.spinner("Рассчитываются прогрев, температурные деформации и работа сечения во времени"):
             result=fire_assessment(
                 column,required_minutes=float(required),
@@ -359,6 +398,32 @@ if record:
                "способности всей колонны. Поэтому фактическое R(t) "
                "и соответствие Rrequired не определены. "
                "Это НЕ означает, что колонна не соответствует требованиям.")
+    sp3_report=r.get("sp2026_stage3_member_at_required_time")
+    sp3_status=r.get("sp2026_stage3_member_status")
+    if sp3_status!="SP_R3_EXPLICIT_MEMBER_INPUT_REQUIRED":
+        st.subheader("SP-R.3 · Двухосная модель всей колонны (численная)")
+        if sp3_report:
+            st.write("Состояние расчёта:",sp3_report.get("status"))
+            fe=sp3_report.get("member") or {}
+            st.write("Нелинейный FE-решатель:",fe.get("status"))
+            index=sp3_report.get("member_model_strain_limit_index")
+            if index is not None:
+                st.metric("Индекс локальных предельных деформаций",
+                    f"{index:.4f}")
+            st.caption("Это максимум исследованных локальных деформационных "
+                       "отношений, а НЕ использование несущей способности U(t). "
+                       "Время t_R и нормативная проверка Rrequired не определены.")
+            history3=r.get("sp2026_stage3_member_history") or {}
+            if history3.get("samples"):
+                st.dataframe(pd.DataFrame([{
+                    "Время, мин":s["time_minutes"],
+                    "Расчётное состояние":s["status"],
+                    "Деформационный индекс":s["member_model_strain_limit_index"]}
+                    for s in history3["samples"]]),
+                    hide_index=True,use_container_width=True)
+        else:
+            st.warning("SP-R.3 не выполнен: "+str(
+                r.get("sp2026_stage3_member_blocker") or sp3_status))
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",
