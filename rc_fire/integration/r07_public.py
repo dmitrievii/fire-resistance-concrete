@@ -35,14 +35,14 @@ from rc_fire.member.sp2026_member import (
 from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
 from rc_fire.member.sp2026_resistance import (
     evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
-from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
+from rc_fire.mechanics.sp2026_section import prepare_sp2026_section,prepare_sp2026_full_nonlinear_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_biaxial_euler_coupling,
     verify_pdelta_midspan,
     verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
     mechanical_uls_admissibility)
 
-VERSION="R0.7-public-fire-workflow-v11-SP-R4Q-mechanical-gates"
+VERSION="R0.7-public-fire-workflow-v12-SP-R5-global-physical-gates"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -420,6 +420,43 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 sp4q_status="BLOCKED_SP_R4Q_NUMERICAL_VERIFICATION"
                 sp4q_blocker=type(exc).__name__+": "+str(exc)
 
+
+    # SP-R5 source full law: the hot material history remains unqualified.
+    sp5_full_model_status="NOT_REQUESTED"
+    sp5_full_model_blocker=None
+    sp5_full_model_evidence=None
+    sp5_global_evidence=None
+    if stage3_spec.get("load_mode")=="explicit_sp2026_beam":
+        requested_mode=stage3_spec.get("constitutive_model",
+                                      "SP5_6_1_5_4_SECTION_CHECK")
+        if requested_mode=="SP5_6_1_5_2_FULL_HOT_EXPLORATORY":
+            if sp_heat is None:
+                sp5_full_model_status="BLOCKED_SOURCE_SP_HEAT_MISSING"
+                sp5_full_model_blocker=sp_heat_problem or "SP-R2 heat unavailable"
+            else:
+                try:
+                    p_full=prepare_sp2026_full_nonlinear_section(
+                        c_sp,select_sp2026_snapshot(sp_heat,required),grid=grid)
+                    sp5_full_model_evidence={
+                        "model":p_full.sp_constitutive_mode,
+                        "full_SP5_source_equation":"6.13-6.16",
+                        "source_SP2026_temperature_factors":"Table 9 beta and k_c",
+                        "sampled_temperature_material_parameters":
+                            p_full.sp_full_nonlinear_material_evidence,
+                        "hot_peak_ultimate_strain_and_creep_qualified":False,
+                        "normative_claim":False}
+                    sp5_full_model_status="RESEARCH_FULL_EQUATION_EVALUATED_HOT_STRAIN_UNQUALIFIED"
+                except (SPSectionInputError,SPFireMaterialError,
+                        ValueError,TypeError,KeyError) as exc:
+                    sp5_full_model_status="BLOCKED_FULL_HOT_CONSTITUTIVE_DOMAIN"
+                    sp5_full_model_blocker=type(exc).__name__+": "+str(exc)
+        else:
+            sp5_full_model_status="SP5_6_1_5_4_SECTION_BRANCH_RETAINED"
+        if sp4_result is not None:
+            sp5_global_evidence=(sp4_result.get(
+                "at_declared_design_actions") or {}).get(
+                "global_stability_evidence")
+
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -503,6 +540,12 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage4q_mechanical_qualification":sp4q_evidence,
       "sp2026_stage4q_mechanical_qualification_blocker":sp4q_blocker,
       "sp2026_stage4q_mechanical_uls_qualified":False,
+      "sp2026_stage5_constitutive_status":sp5_full_model_status,
+      "sp2026_stage5_constitutive_blocker":sp5_full_model_blocker,
+      "sp2026_stage5_constitutive_evidence":sp5_full_model_evidence,
+      "sp2026_stage5_global_stability_at_design_actions":sp5_global_evidence,
+      "sp2026_stage5_first_physical_failure_qualified":False,
+      "sp2026_stage5_actual_t_R_minutes":None,
       "sp2026_stage4_actual_member_utilisation_U_t":None,
       "sp2026_calculated_R_t_status":(
           "NOT_ESTABLISHED_SP2026_MEMBER_ULS_QUALIFICATION_PENDING"
