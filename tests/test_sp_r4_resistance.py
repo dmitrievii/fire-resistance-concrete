@@ -119,6 +119,11 @@ class SPR4TrueHotMember(unittest.TestCase):
     def test_actual_hot_biaxial_member_evaluates_two_distinct_load_factors(self):
         prepared=PreparedSP2026MemberResistance(
             self.column,self.thermal,self.spec,grid=8)
+        axial=prepared.axial_stress_relaxed_upper_bound
+        self.assertGreater(axial["source_model_N_kN_upper_bound"],0.)
+        self.assertGreater(axial["source_model_axial_utilisation_lower_bound"],0.)
+        self.assertFalse(axial["discretization_continuum_and_material_qualified"])
+        self.assertFalse(axial["normative_claim"])
         low=prepared.evaluate_factor(.25)
         higher=prepared.evaluate_factor(.5)
         self.assertAlmostEqual(low["load_factor"],.25)
@@ -148,6 +153,9 @@ class SPR4TrueHotMember(unittest.TestCase):
         self.assertIsNone(report["actual_U_member_t"])
         self.assertIsNone(report["R_t_minutes"])
         self.assertFalse(report["normative_claim"])
+        axial=report["stress_relaxed_axial_strength_upper_bound"]
+        self.assertGreater(axial["source_model_N_kN_upper_bound"],0.)
+        self.assertFalse(axial["normative_claim"])
 
     def test_time_dependent_load_envelope_uses_only_stored_sp_heat(self):
         heat=SPR3ActualMemberNumerics.heat
