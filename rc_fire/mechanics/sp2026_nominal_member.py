@@ -30,6 +30,7 @@ from rc_fire.materials.sp2026_fire import (
     SPFireMaterialError,concrete_at_sp_fire,steel_at_sp_fire)
 from rc_fire.mechanics.sp2026_section import (
     prepare_sp2026_section,SPSectionInputError)
+from rc_fire.mechanics.action_capacity import WITHIN as SECTION_WITHIN, EXCEEDED as SECTION_EXCEEDED, UNKNOWN as SECTION_UNKNOWN
 
 VERSION="SP-R6-SP5-section-and-nominal-member-v1"
 SOURCE_SP5="СП 5.03.01-2020 §§4.2.5.3,6.1.2.11,6.1.5.4,8.1.1.5,8.1.2,8.1.6"
@@ -351,10 +352,10 @@ def assess_sp5_nominal_column_at_fire(column,snapshot,member_spec, *,
         mx2=mx0*nominal["x"]["eta_a"]
         my2=my0*nominal["y"]["eta_a"]
         root=prep.solve_actions(N,mx2,my2)
-        if root.get("classification")==UNKNOWN:
-            status=UNKNOWN
-        elif root.get("classification") in ("WITHIN","EXCEEDED"):
-            status=(WITHIN if root["classification"]=="WITHIN" else EXCEEDED)
+        if root.get("classification")==SECTION_WITHIN:
+            status=WITHIN
+        elif root.get("classification")==SECTION_EXCEEDED:
+            status=EXCEEDED
         else:
             status=UNKNOWN
     return {
