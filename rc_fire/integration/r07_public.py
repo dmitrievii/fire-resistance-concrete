@@ -40,7 +40,8 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     scan_sp5_nominal_member_history,verify_sp5_nominal_grid_convergence,
     scan_sp5_nominal_member_load_path)
 from rc_fire.mechanics.sp2026_coupled_first_limit import (
-    assess_coupled_sp5_nominal_at_time,scan_coupled_first_model_limit)
+    assess_coupled_sp5_nominal_at_time,scan_coupled_first_model_limit,
+    refine_first_coupled_model_limit_with_new_sp_heat)
 from rc_fire.verification.sp2026_r7_qualification import (
     audit_sp2026_heat_mesh_and_time,load_existing_fire_column_catalog,
     audit_effective_creep_source,qualification_ledger)
@@ -553,6 +554,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp7_history=None
     sp7_history_status="SP_R7_HISTORY_NOT_REQUESTED"
     sp7_history_problem=None
+    sp7_refinement=None
+    sp7_refinement_problem=None
     sp7_thermal=None
     sp7_thermal_problem=None
     sp7_experiments=None
@@ -595,6 +598,20 @@ def fire_assessment(column:dict,*,required_minutes:float,
                             c_sp,sp_heat,stage3_spec,sp7_times,
                             grid=grid,effective_creep_phi=sp7_phi)
                         sp7_history_status=sp7_history["status"]
+                        if stage3_spec.get("coupled_sp5_refine_time_requested") is True:
+                            try:
+                                sp7_refinement=refine_first_coupled_model_limit_with_new_sp_heat(
+                                    c_sp,sp_heat,stage3_spec,sp7_history,
+                                    effective_creep_phi=sp7_phi,
+                                    mechanical_grid=grid,
+                                    time_step_minutes=float(dt),
+                                    max_refinements=6,
+                                    time_bracket_tolerance_minutes=.25)
+                            except (SP5NominalMemberError,SPSectionInputError,
+                                    SPFireMaterialError,SPHeatError,
+                                    ValueError,TypeError,KeyError) as exc:
+                                sp7_refinement_problem=(
+                                    type(exc).__name__+": "+str(exc))
                     except (SP5NominalMemberError,SPSectionInputError,
                             SPFireMaterialError,SPHeatError,
                             ValueError,TypeError,KeyError) as exc:
@@ -735,6 +752,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage7_first_model_limit_status":sp7_history_status,
       "sp2026_stage7_first_model_limit_history":sp7_history,
       "sp2026_stage7_first_model_limit_blocker":sp7_history_problem,
+      "sp2026_stage7_first_model_limit_heat_refinement":sp7_refinement,
+      "sp2026_stage7_first_model_limit_heat_refinement_blocker":sp7_refinement_problem,
       "sp2026_stage7_thermal_mesh_time_audit":sp7_thermal,
       "sp2026_stage7_thermal_mesh_time_audit_blocker":sp7_thermal_problem,
       "sp2026_stage7_experiment_admissibility":sp7_experiments,
