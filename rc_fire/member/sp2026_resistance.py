@@ -29,6 +29,7 @@ from rc_fire.member.sp2026_member import (
 from rc_fire.mechanics.sp2026_section import (
     SPSectionInputError, prepare_sp2026_section)
 from rc_fire.thermal.sp2026_heat import SPHeatError
+from rc_fire.materials.sp2026_fire import concrete_at_sp_fire,steel_at_sp_fire
 
 VERSION="SP-R4-2026-load-path-and-member-uls-evidence-v1"
 WITHIN="EQUILIBRATED_WITHIN_CHECKED_MODEL_LIMITS"
@@ -127,6 +128,52 @@ class PreparedSP2026MemberResistance:
         self.grid=grid
         self.mode=mode
         self.column=column
+        self.axial_stress_relaxed_upper_bound=self._axial_strength_upper_bound()
+
+    def _axial_strength_upper_bound(self):
+        """Conservative DISCRETE axial strength upper bound, no Newton solve.
+
+        Maximise each concrete/steel compressive stress independently,
+        *ignoring* compatibility and subtracting NO displaced concrete:
+        this intentionally overestimates the strength of each discretised
+        section. If design N exceeds this value, even the stress-relaxed
+        section cannot balance N within the admitted source strength law.
+        It is NOT an experimentally qualified continuous member capacity.
+        """
+        samples=[]
+        all_p=[("node",i,0,p) for i,p in enumerate(self.node_prepared)]
+        all_p.extend(("gauss",i,j,p) for i,row in enumerate(self.gauss_prepared)
+                     for j,p in enumerate(row))
+        for loc,i,j,p in all_p:
+            concrete_strength=np.asarray([
+                concrete_at_sp_fire(p.sp_concrete,float(t),
+                    normal=p.sp_concrete_normal).strength_MPa
+                for t in p.theta_c],dtype=float)
+            steel_strength=np.asarray([
+                steel_at_sp_fire(p.sp_steel,float(t),
+                    normal=p.sp_steel_normal).strength_MPa
+                for t in p.theta_s],dtype=float)
+            upper=1000.*(float(np.dot(p.area,concrete_strength))+
+                          float(np.dot(p.bar_area,steel_strength)))
+            if not math.isfinite(upper) or upper<0:
+                raise SP2026MemberInputError("source temperature strength upper bound invalid")
+            samples.append({"location":loc,"node_or_element":i,
+                "gauss_index":j if loc=="gauss" else None,
+                "axial_N_kN_upper_source_discretization":upper})
+        critical=min(samples,key=lambda d:d["axial_N_kN_upper_source_discretization"])
+        upper=critical["axial_N_kN_upper_source_discretization"]
+        ratio=self.N/upper if upper>0. else math.inf
+        return {
+            "source":"SP2026 Tables9/10 + SP5 normal strength at actual R2 field",
+            "type":"stress_relaxed_section_upper_bound_no_strain_compatibility",
+            "critical_station":critical,
+            "source_model_N_kN_upper_bound":upper,
+            "source_model_axial_utilisation_lower_bound":ratio,
+            "source_model_axial_overload_if_N_above_bound":self.N>upper,
+            "discretization_continuum_and_material_qualified":False,
+            "normative_claim":False,
+            "note":"Only valid for discretised SP source strength inventory; excludes "
+                "actual constitutive compatibility and second-order amplification."}
 
     def evaluate_factor(self, factor):
         lam=_finite(factor,"proportional load factor")
@@ -359,6 +406,7 @@ def evaluate_sp2026_member_resistance(column,thermal_snapshot,member_spec, *,
             "source":member_spec.get("fire_design_action_source")},
         "at_declared_design_actions":required,
         "minimum_eccentricity_check":_min_eccentricity_audit(column,case.N),
+        "stress_relaxed_axial_strength_upper_bound":case.axial_stress_relaxed_upper_bound,
         "actual_R_d_member":None,"actual_U_member_t":None}
 
 
