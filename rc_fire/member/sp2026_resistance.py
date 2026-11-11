@@ -483,6 +483,9 @@ def scan_sp2026_resistance_time_history(
             "time_minutes":t,
             "model_scan_status":evidence["status"],
             "nominal_fire_action_state":evidence["at_declared_design_actions"]["state"],
+            "nominal_global_tangent_state":(
+                (evidence["at_declared_design_actions"].get(
+                    "global_stability_evidence") or {}).get("status")),
             "nominal_fire_action_critical_strain_ratio":(
                 evidence["at_declared_design_actions"].get(
                     "critical_model_strain_ratio")),
@@ -513,6 +516,19 @@ def scan_sp2026_resistance_time_history(
             observed.append({
                 "last_observed_model_within_minutes":a["time_minutes"],
                 "first_observed_model_exceeded_minutes":b["time_minutes"]})
+    # A certified first global loss cannot be identified from sampled
+    # points with an UNKNOWN in between. Negative tangent only indicates
+    # a mathematically unstable *equilibrated model branch*.
+    global_transitions=[]
+    for previous,next_row in zip(rows,rows[1:]):
+        if (previous["nominal_global_tangent_state"]==
+                "EQUILIBRATED_STRICTLY_POSITIVE_GLOBAL_TANGENT" and
+                next_row["nominal_global_tangent_state"]==
+                "EQUILIBRATED_NEGATIVE_GLOBAL_TANGENT_BRANCH"):
+            global_transitions.append({
+                "last_sampled_stable_minute":previous["time_minutes"],
+                "first_sampled_unstable_equilibrium_minute":next_row["time_minutes"],
+                "first_physical_collapse_qualified":False})
     return {
         "version":VERSION,
         "status":"SAMPLED_MODEL_HISTORY_WITH_UNRESOLVED_STATES"
@@ -521,6 +537,8 @@ def scan_sp2026_resistance_time_history(
             else "SAMPLED_MODEL_HISTORY_EVALUATED",
         "samples":rows,
         "observed_model_nominal_action_strain_transitions":observed,
+        "observed_equilibrated_global_spectral_transitions":global_transitions,
+        "actual_first_global_member_failure_time":None,
         "temperature_history_source":"SP2026_8.2.23_FVM_STORED_TIMES_ONLY",
         "no_temporal_interpolation":True,
         "U_t":None,"t_R":None,"R_t_minutes":None,
