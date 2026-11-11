@@ -297,6 +297,23 @@ class PublicSP2026ThermalDefault(unittest.TestCase):
             steel_route="hot_rolled",ductility_class="B",
             moisture_mass_pct=1.5,grid=8,dt_minutes=3.)
 
+    def test_public_ui_uses_benchmarked_thermal_discretization(self):
+        # Prevent the public path from silently returning to the coarser
+        # 12x12/5-min discretization absent from the SP-R2 R90 study.
+        # Numerical qualification is still geometry- and time-dependent.
+        import ast
+        from pathlib import Path
+        source=(Path(__file__).resolve().parents[1] /
+                "multicolumn_r05" / "simple_app.py").read_text(encoding="utf-8")
+        calls=[node for node in ast.walk(ast.parse(source))
+               if isinstance(node,ast.Call) and
+               isinstance(node.func,ast.Name) and
+               node.func.id=="fire_assessment"]
+        self.assertEqual(len(calls),1)
+        kwargs={item.arg:item.value for item in calls[0].keywords}
+        self.assertEqual(ast.literal_eval(kwargs["grid"]),16)
+        self.assertEqual(ast.literal_eval(kwargs["dt_minutes"]),3.)
+
     def test_sp_is_separate_solution_not_renamed_tkp(self):
         r=self.r
         self.assertEqual(r["sp2026_stage2_heat_status"],
