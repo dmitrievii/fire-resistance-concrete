@@ -35,6 +35,9 @@ from rc_fire.member.sp2026_member import (
 from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
 from rc_fire.member.sp2026_resistance import (
     evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
+from rc_fire.mechanics.sp2026_nominal_member import (
+    SP5NominalMemberError,assess_sp5_nominal_column_at_fire,
+    scan_sp5_nominal_member_history)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section,prepare_sp2026_full_nonlinear_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_biaxial_euler_coupling,
@@ -42,7 +45,7 @@ from rc_fire.member.sp2026_mechanical_qualification import (
     verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
     mechanical_uls_admissibility)
 
-VERSION="R0.7-public-fire-workflow-v12-SP-R5-global-physical-gates"
+VERSION="R0.7-public-fire-workflow-v13-SP-R6-SP5-nominal-rigidity"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -462,6 +465,48 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 "at_declared_design_actions") or {}).get(
                 "global_stability_evidence")
 
+    # SP-R6: an INDEPENDENT SP5 §6.1.5.4 + §8.1.6 member method.
+    # Does not amplify first-order moments on top of SP-R3 nonlinear FE.
+    sp6_status="SP_R6_NOMINAL_METHOD_NOT_REQUESTED"
+    sp6_result=None
+    sp6_blocker=None
+    sp6_history=None
+    sp6_history_status="SP_R6_NOMINAL_HISTORY_NOT_REQUESTED"
+    sp6_history_blocker=None
+    if stage3_spec.get("nominal_sp5_requested") is True:
+        if sp_heat is None:
+            sp6_status="BLOCKED_SP_R6_NO_SP2026_THERMAL_SOURCE"
+            sp6_blocker=sp_heat_problem or "SP2026 thermal field missing"
+        else:
+            try:
+                phi=stage3_spec["nominal_sp5_phi_eff"]
+                sp6_result=assess_sp5_nominal_column_at_fire(
+                    c_sp,select_sp2026_snapshot(sp_heat,required),
+                    stage3_spec,grid=grid,effective_creep_phi=phi)
+                sp6_result["effective_creep_phi_provenance"]=stage3_spec[
+                    "nominal_sp5_creep_provenance"]
+                sp6_status=sp6_result["status"]
+                if stage3_spec.get("nominal_sp5_history_requested") is True:
+                    try:
+                        times=stage3_spec.get("history_times_minutes")
+                        if not isinstance(times,(list,tuple)):
+                            raise SP5NominalMemberError(
+                                "explicit SP heat history times required")
+                        sp6_history=scan_sp5_nominal_member_history(
+                            c_sp,sp_heat,stage3_spec,times,
+                            grid=grid,effective_creep_phi=phi)
+                        sp6_history_status=sp6_history["status"]
+                    except (SP5NominalMemberError,SPSectionInputError,
+                            SPFireMaterialError,SPHeatError,
+                            ValueError,TypeError,KeyError) as exc:
+                        sp6_history_status="BLOCKED_SP_R6_HISTORY"
+                        sp6_history_blocker=type(exc).__name__+": "+str(exc)
+            except (SP5NominalMemberError,SPSectionInputError,
+                    SPFireMaterialError,SPHeatError,
+                    ValueError,TypeError,KeyError) as exc:
+                sp6_status="BLOCKED_SP_R6_NOMINAL_MEMBER"
+                sp6_blocker=type(exc).__name__+": "+str(exc)
+
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -551,6 +596,14 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage5_global_stability_at_design_actions":sp5_global_evidence,
       "sp2026_stage5_first_physical_failure_qualified":False,
       "sp2026_stage5_actual_t_R_minutes":None,
+      "sp2026_stage6_sp5_nominal_status":sp6_status,
+      "sp2026_stage6_sp5_nominal_at_required_time":sp6_result,
+      "sp2026_stage6_sp5_nominal_blocker":sp6_blocker,
+      "sp2026_stage6_sp5_nominal_history_status":sp6_history_status,
+      "sp2026_stage6_sp5_nominal_history":sp6_history,
+      "sp2026_stage6_sp5_nominal_history_blocker":sp6_history_blocker,
+      "sp2026_stage6_certified_U_member_t":None,
+      "sp2026_stage6_certified_R_t_minutes":None,
       "sp2026_stage4_actual_member_utilisation_U_t":None,
       "sp2026_calculated_R_t_status":(
           "NOT_ESTABLISHED_SP2026_MEMBER_ULS_QUALIFICATION_PENDING"
