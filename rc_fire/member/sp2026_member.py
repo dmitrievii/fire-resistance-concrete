@@ -133,11 +133,12 @@ class SP2026MemberFiberLaw:
             "source": SOURCE,
             "axial_strain": float(e0),
             "critical_mechanical_strain_ratio": ratio,
-            "strain_limits_satisfied": bool(meta["model_only_strain_limits_satisfied"]),
+            "strain_limits_satisfied": meta["model_only_strain_limits_satisfied"],
             # True means the numerical law is resolved over its DECLARED
             # domain, including the explicit user concrete-zero tail.
             # This is NOT thermal/constitutive normative qualification.
-            "constitutive_domain_qualified": True,
+            "constitutive_domain_qualified": bool(
+                meta["model_uls_evidence_complete"]),
             "normative_claim": False,
             "steel_ultimate_failure_criterion_qualified": False,
             "thermal_shrinkage_history_qualified": False,
