@@ -85,6 +85,22 @@ class TestCoupledSP5SourceMatrix(unittest.TestCase):
             np.sort(math.pi**2*np.diag(D)/L**2),
             atol=1e-8,rtol=1e-12))
 
+    def test_distinct_SP5_864_phi_x_phi_y_stay_distinct_in_biaxial_matrix(self):
+        p=synthetic_source_section()
+        base=coupled_sp5_hot_section_stiffness(
+            p,N_kN=200.,length_m=3.,effective_creep_phi=0.)
+        axes=coupled_sp5_hot_section_stiffness(
+            p,N_kN=200.,length_m=3.,effective_creep_phi=[.8,.4])
+        self.assertEqual(axes["effective_creep_phi_by_axis"],[.8,.4])
+        self.assertLess(axes["kc_nominal_by_axis"][0],
+                        base["kc_nominal_by_axis"][0])
+        self.assertLess(axes["kc_nominal_by_axis"][1],
+                        base["kc_nominal_by_axis"][1])
+        self.assertTrue(np.allclose(
+            axes["nominal_2x2_D_kNm2"],
+            np.asarray(axes["nominal_2x2_D_kNm2"]).T,atol=1e-8))
+        self.assertFalse(axes["hot_creep_physical_history_qualified"])
+
     def test_nonuniform_diagonal_cell_hot_EIxy_and_axial_coupling_are_preserved(self):
         p=synthetic_source_section()
         p.theta_c[0]=500.
@@ -366,7 +382,15 @@ class TestSP7PublicEndToEnd(unittest.TestCase):
             "coupled_sp5_requested":True,
             "coupled_sp5_history_requested":True,
             "coupled_sp5_thermal_audit_requested":True,
-            "coupled_sp5_experiment_audit_requested":True})
+            "coupled_sp5_experiment_audit_requested":True,
+            "coupled_sp5_creep_input":{
+                "phi_infty":2.,
+                "first_order_M0Eqp_x_kNm":40.,
+                "first_order_M0Ed_x_kNm":100.,
+                "first_order_M0Eqp_y_kNm":12.,
+                "first_order_M0Ed_y_kNm":60.,
+                "first_order_moment_source":
+                    "test fixture: declared independent SP5 first-order load-combination moments"}})
         c["member_spec"]=spec
         report=fire_assessment(
             c,required_minutes=30.,steel_route="hot_rolled",
@@ -377,6 +401,14 @@ class TestSP7PublicEndToEnd(unittest.TestCase):
                       report["sp2026_stage7_coupled_blocker"])
         model=report["sp2026_stage7_coupled_at_required_time"]
         self.assertIsNotNone(model)
+        self.assertEqual(
+            model["nominal_coupled_evidence"]["effective_creep_phi_by_axis"],
+            [.8,.4])
+        creep=report["sp2026_stage7_sp5_864_creep_source_audit"]
+        self.assertIsNotNone(creep)
+        self.assertAlmostEqual(creep["axes"]["x"]["phi_eff"],.8)
+        self.assertAlmostEqual(creep["axes"]["y"]["phi_eff"],.4)
+        self.assertFalse(creep["hot_concrete_transient_creep_qualified"])
         eigen=model["independent_global_FE_Euler_evidence"]
         self.assertIsNotNone(eigen)
         self.assertLess(eigen["max_relative_error"],.005)
@@ -417,6 +449,10 @@ class TestSP7PublicEndToEnd(unittest.TestCase):
         spec["nominal_sp5_phi_eff"]=0.
         spec["nominal_sp5_creep_provenance"]="explicit user scenario"
         self.assertTrue(validate_member_spec(spec)["coupled_sp5_requested"])
+        broken=copy.deepcopy(spec)
+        broken["coupled_sp5_creep_input"]={}
+        with self.assertRaises(ValueError):
+            validate_member_spec(broken)
         spec["coupled_sp5_requested"]=False
         spec["coupled_sp5_thermal_audit_requested"]=True
         with self.assertRaises(ValueError):
