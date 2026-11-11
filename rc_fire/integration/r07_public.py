@@ -38,7 +38,8 @@ from rc_fire.member.sp2026_resistance import (
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_pdelta_midspan,
-    verify_hot_section_jacobian,mechanical_uls_admissibility)
+    verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
+    mechanical_uls_admissibility)
 
 VERSION="R0.7-public-fire-workflow-v11-SP-R4Q-mechanical-gates"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
@@ -397,13 +398,16 @@ def fire_assessment(column:dict,*,required_minutes:float,
             sp4q_blocker=sp_heat_problem or "source-matched SP heat unavailable"
         else:
             try:
+                source_section=prepare_sp2026_section(
+                    c_sp,select_sp2026_snapshot(sp_heat,required),grid=grid)
                 numeric={
                     "euler":verify_euler_critical_load(
                         left_kind="pinned",right_kind="pinned",node_count=17),
                     "pdelta":verify_pdelta_midspan(node_count=17),
-                    "jacobian":verify_hot_section_jacobian(
-                        prepare_sp2026_section(
-                            c_sp,select_sp2026_snapshot(sp_heat,required),grid=grid))}
+                    "jacobian":verify_hot_section_jacobian(source_section),
+                    "condensed_tangent":verify_condensed_hot_member_tangent(
+                        source_section,
+                        stage3_spec["N_kN"])}
                 sp4q_evidence=mechanical_uls_admissibility(
                     c_sp,stage3_spec,numeric_evidence=numeric)
                 sp4q_evidence["numerical_benchmarks"]=numeric
