@@ -499,3 +499,59 @@ def scan_sp5_nominal_member_history(column,heat,member_spec,times_minutes,
         "temperature_interpolation_used":False,
         "actual_U_t":None,"actual_t_R":None,
         "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
+
+
+def verify_sp5_nominal_grid_convergence(column,snapshot,member_spec, *,
+                                       grids=(8,12,16),effective_creep_phi=0.,
+                                       relative_tolerance=.02):
+    """Independent mechanical fibre grid study on ONE frozen SP2D field.
+
+    B and Ncrit converge in *sampled* material quadrature; thermal mesh,
+    boundary and source law convergence are a SEPARATE task. Never infer
+    actual fire ULS or source validity from these numbers.
+    """
+    if (not isinstance(grids,(list,tuple)) or len(grids)<3 or
+            any(type(x) is not int or not 8<=x<=80 for x in grids) or
+            any(a>=b for a,b in zip(grids,grids[1:]))):
+        raise SP5NominalMemberError("at least three increasing mechanical grid sizes required")
+    tol=_finite(relative_tolerance,"grid convergence tolerance",positive=True)
+    if tol>.1:
+        raise SP5NominalMemberError("numerical tolerance must be <=10%")
+    rows=[]
+    for grid in grids:
+        r=assess_sp5_nominal_column_at_fire(
+            column,snapshot,member_spec,grid=grid,
+            effective_creep_phi=effective_creep_phi)
+        n=r["nominal_second_order"]
+        rows.append({
+            "fibre_grid":grid,
+            "member_section_status":r["status"],
+            "Ncrit_x_kN":(n.get("x") or {}).get("Ncrit_kN"),
+            "Ncrit_y_kN":(n.get("y") or {}).get("Ncrit_kN"),
+            "eta_x":(n.get("x") or {}).get("eta_a"),
+            "eta_y":(n.get("y") or {}).get("eta_a"),
+            "nominal_scope":n["scope"]})
+    comparisons=[]
+    for older,newer in zip(rows,rows[1:]):
+        for axis in ("x","y"):
+            a=older["Ncrit_"+axis+"_kN"]
+            b=newer["Ncrit_"+axis+"_kN"]
+            rel=(abs(b-a)/abs(b) if
+                 a is not None and b is not None and abs(b)>0 else None)
+            comparisons.append({
+                "grid_pair":[older["fibre_grid"],newer["fibre_grid"]],
+                "axis":axis,
+                "relative_Ncrit_change":rel,
+                "within_user_study_tolerance":(
+                    rel<=tol if rel is not None else False)})
+    complete=all(x["within_user_study_tolerance"] for x in comparisons)
+    return {
+        "version":VERSION,
+        "status":("NOMINAL_MECHANICAL_GRID_CHANGE_WITHIN_STUDY_TOLERANCE"
+                  if complete else "NOMINAL_MECHANICAL_GRID_NOT_CONVERGED_OR_BLOCKED"),
+        "grids":rows,"pairwise_comparisons":comparisons,
+        "relative_tolerance":tol,
+        "source_SP2D_thermal_grid_is_frozen":True,
+        "independent_heat_mesh_or_time_convergence_qualified":False,
+        "normative_member_qualification":False,
+        "actual_t_R_minutes":None,"normative_claim":False}
