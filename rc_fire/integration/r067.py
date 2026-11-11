@@ -56,7 +56,8 @@ def validate_member_spec(spec):
             "resistance_scan_first_factor","resistance_time_history_requested",
             "constitutive_model","global_stability_requested",
             "nominal_sp5_requested","nominal_sp5_phi_eff",
-            "nominal_sp5_creep_provenance","nominal_sp5_history_requested"}
+            "nominal_sp5_creep_provenance","nominal_sp5_history_requested",
+            "nominal_sp5_grid_study_requested"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
@@ -67,7 +68,7 @@ def validate_member_spec(spec):
             "resistance_time_history_requested","constitutive_model",
             "global_stability_requested","nominal_sp5_requested",
             "nominal_sp5_phi_eff","nominal_sp5_creep_provenance",
-            "nominal_sp5_history_requested"}
+            "nominal_sp5_history_requested","nominal_sp5_grid_study_requested"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -132,6 +133,11 @@ def validate_member_spec(spec):
                 raise MemberEvidenceInputError("SP-R4 time-dependent capacity requires capacity scan activation")
         if "nominal_sp5_requested" in spec and type(spec["nominal_sp5_requested"]) is not bool:
             raise MemberEvidenceInputError("SP-R6 nominal route requires Boolean opt-in")
+        if "nominal_sp5_grid_study_requested" in spec:
+            if type(spec["nominal_sp5_grid_study_requested"]) is not bool:
+                raise MemberEvidenceInputError("SP-R6 grid study activation must be Boolean")
+            if spec["nominal_sp5_grid_study_requested"] and spec.get("nominal_sp5_requested") is not True:
+                raise MemberEvidenceInputError("SP-R6 grid study requires nominal route activation")
         if "nominal_sp5_history_requested" in spec:
             if type(spec["nominal_sp5_history_requested"]) is not bool:
                 raise MemberEvidenceInputError("SP-R6 history requested must be Boolean")
