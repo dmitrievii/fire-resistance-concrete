@@ -218,7 +218,7 @@ def load_existing_fire_column_catalog(path=None):
 
 def qualification_ledger(*,coupled_model=None,thermal_audit=None,
                           creep_audit=None,experiment_audit=None,
-                          first_limit_history=None):
+                          first_limit_history=None,spalling_audit=None):
     """Five evidence families never conflated with a green numerical CI."""
     categories={
         "mechanical_equilibrium_and_coupled_stiffness":(
@@ -234,6 +234,9 @@ def qualification_ledger(*,coupled_model=None,thermal_audit=None,
         "source_matched_experimental_first_failure":(
             "CATALOG_ADMISSIBILITY_REVIEWED_NOT_VALIDATED" if
             isinstance(experiment_audit,dict) else "NOT_EXECUTED"),
+        "SP2026_Annex_L_spalling":(
+            "SPALLING_SOURCE_REVIEWED_NOT_PHYSICALLY_QUALIFIED" if
+            isinstance(spalling_audit,dict) else "NOT_EXECUTED"),
         "first_global_physical_failure":(
             "FIRST_MODEL_EVENT_SAMPLED_NOT_PHYSICAL_FAILURE" if
             isinstance(first_limit_history,dict) else "NOT_EXECUTED")}
@@ -246,7 +249,15 @@ def qualification_ledger(*,coupled_model=None,thermal_audit=None,
         "INDEPENDENT_MATCHED_FIRE_COLUMN_EXPERIMENT_VALIDATION_REQUIRED"]
     return {
         "version":VERSION,"status":"NORMATIVE_FIRE_R_QUALIFICATION_BLOCKED",
-        "categories":categories,"non_waivable_blockers":blockers,
+        "categories":categories,
+        "spalling_annex_L_evidence":({
+            "source_scope_status":spalling_audit.get("status"),
+            "protection_required":spalling_audit.get("protection_required"),
+            "moisture_method_qualified":spalling_audit.get(
+                "moisture_method_qualified"),
+            "SP2026_fire_spalling_qualified":False}
+            if isinstance(spalling_audit,dict) else None),
+        "non_waivable_blockers":blockers,
         "conditional_model_evidence_is_not_normative_U_t":True,
         "actual_U_t":None,"actual_t_R_minutes":None,
         "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
