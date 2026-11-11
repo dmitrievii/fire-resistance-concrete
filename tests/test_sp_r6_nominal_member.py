@@ -226,6 +226,7 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
         spec["nominal_sp5_creep_provenance"]=(
             "explicit short-term fire phi=0 numerical comparison scenario")
         spec["nominal_sp5_history_requested"]=True
+        spec["nominal_sp5_grid_study_requested"]=True
         c["member_spec"]=spec
         report=fire_assessment(
             c,required_minutes=30.,steel_route="hot_rolled",
@@ -245,6 +246,12 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
         self.assertIsNotNone(history,report["sp2026_stage6_sp5_nominal_history_blocker"])
         self.assertEqual([round(s["time_minutes"]) for s in history["samples"]],
                          [10,20,30])
+        convergence=report["sp2026_stage6_sp5_nominal_grid_study"]
+        self.assertIsNotNone(
+            convergence,report["sp2026_stage6_sp5_nominal_grid_blocker"])
+        self.assertEqual([p["fibre_grid"] for p in convergence["grids"]],
+                         [8,12,16])
+        self.assertFalse(convergence["normative_member_qualification"])
         self.assertIsNone(history["actual_t_R"])
         self.assertIsNone(report["sp2026_stage6_certified_U_member_t"])
         self.assertIsNone(report["sp2026_stage6_certified_R_t_minutes"])
@@ -269,6 +276,11 @@ class SP5PublicSP2026Workflow(unittest.TestCase):
             validate_member_spec(spec)
         spec["nominal_sp5_creep_provenance"]="explicit research short-term"
         self.assertTrue(validate_member_spec(spec)["nominal_sp5_requested"])
+        invalid=copy.deepcopy(spec)
+        invalid["nominal_sp5_requested"]=False
+        invalid["nominal_sp5_grid_study_requested"]=True
+        with self.assertRaises((MemberEvidenceInputError,ValueError)):
+            validate_member_spec(invalid)
 
     def test_stored_SP_thermal_time_history_keeps_nominal_assumptions(self):
         from test_sp_r3_member import SPR3ActualMemberNumerics,make_explicit_spec
