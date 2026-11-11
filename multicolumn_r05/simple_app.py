@@ -319,6 +319,17 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                 min_value=0.,max_value=200.,value=0.,step=1.,
                 help="Вторая независимая ось. Значение должно "
                 "соответствовать проекту и применимой нормативной модели.")
+        sp4_scan=field.checkbox(
+            "SP-R.4: исследовать несущую способность по нагрузочному множителю",
+            value=False,
+            help="Дополнительные независимые расчёты полной колонны при масштабировании "
+                 "N, qx, qy. Результат — численная огибающая и возможный интервал "
+                 "деформационного предела модели, НЕ нормативная U(t) или R(t).")
+        if sp4_scan:
+            st.caption("По умолчанию проверяются нагрузочные множители 0,25–2,0 "
+                       "с шагом 0,25 и уточняется обнаруженный интервал. "
+                       "Случаи неустойчивой или несошедшейся задачи "
+                       "обозначаются как НЕОПРЕДЕЛЁННОСТЬ, не разрушение.")
         st.caption("При включении схемы используются μx=μy=1. "
                    "Проверка эксплуатационной/пожарной несущей способности "
                    "остается НЕ УСТАНОВЛЕНА до завершения квалификации материалов "
@@ -360,12 +371,19 @@ if run:
             "My_kNm":needed(my_txt,"My"),
         }
         column=make_column(physical)
+        if sp4_scan and not (sp3_action_confirm and sp3_heat_confirm):
+            raise ValueError("SP-R.4 требует подтверждения опор и равномерного прогрева")
         if sp3_action_confirm or sp3_heat_confirm:
             column["member_spec"]=explicit_pinned_uniform_sp2026_member(
                 column,
                 confirmed_pinned_uniform_action_model=sp3_action_confirm,
                 confirmed_uniform_longitudinal_fire=sp3_heat_confirm,
                 imperfection_x_mm=sp3_ex,imperfection_y_mm=sp3_ey)
+            if sp4_scan:
+                column["member_spec"]["resistance_scan_requested"]=True
+                column["member_spec"]["resistance_scan_first_factor"]=.25
+                column["member_spec"]["resistance_scan_step"]=.25
+                column["member_spec"]["resistance_scan_max_factor"]=2.
         with st.spinner("Рассчитываются прогрев, температурные деформации и работа сечения во времени"):
             result=fire_assessment(
                 column,required_minutes=float(required),
@@ -424,6 +442,53 @@ if record:
         else:
             st.warning("SP-R.3 не выполнен: "+str(
                 r.get("sp2026_stage3_member_blocker") or sp3_status))
+    sp4_data=r.get("sp2026_stage4_resistance_scan_at_required_time")
+    sp4_status=r.get("sp2026_stage4_resistance_scan_status")
+    if sp4_status not in (None,"SP_R4_NOT_REQUESTED"):
+        st.subheader("SP-R.4 · Нагрузочная огибающая колонны (численная)")
+        if sp4_data:
+            st.write("Состояние поиска:",sp4_data["status"])
+            st.caption("Проверяется весь подтверждённый вектор пожарных "
+                       "воздействий (N, qx, qy, узловые силы) при одном "
+                       "множителе λ. Начальная геометрия не масштабируется.")
+            check=sp4_data.get("at_declared_design_actions") or {}
+            st.write("При фактической пожарной нагрузке (λ=1):",
+                     check.get("state"))
+            bracket=sp4_data.get("observed_model_resistance_bracket")
+            if bracket:
+                a,b=st.columns(2)
+                with a:st.metric("Последний численно допустимый λ",
+                                 f'{bracket["last_admissible_sample_factor"]:.4f}')
+                with b:st.metric("Первое превышение деформационного критерия λ",
+                                 f'{bracket["first_observed_exceedance_factor"]:.4f}')
+                util=bracket["model_only_utilisation_interval"]
+                st.write("Интервал индекса использования *расчётной модели*:",
+                         f'{util["lower"]:.4f}–{util["upper"]:.4f}')
+                st.caption("Это отношение 1/λ в рамках исследованной модели "
+                           "и траектории нагружения. НЕ нормативное U(t).")
+            elif sp4_data["status"].startswith("UNRESOLVED"):
+                st.warning("Несходимость или непроверенное состояние не "
+                           "классифицированы как разрушение колонны.")
+            eccentric=sp4_data["minimum_eccentricity_check"]
+            st.caption("СП 5.03.01-2020, §8.1.1.5: минимальный "
+                       "эксцентриситет — "
+                       f'{eccentric["minimum_eccentricity_about_x_mm"]:g} мм (x), '
+                       f'{eccentric["minimum_eccentricity_about_y_mm"]:g} мм (y). '
+                       "Его учёт в исходных усилиях не подтверждён автоматически.")
+            rows=sp4_data.get("evaluations") or []
+            if rows:
+                st.dataframe(pd.DataFrame([{
+                    "Множитель λ":p["load_factor"],
+                    "Механический результат":p["state"],
+                    "Макс. деформационный индекс":p.get("critical_model_strain_ratio"),
+                    "FE-состояние":p.get("member_status")}
+                    for p in rows]),hide_index=True,use_container_width=True)
+        else:
+            st.warning("SP-R.4 не выполнен: "+str(
+                r.get("sp2026_stage4_resistance_scan_blocker") or sp4_status))
+        st.caption("Фактические U(t), t_R и соответствие Rrequired пока не "
+                   "установлены — требуется верификация материала, температур "
+                   "и критерия первого физического отказа.")
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",
