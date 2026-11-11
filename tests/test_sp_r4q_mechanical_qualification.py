@@ -11,6 +11,7 @@ from rc_fire.thermal.sp2026_heat import select_sp2026_snapshot
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,
+    verify_biaxial_euler_coupling,
     verify_pdelta_midspan,
     verify_hot_section_jacobian,
     verify_condensed_hot_member_tangent,
@@ -41,6 +42,15 @@ class TestAnalyticalMechanicalBenchmarks(unittest.TestCase):
                 EI_x_kNm2=1200.,EI_y_kNm2=800.)
             for axis in ("x","y"):
                 self.assertLess(abs(result["axes"][axis]["relative_error"]),.005)
+
+    def test_coupled_biaxial_euler_modes_match_analytic_principal_stiffness(self):
+        result=verify_biaxial_euler_coupling(
+            D_xx_kNm2=1200.,D_yy_kNm2=800.,D_xy_kNm2=250.,
+            node_count=17)
+        self.assertLess(result["maximum_relative_error"],.005)
+        self.assertEqual(len(result["first_two_FE_Ncrit_kN"]),2)
+        self.assertNotEqual(result["D_kNm2"][0][1],0.)
+        self.assertFalse(result["normative_mechanical_fire_qualified"])
 
     def test_analytic_pdelta_midspan_from_independent_ODE(self):
         for ratio in (.1,.4,.7):
@@ -96,6 +106,7 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
         prepared=prepare_sp2026_section(self.column,snap,grid=8)
         numeric={
             "euler":verify_euler_critical_load(node_count=17),
+            "coupled_euler":verify_biaxial_euler_coupling(node_count=17),
             "pdelta":verify_pdelta_midspan(node_count=17),
             "jacobian":verify_hot_section_jacobian(prepared),
             "condensed_tangent":verify_condensed_hot_member_tangent(
@@ -108,7 +119,7 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
                 "first_global_stability_verified":True,
                 "experimental_validation_pass":True,
             })
-        self.assertEqual(result["numerical_pass_count"],4)
+        self.assertEqual(result["numerical_pass_count"],5)
         self.assertFalse(result["normative_mechanical_uls_qualified"])
         self.assertFalse(result["source_qualified_fire_R"])
         self.assertIsNone(result["U_member_t"])
@@ -168,8 +179,8 @@ class TestPublicAndExternalEvidence(unittest.TestCase):
         q=r["sp2026_stage4q_mechanical_qualification"]
         self.assertIsNotNone(
             q,r["sp2026_stage4q_mechanical_qualification_blocker"])
-        self.assertEqual(len(q["gate_results"]),12)
-        self.assertIn(q["numerical_pass_count"],range(5))
+        self.assertEqual(len(q["gate_results"]),13)
+        self.assertIn(q["numerical_pass_count"],range(6))
         self.assertFalse(q["normative_mechanical_uls_qualified"])
         self.assertFalse(r["sp2026_stage4q_mechanical_uls_qualified"])
         self.assertIn("SP_BETA_ELASTIC_VS_CONSTITUTIVE_STIFFNESS",
