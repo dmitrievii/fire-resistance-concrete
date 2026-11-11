@@ -248,6 +248,27 @@ def nonuniform_sp5_nominal_axis(prepared,*,N_kN,length_m,
     Ic_x=b*h**3/12.
     Ic_y=h*b**3/12.
     ac=b*h
+    # SP5 nominal B of each independent bending axis cannot be applied
+    # independently to a general unsymmetrically heated section with a
+    # nonzero material-weighted bending cross-term or axial-bending coupling.
+    # Source-matched 2D heat does NOT justify silently dropping Dxy.
+    cx=np.asarray(prepared.x,dtype=float)-b/2.
+    cy=np.asarray(prepared.y,dtype=float)-h/2.
+    sx=np.asarray(prepared.bar_x,dtype=float)-b/2.
+    sy=np.asarray(prepared.bar_y,dtype=float)-h/2.
+    weighted=np.sum(Ecd*area)+np.sum(Es*bars)
+    if weighted<=0:
+        raise SP5NominalMemberError("heated source section has no positive elastic material")
+    xstiff=(np.dot(Ecd*area,cx)+np.dot(Es*bars,sx))/weighted
+    ystiff=(np.dot(Ecd*area,cy)+np.dot(Es*bars,sy))/weighted
+    EIx=1000.*(np.dot(Ecd*area,iy)+np.dot(Es*bars,by))
+    EIy=1000.*(np.dot(Ecd*area,ix)+np.dot(Es*bars,bx))
+    EIxy=1000.*(np.dot(Ecd*area,cx*cy)+np.dot(Es*bars,sx*sy))
+    coupling=abs(EIxy)/math.sqrt(EIx*EIy) if EIx>0 and EIy>0 else math.inf
+    axial_bending=max(abs(xstiff)/b,abs(ystiff)/h)
+    # This is a STRICT mathematical decoupling preflight; tolerance is
+    # numerical 1e-6, not a normative allowable asymmetry.
+    decoupled=bool(coupling<=1e-6 and axial_bending<=1e-6)
     output={"source":"SP5 Eq8.54–8.64 + SP2026 Tables9/10",
         "scope":("ISOTHERMAL_NUMERIC_QUADRATURE" if
              _uniform_property(tc) and _uniform_property(ts)
@@ -257,11 +278,25 @@ def nonuniform_sp5_nominal_axis(prepared,*,N_kN,length_m,
         "alpha_cc":params["alpha_cc"],
         "fcd_design_equivalent_MPa":fcd_eq,
         "phi_eff":phi,
+        "EIxy_hot_before_nominal_kc_kNm2":EIxy,
+        "relative_bending_cross_stiffness":coupling,
+        "relative_axial_bending_stiffness_offset":axial_bending,
+        "axis_decoupling_verified_numerically":decoupled,
+        "axis_decoupling_tolerance_research_only":1e-6,
         "mechanical_concrete_cell_count":len(area),
         "real_steel_bar_count":len(bars),
         "interpolation_is_a_numerical_assumption":True,
         "normative_nonuniform_member_method_qualified":False,
         "normative_claim":False}
+    if not decoupled:
+        output["x"]={"status":"AXIS_COUPLING_UNRESOLVED",
+                      "Ncrit_kN":None,"eta_a":None}
+        output["y"]={"status":"AXIS_COUPLING_UNRESOLVED",
+                      "Ncrit_kN":None,"eta_a":None}
+        output["qualification_blocker"]=(
+            "SP5 scalar nominal ηa cannot ignore nonzero EIxy or "
+            "temperature-weighted eccentric stiffness centroid")
+        return output
     for axis,centres,steel_pos,Ic,mu in (
             ("x",iy,by,Ic_x,mu_x),("y",ix,bx,Ic_y,mu_y)):
         l0=_finite(mu,"mu_"+axis,positive=True)*L
