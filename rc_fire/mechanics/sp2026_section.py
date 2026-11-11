@@ -71,6 +71,9 @@ class SPPreparedSection(TKPPreparedFibres):
         steel_law=getattr(self,"sp_steel_stress_fn",steel_stress_sp)
         model_mode=getattr(self,"sp_constitutive_mode",
                            "SP5_6_1_5_4_SECTION_CHECK")
+        sp5_section_check_mode=(model_mode in (
+            "SP5_6_1_5_4_SECTION_CHECK",
+            "SP5_6_1_5_4_DESIGN_SECTION_AT_FIRE"))
         max_ratio=0.
         active=0
         for i,(strain,T) in enumerate(zip(ec,self.theta_c)):
@@ -109,7 +112,7 @@ class SPPreparedSection(TKPPreparedFibres):
         # SP5 §8.1.2 section-check 10‰ is NOT the steel limit of the
         # full §6.1.5.2 nonlinear structural branch. Without certified
         # hot εud no FULL-branch member ULS may be declared "within".
-        if model_mode=="SP5_6_1_5_4_SECTION_CHECK":
+        if sp5_section_check_mode:
             steel_check_ratio=steel_tensile_strain/.010
             max_ratio=max(max_ratio,steel_check_ratio)
         else:
@@ -129,7 +132,7 @@ class SPPreparedSection(TKPPreparedFibres):
         J=(mc*(A*tc)[None,:])@shape_c.T+(
             ms*(B*(ts-tb))[None,:])@shape_s.T
         status=(bool(max_ratio<=1.+1e-12)
-                if model_mode=="SP5_6_1_5_4_SECTION_CHECK" else None)
+                if sp5_section_check_mode else None)
         meta={
             "model":VERSION,
             "constitutive_mode":model_mode,

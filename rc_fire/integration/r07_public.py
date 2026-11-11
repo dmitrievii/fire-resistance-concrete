@@ -39,6 +39,12 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     SP5NominalMemberError,assess_sp5_nominal_column_at_fire,
     scan_sp5_nominal_member_history,verify_sp5_nominal_grid_convergence,
     scan_sp5_nominal_member_load_path)
+from rc_fire.mechanics.sp2026_coupled_first_limit import (
+    assess_coupled_sp5_nominal_at_time,scan_coupled_first_model_limit,
+    refine_first_coupled_model_limit_with_new_sp_heat)
+from rc_fire.verification.sp2026_r7_qualification import (
+    audit_sp2026_heat_mesh_and_time,load_existing_fire_column_catalog,
+    audit_effective_creep_source,qualification_ledger)
 from rc_fire.mechanics.sp2026_section import prepare_sp2026_section,prepare_sp2026_full_nonlinear_section
 from rc_fire.member.sp2026_mechanical_qualification import (
     verify_euler_critical_load,verify_biaxial_euler_coupling,
@@ -46,7 +52,7 @@ from rc_fire.member.sp2026_mechanical_qualification import (
     verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
     mechanical_uls_admissibility)
 
-VERSION="R0.7-public-fire-workflow-v13-SP-R6-SP5-nominal-rigidity"
+VERSION="R0.7-public-fire-workflow-v14-SP-R7-SP5-coupled-evidence"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -540,6 +546,105 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 sp6_status="BLOCKED_SP_R6_NOMINAL_MEMBER"
                 sp6_blocker=type(exc).__name__+": "+str(exc)
 
+    # SP-R7: full SP5 Eq8.2 3x3 N/Mx/My coupling, independent
+    # mode transform and source-auditable model-only first event.
+    sp7_status="SP_R7_COUPLED_MODEL_NOT_REQUESTED"
+    sp7_at_required=None
+    sp7_problem=None
+    sp7_history=None
+    sp7_history_status="SP_R7_HISTORY_NOT_REQUESTED"
+    sp7_history_problem=None
+    sp7_refinement=None
+    sp7_refinement_problem=None
+    sp7_thermal=None
+    sp7_thermal_problem=None
+    sp7_experiments=None
+    sp7_experiments_problem=None
+    sp7_creep_audit=None
+    sp7_creep_problem=None
+    if stage3_spec.get("coupled_sp5_requested") is True:
+        if sp_heat is None:
+            sp7_status="BLOCKED_SP_R7_SOURCE_HEAT_UNAVAILABLE"
+            sp7_problem=sp_heat_problem or "source SP-R2 field missing"
+        else:
+            try:
+                sp7_phi=stage3_spec["nominal_sp5_phi_eff"]
+                hot_creep_input=stage3_spec.get("coupled_sp5_creep_input")
+                if hot_creep_input is not None:
+                    args={key:val for key,val in hot_creep_input.items()
+                          if key!="first_order_moment_source"}
+                    sp7_creep_audit=audit_effective_creep_source(**args)
+                    sp7_creep_audit["first_order_moment_source"]=hot_creep_input[
+                        "first_order_moment_source"]
+                    sp7_phi=[
+                        sp7_creep_audit["axes"]["x"]["phi_eff"],
+                        sp7_creep_audit["axes"]["y"]["phi_eff"]]
+                sp7_at_required=assess_coupled_sp5_nominal_at_time(
+                    c_sp,select_sp2026_snapshot(sp_heat,required),
+                    stage3_spec,grid=grid,effective_creep_phi=sp7_phi,
+                    global_euler_audit=True)
+                sp7_status=sp7_at_required["status"]
+                sp7_at_required["effective_creep_source"]=(
+                    "SP5 Eq8.64 computed axis-specific user first-order moments"
+                    if sp7_creep_audit is not None else
+                    "explicit SP-R6 nominal single phi value, history unqualified")
+                if stage3_spec.get("coupled_sp5_history_requested") is True:
+                    try:
+                        sp7_times=stage3_spec.get("history_times_minutes")
+                        if not isinstance(sp7_times,(list,tuple)):
+                            raise SP5NominalMemberError(
+                                "SP-R7 explicit stored history times missing")
+                        sp7_history=scan_coupled_first_model_limit(
+                            c_sp,sp_heat,stage3_spec,sp7_times,
+                            grid=grid,effective_creep_phi=sp7_phi)
+                        sp7_history_status=sp7_history["status"]
+                        if stage3_spec.get("coupled_sp5_refine_time_requested") is True:
+                            try:
+                                sp7_refinement=refine_first_coupled_model_limit_with_new_sp_heat(
+                                    c_sp,sp_heat,stage3_spec,sp7_history,
+                                    effective_creep_phi=sp7_phi,
+                                    mechanical_grid=grid,
+                                    time_step_minutes=float(dt),
+                                    max_refinements=6,
+                                    time_bracket_tolerance_minutes=.25)
+                            except (SP5NominalMemberError,SPSectionInputError,
+                                    SPFireMaterialError,SPHeatError,
+                                    ValueError,TypeError,KeyError) as exc:
+                                sp7_refinement_problem=(
+                                    type(exc).__name__+": "+str(exc))
+                    except (SP5NominalMemberError,SPSectionInputError,
+                            SPFireMaterialError,SPHeatError,
+                            ValueError,TypeError,KeyError) as exc:
+                        sp7_history_status="BLOCKED_SP_R7_FIRST_EVENT_HISTORY"
+                        sp7_history_problem=type(exc).__name__+": "+str(exc)
+                if stage3_spec.get("coupled_sp5_thermal_audit_requested") is True:
+                    try:
+                        sp7_thermal=audit_sp2026_heat_mesh_and_time(
+                            c_sp,reference_sp2026_boundary(
+                                moisture_mass_pct=float(moisture_mass_pct)),
+                            time_minutes=min(required,15.),
+                            coarse_grid=6,fine_grid=8,
+                            coarse_step_minutes=2.,fine_step_minutes=1.)
+                    except (SPHeatError,ValueError,TypeError,KeyError) as exc:
+                        sp7_thermal_problem=type(exc).__name__+": "+str(exc)
+                if stage3_spec.get("coupled_sp5_experiment_audit_requested") is True:
+                    try:
+                        sp7_experiments=load_existing_fire_column_catalog()
+                    except (OSError,ValueError,KeyError,TypeError) as exc:
+                        sp7_experiments_problem=type(exc).__name__+": "+str(exc)
+            except (SP5NominalMemberError,SPSectionInputError,
+                    SPFireMaterialError,SPHeatError,
+                    ValueError,TypeError,KeyError,
+                    ArithmeticError) as exc:
+                sp7_status="BLOCKED_SP_R7_COUPLED_SOURCE_OR_SOLVER"
+                sp7_problem=type(exc).__name__+": "+str(exc)
+                if stage3_spec.get("coupled_sp5_creep_input") is not None:
+                    sp7_creep_problem=sp7_problem
+    sp7_ledger=qualification_ledger(
+        coupled_model=sp7_at_required,thermal_audit=sp7_thermal,
+        creep_audit=sp7_creep_audit,experiment_audit=sp7_experiments,
+        first_limit_history=sp7_history,spalling_audit=spalling)
+
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -641,6 +746,23 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage6_sp5_nominal_load_status":sp6_load_scan_status,
       "sp2026_stage6_sp5_nominal_load_scan":sp6_load_scan,
       "sp2026_stage6_sp5_nominal_load_blocker":sp6_load_scan_blocker,
+      "sp2026_stage7_coupled_status":sp7_status,
+      "sp2026_stage7_coupled_at_required_time":sp7_at_required,
+      "sp2026_stage7_coupled_blocker":sp7_problem,
+      "sp2026_stage7_first_model_limit_status":sp7_history_status,
+      "sp2026_stage7_first_model_limit_history":sp7_history,
+      "sp2026_stage7_first_model_limit_blocker":sp7_history_problem,
+      "sp2026_stage7_first_model_limit_heat_refinement":sp7_refinement,
+      "sp2026_stage7_first_model_limit_heat_refinement_blocker":sp7_refinement_problem,
+      "sp2026_stage7_thermal_mesh_time_audit":sp7_thermal,
+      "sp2026_stage7_thermal_mesh_time_audit_blocker":sp7_thermal_problem,
+      "sp2026_stage7_experiment_admissibility":sp7_experiments,
+      "sp2026_stage7_experiment_admissibility_blocker":sp7_experiments_problem,
+      "sp2026_stage7_sp5_864_creep_source_audit":sp7_creep_audit,
+      "sp2026_stage7_sp5_864_creep_source_blocker":sp7_creep_problem,
+      "sp2026_stage7_qualification_ledger":sp7_ledger,
+      "sp2026_stage7_actual_U_t":None,
+      "sp2026_stage7_actual_t_R_minutes":None,
       "sp2026_stage6_certified_U_member_t":None,
       "sp2026_stage6_certified_R_t_minutes":None,
       "sp2026_stage4_actual_member_utilisation_U_t":None,

@@ -57,7 +57,10 @@ def validate_member_spec(spec):
             "constitutive_model","global_stability_requested",
             "nominal_sp5_requested","nominal_sp5_phi_eff",
             "nominal_sp5_creep_provenance","nominal_sp5_history_requested",
-            "nominal_sp5_grid_study_requested","nominal_sp5_load_scan_requested"}
+            "nominal_sp5_grid_study_requested","nominal_sp5_load_scan_requested",
+            "coupled_sp5_requested","coupled_sp5_history_requested",
+            "coupled_sp5_thermal_audit_requested","coupled_sp5_experiment_audit_requested",
+            "coupled_sp5_creep_input","coupled_sp5_refine_time_requested"}
         unknown = set(spec) - expected
         if unknown:
             raise MemberEvidenceInputError("SP-R3 member_spec unknown fields: "+
@@ -69,7 +72,9 @@ def validate_member_spec(spec):
             "global_stability_requested","nominal_sp5_requested",
             "nominal_sp5_phi_eff","nominal_sp5_creep_provenance",
             "nominal_sp5_history_requested","nominal_sp5_grid_study_requested",
-            "nominal_sp5_load_scan_requested"}
+            "nominal_sp5_load_scan_requested","coupled_sp5_requested",
+            "coupled_sp5_history_requested","coupled_sp5_thermal_audit_requested",
+            "coupled_sp5_experiment_audit_requested","coupled_sp5_creep_input","coupled_sp5_refine_time_requested"}
         missing = sorted(required-set(spec))
         if missing:
             raise MemberEvidenceInputError("SP-R3 member_spec missing fields: "+
@@ -132,6 +137,46 @@ def validate_member_spec(spec):
                 raise MemberEvidenceInputError("SP-R4 resistance history request must be Boolean")
             if spec["resistance_time_history_requested"] and spec.get("resistance_scan_requested") is not True:
                 raise MemberEvidenceInputError("SP-R4 time-dependent capacity requires capacity scan activation")
+        for key in ("coupled_sp5_requested","coupled_sp5_history_requested",
+                    "coupled_sp5_thermal_audit_requested",
+                    "coupled_sp5_experiment_audit_requested"):
+            if key in spec and type(spec[key]) is not bool:
+                raise MemberEvidenceInputError("SP-R7 "+key+" must be Boolean")
+        if any(spec.get(k) is True for k in (
+                "coupled_sp5_history_requested",
+                "coupled_sp5_thermal_audit_requested",
+                "coupled_sp5_experiment_audit_requested")) and (
+                    spec.get("coupled_sp5_requested") is not True):
+            raise MemberEvidenceInputError("SP-R7 audits/history require coupled stiffness route")
+        if spec.get("coupled_sp5_requested") is True and (
+                spec.get("nominal_sp5_requested") is not True):
+            raise MemberEvidenceInputError(
+                "SP-R7 coupled model needs explicit SP-R6 nominal phi_eff and source")
+        if "coupled_sp5_refine_time_requested" in spec:
+            if type(spec["coupled_sp5_refine_time_requested"]) is not bool:
+                raise MemberEvidenceInputError("SP-R7 time refinement must be Boolean")
+            if spec["coupled_sp5_refine_time_requested"] and (
+                spec.get("coupled_sp5_requested") is not True or
+                spec.get("coupled_sp5_history_requested") is not True):
+                raise MemberEvidenceInputError(
+                    "SP-R7 time refinement requires explicit coupled history")
+        if "coupled_sp5_creep_input" in spec:
+            if spec.get("coupled_sp5_requested") is not True:
+                raise MemberEvidenceInputError("SP-R7 creep input requires coupled model")
+            source=spec["coupled_sp5_creep_input"]
+            fields={"phi_infty","first_order_M0Eqp_x_kNm",
+                "first_order_M0Ed_x_kNm",
+                "first_order_M0Eqp_y_kNm",
+                "first_order_M0Ed_y_kNm",
+                "first_order_moment_source"}
+            if not isinstance(source,dict) or set(source)!=fields:
+                raise MemberEvidenceInputError(
+                    "SP-R7 creep requires phi∞ and two first-order moment ratios and provenance")
+            for key in fields-{"first_order_moment_source"}:
+                _number(source[key],"SP-R7 "+key)
+            if (not isinstance(source["first_order_moment_source"],str) or
+                    not source["first_order_moment_source"].strip()):
+                raise MemberEvidenceInputError("SP-R7 actual first-order moments source missing")
         if "nominal_sp5_requested" in spec and type(spec["nominal_sp5_requested"]) is not bool:
             raise MemberEvidenceInputError("SP-R6 nominal route requires Boolean opt-in")
         if "nominal_sp5_load_scan_requested" in spec:

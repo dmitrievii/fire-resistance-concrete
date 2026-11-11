@@ -327,6 +327,13 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                  "расчётными сопротивлениями и номинальной жесткостью. "
                  "Неравномерный прогрев учитывается численно, "
                  "но нормативная эквивалентность требует проверки.")
+        sp7_coupled=False
+        sp7_creep_by_moments=False
+        sp7_creep_values={}
+        sp7_history=False
+        sp7_refine=False
+        sp7_heat=False
+        sp7_experiment=False
         sp6_phi=0.
         sp6_history=False
         sp6_grid=False
@@ -351,6 +358,76 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                      "n, kc,ном, Ncrit и η, затем проверяются деформации "
                      "сечения. Выдаётся только условный интервал "
                      "сопротивления данной модели, не нормативное U(t).")
+            sp7_coupled=field.checkbox(
+                "SP-R.7: связанная матрица жесткости N–Mx–My при прогреве",
+                value=False,
+                help="Полная 3x3 матрица по §8.1.2, конденсация и "
+                     "расчет главных форм устойчивости. Сопряжение с "
+                     "номинальной жёсткостью §8.1.6 для неравномерного "
+                     "нагрева — явно обозначенное численное расширение, "
+                     "не нормативное R(t).")
+            if sp7_coupled:
+                sp7_creep_by_moments=field.checkbox(
+                    "SP-R.7: вычислить φef,x и φef,y по формуле (8.64)",
+                    value=False,
+                    help="Требуются φ(∞,t0) и реальные моменты "
+                         "первого порядка от практически постоянного "
+                         "и расчётного сочетаний по обеим осям. "
+                         "Это не моделирование высокотемпературной "
+                         "переходной ползучести бетона.")
+                if sp7_creep_by_moments:
+                    st.caption("Все моменты — в одном расчётном сечении "
+                               "и одной системе знаков. Не вводите "
+                               "неизвестные величины как нулевые.")
+                    sp7_phi_inf=field.number_input(
+                        "φ(∞,t₀), СП 5 §6.1.4.3",
+                        min_value=0.,max_value=100.,value=0.,step=.1)
+                    sp7_mqp_x=field.number_input(
+                        "M₀Eqp,x, кН·м",value=0.,step=1.)
+                    sp7_med_x=field.number_input(
+                        "M₀Ed,x, кН·м",value=0.,step=1.)
+                    sp7_mqp_y=field.number_input(
+                        "M₀Eqp,y, кН·м",value=0.,step=1.)
+                    sp7_med_y=field.number_input(
+                        "M₀Ed,y, кН·м",value=0.,step=1.)
+                    sp7_msource=field.text_input(
+                        "Источник моментов первого порядка",
+                        value="",placeholder="Номер схемы / ведомости нагрузок")
+                    sp7_creep_values={
+                        "phi_infty":float(sp7_phi_inf),
+                        "first_order_M0Eqp_x_kNm":float(sp7_mqp_x),
+                        "first_order_M0Ed_x_kNm":float(sp7_med_x),
+                        "first_order_M0Eqp_y_kNm":float(sp7_mqp_y),
+                        "first_order_M0Ed_y_kNm":float(sp7_med_y),
+                        "first_order_moment_source":sp7_msource}
+                sp7_history=field.checkbox(
+                    "SP-R.7: исследовать первый наблюдаемый предел модели по времени",
+                    value=False,
+                    help="Проверяет каждый сохранённый момент пожара. "
+                         "Неточно датированный переход или неизвестное состояние "
+                         "не объявляется физическим разрушением.")
+                if sp7_history:
+                    sp7_refine=field.checkbox(
+                        "SP-R.7: уточнить наблюдаемый предел новыми тепловыми расчётами",
+                        value=False,
+                        help="При обнаружении интервала между двумя "
+                             "известными состояниями повторяет решение "
+                             "СП 2.02.05-2026 для каждого промежуточного "
+                             "времени. Не интерполирует температуры и "
+                             "не объявляет модельный предел фактическим t_R.")
+                sp7_heat=field.checkbox(
+                    "SP-R.7: аудит сходимости прогрева по сетке и шагу времени",
+                    value=False,
+                    help="Отдельные три тепловых расчёта до 15 минут "
+                         "при одинаковом сравнительном граничном условии. "
+                         "Сходимость не подтверждает нормативную "
+                         "корректность h, ε, влаги, откола.")
+                sp7_experiment=field.checkbox(
+                    "SP-R.7: проверить пригодность экспериментальных эталонов",
+                    value=False,
+                    help="Сопоставляет исходные характеристики с каталогом "
+                         "I3/T3/II10 и показывает отсутствующие данные; "
+                         "не подменяет экспериментальную валидацию.")
             sp6_grid=field.checkbox(
                 "SP-R.6: проверить сходимость сетки волокон (8/12/16)",
                 value=False,
@@ -459,6 +536,18 @@ if run:
                     column["member_spec"]["nominal_sp5_grid_study_requested"]=True
                 if sp6_capacity:
                     column["member_spec"]["nominal_sp5_load_scan_requested"]=True
+                if sp7_coupled:
+                    column["member_spec"]["coupled_sp5_requested"]=True
+                    if sp7_creep_by_moments:
+                        column["member_spec"]["coupled_sp5_creep_input"]=sp7_creep_values
+                    if sp7_history:
+                        column["member_spec"]["coupled_sp5_history_requested"]=True
+                    if sp7_refine:
+                        column["member_spec"]["coupled_sp5_refine_time_requested"]=True
+                    if sp7_heat:
+                        column["member_spec"]["coupled_sp5_thermal_audit_requested"]=True
+                    if sp7_experiment:
+                        column["member_spec"]["coupled_sp5_experiment_audit_requested"]=True
             if sp5_full_law:
                 column["member_spec"]["constitutive_model"]=(
                     "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
@@ -771,6 +860,119 @@ if record:
                        "нормативная эквивалентность, тепловая квалификация "
                        "и первое t_R ещё не доказаны. "
                        "Нормативный R PASS не выдаётся.")
+    sp7=r.get("sp2026_stage7_coupled_at_required_time")
+    sp7_status=r.get("sp2026_stage7_coupled_status")
+    if sp7_status not in (None,"SP_R7_COUPLED_MODEL_NOT_REQUESTED"):
+        with st.expander("SP-R.7 · Связанная двухосная механика и проверка первого предела",
+                         expanded=True):
+            st.write("Результат:",sp7_status)
+            if sp7:
+                matrix=sp7.get("nominal_coupled_evidence") or {}
+                st.caption("Матрица §8.1.2 использует секущие модули; "
+                           "температурная βE и номинальная жесткость "
+                           "§8.1.6 показаны отдельно. Их сопряжение "
+                           "при неравномерном нагреве ещё требует "
+                           "нормативного и экспериментального обоснования.")
+                st.write("Нагретая связанная матрица жесткости (3×3):")
+                st.dataframe(pd.DataFrame(matrix.get("full_3x3_K") or []),
+                             hide_index=True,use_container_width=True)
+                st.write("Конденсированная номинальная матрица D (2×2), кН·м²:")
+                st.dataframe(pd.DataFrame(matrix.get("nominal_2x2_D_kNm2") or []),
+                             hide_index=True,use_container_width=True)
+                st.write("Главные критические силы Ncrit, кН:",
+                         [round(float(v),2) for v in (
+                             matrix.get("principal_Euler_Ncrit_kN") or [])])
+                st.write("Внедиагональная связанность:",
+                         matrix.get("cross_axis_coupling_present"))
+                if sp7.get("second_order_coupled_M2_kNm") is not None:
+                    st.write("Связанные M2x, M2y, кН·м:",
+                             [round(float(x),3) for x in
+                              sp7["second_order_coupled_M2_kNm"]])
+                section=sp7.get("source_section_check") or {}
+                st.write("Состояние деформационной проверки:",
+                         section.get("classification","Не определено"))
+                st.write("Отношение деформаций в критических волокнах:",
+                         section.get("critical_ratio"))
+                secant=sp7.get("source_secant_3x3_at_section_root")
+                if secant:
+                    st.write("Секущая матрица §8.1.2 в найденном состоянии:")
+                    st.dataframe(pd.DataFrame(secant.get("full_3x3_K") or []),
+                                 hide_index=True,use_container_width=True)
+            else:
+                st.warning("Расчёт связанности: "+str(
+                    r.get("sp2026_stage7_coupled_blocker") or sp7_status))
+            history=r.get("sp2026_stage7_first_model_limit_history") or {}
+            if history.get("samples"):
+                st.markdown("**Временная проверка модельного предела**")
+                st.dataframe(pd.DataFrame([{
+                    "Время, мин":x.get("time_minutes"),
+                    "Состояние":x.get("status"),
+                    "Ncrit,min, кН":(x.get("nominal_coupled_evidence") or {}).get(
+                        "minimum_nominal_Euler_Ncrit_kN")}
+                    for x in history["samples"]]),
+                    hide_index=True,use_container_width=True)
+                if history.get("observed_first_model_limit_interval"):
+                    st.warning("Обнаружен только интервал модельного предела: "+
+                        str(history["observed_first_model_limit_interval"])+
+                        ". Фактическое t_R НЕ установлено.")
+            refined=r.get("sp2026_stage7_first_model_limit_heat_refinement")
+            if refined:
+                st.markdown("**Уточнение времени только модельного предела**")
+                st.write(refined["status"])
+                if refined.get("strict_refined_model_event_interval_min"):
+                    st.write("Уточнённый интервал, мин:",
+                             refined["strict_refined_model_event_interval_min"])
+                st.caption("Для каждой промежуточной точки повторно "
+                           "рассчитано поле температур. Первое "
+                           "физическое t_R не доказано.")
+            elif r.get("sp2026_stage7_first_model_limit_heat_refinement_blocker"):
+                st.warning("Уточнение времени: "+str(
+                    r["sp2026_stage7_first_model_limit_heat_refinement_blocker"]))
+            thermal=r.get("sp2026_stage7_thermal_mesh_time_audit")
+            if thermal:
+                st.markdown("**Независимая проверка тепловой сетки и шага**")
+                st.write(thermal["status"])
+                st.write("Максимальное отличие по сетке, °C:",
+                         thermal["mesh_comparison"]["max_difference_C"])
+                st.write("Максимальное отличие по времени, °C:",
+                         thermal["time_comparison"]["max_difference_C"])
+                st.caption("Граничные параметры — сравнительное допущение; "
+                           "нормативная квалификация по СП не доказана.")
+            experiments=r.get("sp2026_stage7_experiment_admissibility")
+            if experiments:
+                st.markdown("**Экспериментальные эталоны**")
+                st.write("Допущены к независимой валидации:",
+                         experiments["source_matched_cases_ready"],
+                         "из",experiments["source_case_count"])
+                st.dataframe(pd.DataFrame([{
+                    "Испытание":x["id"],
+                    "Наблюдаемое разрушение, мин":
+                        x["observed_failure_time_min"],
+                    "Статус":x["validation_execution_status"],
+                    "Блокеры":len(x["admissibility_blockers"])}
+                    for x in experiments["cases"]]),
+                    hide_index=True,use_container_width=True)
+            creep=r.get("sp2026_stage7_sp5_864_creep_source_audit")
+            if creep:
+                st.markdown("**Ползучесть по СП 5 §8.1.6.5**")
+                st.write("φef,x:",
+                         creep["axes"]["x"]["phi_eff"],
+                         "φef,y:",creep["axes"]["y"]["phi_eff"])
+                st.caption("Расчёт по формуле (8.64) выполнен, "
+                           "но при пожаре температурно-зависимая "
+                           "переходная ползучесть остаётся "
+                           "неквалифицированной.")
+            elif r.get("sp2026_stage7_sp5_864_creep_source_blocker"):
+                st.warning("Источник φef: "+str(
+                    r["sp2026_stage7_sp5_864_creep_source_blocker"]))
+            ledger=r.get("sp2026_stage7_qualification_ledger") or {}
+            st.write("Нормативный статус:",ledger.get("status"))
+            st.caption("Собственные значения и пересечение деформационных "
+                       "критериев относятся к расчетной модели. "
+                       "Не подтверждены высокотемпературная ползучесть, "
+                       "реальное первое глобальное разрушение, "
+                       "теплофизические границы и сопоставление с испытаниями. "
+                       "U(t) и t_R остаются НЕ УСТАНОВЛЕНЫ.")
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",
