@@ -325,7 +325,14 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
             help="Дополнительные независимые расчёты полной колонны при масштабировании "
                  "N, qx, qy. Результат — численная огибающая и возможный интервал "
                  "деформационного предела модели, НЕ нормативная U(t) или R(t).")
+        sp4_history_requested=False
         if sp4_scan:
+            sp4_history_requested=field.checkbox(
+                "SP-R.4: вычислить нагрузочную огибающую также по времени",
+                value=False,
+                help="Повторить независимый нагрузочный анализ на трёх сохранённых "
+                     "временах пожара (1/3, 2/3 и Rrequired, если они доступны). "
+                     "Никаких промежуточных нерассчитанных температур.")
             st.caption("По умолчанию проверяются нагрузочные множители 0,25–2,0 "
                        "с шагом 0,25 и уточняется обнаруженный интервал. "
                        "Случаи неустойчивой или несошедшейся задачи "
@@ -381,6 +388,8 @@ if run:
                 imperfection_x_mm=sp3_ex,imperfection_y_mm=sp3_ey)
             if sp4_scan:
                 column["member_spec"]["resistance_scan_requested"]=True
+                if sp4_history_requested:
+                    column["member_spec"]["resistance_time_history_requested"]=True
                 column["member_spec"]["resistance_scan_first_factor"]=.25
                 column["member_spec"]["resistance_scan_step"]=.25
                 column["member_spec"]["resistance_scan_max_factor"]=2.
@@ -469,6 +478,28 @@ if record:
             elif sp4_data["status"].startswith("UNRESOLVED"):
                 st.warning("Несходимость или непроверенное состояние не "
                            "классифицированы как разрушение колонны.")
+            history4=r.get("sp2026_stage4_resistance_time_history") or {}
+            if history4.get("samples"):
+                st.markdown("**Изменение сопротивления расчётной модели во времени**")
+                st.dataframe(pd.DataFrame([{
+                    "Время, мин":s["time_minutes"],
+                    "Номинальная пожарная нагрузка":s["nominal_fire_action_state"],
+                    "λ допустимый":s["model_load_factor_low"],
+                    "λ превышение":s["model_load_factor_high"],
+                    "U модель, нижняя":(
+                        (s["model_only_utilisation_interval"] or {}).get("lower")),
+                    "U модель, верхняя":(
+                        (s["model_only_utilisation_interval"] or {}).get("upper"))}
+                    for s in history4["samples"]]),
+                    hide_index=True,use_container_width=True)
+                st.caption("Значения U модель по времени — только условные "
+                           "численные интервалы. Предел огнестойкости t_R "
+                           "не определяется по этой таблице.")
+            elif r.get("sp2026_stage4_resistance_time_history_status") not in (
+                    None,"SP_R4_HISTORY_NOT_REQUESTED"):
+                st.warning("SP-R.4 временная серия: "+str(
+                    r.get("sp2026_stage4_resistance_time_history_blocker") or
+                    r.get("sp2026_stage4_resistance_time_history_status")))
             eccentric=sp4_data["minimum_eccentricity_check"]
             st.caption("СП 5.03.01-2020, §8.1.1.5: минимальный "
                        "эксцентриситет — "
