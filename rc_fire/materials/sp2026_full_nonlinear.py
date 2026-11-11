@@ -103,6 +103,10 @@ def concrete_full_nonlinear_stress_sp(eps_mechanical,theta_C,
     e1=p["epsilon_c1_assumed_temperature_invariant"]
     eu=p["epsilon_cu1_assumed_temperature_invariant"]
     k=p["shape_parameter_k"]
+    if k<=1.:
+        raise SPFireMaterialError(
+            "SP5 full hot rational law cannot use ambient epsilon_c1: k<=1; "
+            "measured hot peak strain required, no invented peak strain")
     x=eps/e1
     denom=1.+(k-2.)*x
     if not math.isfinite(denom) or denom<=0.:
@@ -138,40 +142,36 @@ class SP5RebarDuctility:
 
 def steel_sp5_ascending_stress(eps_mechanical,theta_C,steel, *,
                               ductility:SP5RebarDuctility,normal=None):
-    """SP5 §6.2.2.13 rising bilinear branch with certified steel inputs.
+    """SP5 §6.2.2.13 ascending DESIGN bilinear steel branch.
 
-    Reported epsilon_ud=0.9 epsilon_uk is a structural DESIGN limit
-    under the chosen branch, not a proven high-temperature rupture law.
-    The SP2026 Table10 k_s and beta scale yield and E respectively;
-    temperature sensitivity of epsilon_uk is not given in Table10 and
-    remains a mandatory experimental qualification gate.
+    At the actual hot temperature E_theta=beta E_s and
+    f_yd,theta=k_s f_yk/gamma_s. A linear hardening branch reaches
+    k f_yd,theta at epsilon_ud=0.9 epsilon_uk. εuk at high temperature
+    is NOT qualified by the ambient Table 6.7 and must be confirmed by
+    experiment for any regulatory use.
     """
     d=ductility.validate()
     eps=_finite(eps_mechanical,"steel strain")
     mat=steel_at_sp_fire(steel,theta_C,normal)
-    ey=mat.strength_MPa/mat.elastic_modulus_MPa
+    E=mat.elastic_modulus_MPa
+    fy=mat.strength_MPa/d.gamma_s
+    fu=d.k_ftk_over_fyk*fy
+    ey=fy/E
     eu=.9*d.epsilon_uk
     if eu<=ey:
-        raise SPFireMaterialError("steel eps_ud <= hot yield strain; unqualified")
+        raise SPFireMaterialError("steel eps_ud <= hot design yield strain; unqualified")
     abs_eps=abs(eps)
+    if abs_eps>eu:
+        raise SPFireMaterialError(
+            "steel limit epsilon_ud exceeded; beyond-domain stress not extrapolated")
     if abs_eps<=ey:
-        sigma=mat.elastic_modulus_MPa*eps
-        E=mat.elastic_modulus_MPa
+        sigma=E*eps
+        tangent=E
     else:
-        # Use only the explicit declared design strength convention.
-        fy=mat.strength_MPa/d.gamma_s
-        fu=d.k_ftk_over_fyk*mat.strength_MPa/d.gamma_s
-        eyd=fy/mat.elastic_modulus_MPa
-        if eu<=eyd:
-            raise SPFireMaterialError("steel epsilon_ud not beyond design yield")
-        slope=(fu-fy)/(eu-eyd)
-        if abs_eps<=eyd:
-            sigma=mat.elastic_modulus_MPa*eps
-            E=mat.elastic_modulus_MPa
-        else:
-            sigma=math.copysign(fy+slope*(abs_eps-eyd),eps)
-            E=slope
-    return sigma,E,eu,mat,{
+        slope=(fu-fy)/(eu-ey)
+        sigma=math.copysign(fy+slope*(abs_eps-ey),eps)
+        tangent=slope
+    return sigma,tangent,eu,mat,{
         "SP5_steel_6_2_2_13_design_branch":True,
         "hot_ductility_temperature_qualified":False,
         "material_certificate":d.material_certificate,
