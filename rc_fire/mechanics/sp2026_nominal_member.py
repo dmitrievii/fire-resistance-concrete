@@ -371,6 +371,10 @@ def assess_sp5_nominal_column_at_fire(column,snapshot,member_spec, *,
     if "x" not in nominal or "y" not in nominal:
         status=UNKNOWN
         root=None
+    elif nominal["x"]["status"]=="AXIS_COUPLING_UNRESOLVED" or (
+            nominal["y"]["status"]=="AXIS_COUPLING_UNRESOLVED"):
+        status="BLOCKED_BIAXIAL_NOMINAL_AXIS_COUPLING"
+        root=None
     elif nominal["x"]["eta_a"] is None or nominal["y"]["eta_a"] is None:
         status="N_AT_OR_ABOVE_NOMINAL_NCR_UNRESOLVED_MEMBER_CAPACITY"
         root=None
