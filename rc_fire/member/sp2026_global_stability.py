@@ -220,15 +220,35 @@ def bracket_perfect_euler_first_global_instability(
         elif witness["status"]==UNSTABLE:
             b=mid
         else:
-            # Near the singular value, retain resolved bracketing data
-            # without pretending an unknown midpoint is either sign.
-            return {"version":VERSION,
-                "status":"EULER_BIFURCATION_NEAR_SINGULAR_REFINEMENT_STOP",
-                "last_strictly_stable_N_by_Ncrit":a,
-                "first_unstable_N_by_Ncrit":b,
-                "unresolved_ratio":mid,"records":record,
-                "actual_hot_RC_failure_qualified":False,
-                "normative_claim":False}
+            # An eigenvalue exactly at the neutral bifurcation cannot
+            # receive a false sign. Instead sample both sides of the
+            # midpoint with an independently specified geometric margin.
+            margin=max(.5*tol,1.e-5*(b-a))
+            lo_trial=mid-margin
+            hi_trial=mid+margin
+            if not a<lo_trial<hi_trial<b:
+                return {"version":VERSION,
+                    "status":"EULER_BIFURCATION_NEAR_SINGULAR_REFINEMENT_STOP",
+                    "last_strictly_stable_N_by_Ncrit":a,
+                    "first_unstable_N_by_Ncrit":b,
+                    "unresolved_ratio":mid,"records":record,
+                    "actual_hot_RC_failure_qualified":False,
+                    "normative_claim":False}
+            lo_state=f(lo_trial)
+            hi_state=f(hi_trial)
+            record.extend([
+                {"ratio":lo_trial,"status":lo_state["status"]},
+                {"ratio":hi_trial,"status":hi_state["status"]}])
+            if lo_state["status"]==STABLE and hi_state["status"]==UNSTABLE:
+                a,b=lo_trial,hi_trial
+            else:
+                return {"version":VERSION,
+                    "status":"EULER_BIFURCATION_NEAR_SINGULAR_REFINEMENT_STOP",
+                    "last_strictly_stable_N_by_Ncrit":a,
+                    "first_unstable_N_by_Ncrit":b,
+                    "unresolved_ratio":mid,"records":record,
+                    "actual_hot_RC_failure_qualified":False,
+                    "normative_claim":False}
     return {
         "version":VERSION,
         "status":"EULER_FIRST_GLOBAL_SPECTRAL_BRACKET",
