@@ -155,8 +155,16 @@ def coupled_sp5_hot_section_stiffness(prepared,*,N_kN,length_m,
     for nonuniform fire/cross coupling, NEVER source-certified.
     """
     N=_finite(N_kN,"N",positive=True);L=_finite(length_m,"L",positive=True)
-    phi=_finite(effective_creep_phi,"phi_eff")
-    if phi<0:raise SP5NominalMemberError("negative creep coefficient")
+    if isinstance(effective_creep_phi,(tuple,list)) and len(
+            effective_creep_phi)==2:
+        phi_axes=[_finite(x,"phi_eff axis") for x in effective_creep_phi]
+    elif not isinstance(effective_creep_phi,(tuple,list,dict,np.ndarray)):
+        ph=_finite(effective_creep_phi,"phi_eff")
+        phi_axes=[ph,ph]
+    else:
+        raise SP5NominalMemberError("phi_eff requires scalar or x/y pair")
+    if any(x<0 for x in phi_axes):
+        raise SP5NominalMemberError("negative creep coefficient")
     params=getattr(prepared,"sp5_design_parameters",None)
     if not isinstance(params,dict):
         raise SP5NominalMemberError("SP5 source design section required")
@@ -175,12 +183,12 @@ def coupled_sp5_hot_section_stiffness(prepared,*,N_kN,length_m,
     Ac=prepared.b_m*prepared.h_m
     n=N/(1000.*Ac*fcd_eq)
     kc=[];lambda_a=[]
-    for Ic in (prepared.b_m*prepared.h_m**3/12.,
-               prepared.h_m*prepared.b_m**3/12.):
+    for axis,Ic in enumerate((prepared.b_m*prepared.h_m**3/12.,
+               prepared.h_m*prepared.b_m**3/12.)):
         lam=L/math.sqrt(Ic/Ac)
         k1=math.sqrt(params["f_ck_MPa"]/20.)
         k2=min(.20,n*lam/170.)
-        kc.append(k1*k2/(1.+phi))
+        kc.append(k1*k2/(1.+phi_axes[axis]))
         lambda_a.append(lam)
     S=np.diag([1.,math.sqrt(kc[0]),math.sqrt(kc[1])])
     K_nom=S@Kc@S+Ks
@@ -211,7 +219,8 @@ def coupled_sp5_hot_section_stiffness(prepared,*,N_kN,length_m,
         "k1a":math.sqrt(params["f_ck_MPa"]/20.),
         "k2a_by_axis":[min(.20,n*lam/170.) for lam in lambda_a],
         "kc_nominal_by_axis":kc,
-        "effective_creep_phi":phi,
+        "effective_creep_phi_by_axis":phi_axes,
+        "hot_creep_physical_history_qualified":False,
         "fcd_equivalent_MPa":float(fcd_eq),
         "nominal_3x3_K":K_nom.tolist(),
         "nominal_2x2_D_kNm2":D_nom.tolist(),
