@@ -25,8 +25,12 @@ from rc_fire.mechanics.sp2026_section import (
     evaluate_sp2026_section_at_time,SPSectionInputError)
 from rc_fire.materials.sp2026_fire import (
     SPFireMaterialError,qualification_status as sp_material_qualification)
+from rc_fire.thermal.sp2026_heat import (
+    SPHeatError,solve_sp2026_2d_heat,select_sp2026_snapshot,
+    sample_sp2026_temperature,standard_fire_sp,
+    reference_sp2026_boundary)
 
-VERSION="R0.7-public-fire-workflow-v6"
+VERSION="R0.7-public-fire-workflow-v8"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -199,44 +203,87 @@ def fire_assessment(column:dict,*,required_minutes:float,
             ratios.append(ratio)
         return 100.*max(ratios) if ratios else None
     thermal_rows=history.get("thermal_curve_samples") or []
-    # SP-R.1 reuses the already-computed, identical-temperature FVM cells.
-    # Only the mechanical MATERIAL branch is SP2026; thermal transport
-    # is still TKP-based and has no §8.2.23 qualification. Never merge
-    # SP and TKP numerical stress histories or claim an SP R(t).
+    # SP-R.2: a SEPARATE source-controlled SP heat solve. Do not merely
+    # relabel old TKP snapshots as SP. The SP properties come exclusively
+    # from Appendix K.1 (A/B/D/E and mass moisture term K.1).
+    # Boundary h/eps are explicitly a cross-standard comparison assumption.
     sp_preview={
-       "status":"UNAVAILABLE","R_t_minutes":None,
-       "regulatory_result":"NOT_ESTABLISHED",
-       "source":"SP2026_TABLE9_10_SP5",
-       "normative_claim":False,
-       "reason":"No full time-matched 2D temperature grid at Rrequired"}
-    sp_frame=next((x for x in thermal_rows
-                   if abs(float(x["time_minutes"])-required)<1e-8),None)
-    if (sp_frame is not None and isinstance(
-            sp_frame.get("grid_temperature_C"),list)
-        and isinstance(history.get("thermal_grid"),dict)):
-        gridinfo=history["thermal_grid"]
-        heat_snapshot={
-            "thermal_method":"TKP_4.3.2_FVM",
-            "status":"evaluated_tkp_diagnostic",
-            "material_family":c["thermal_spec"]["concrete_family"],
-            "grid":gridinfo,
-            "snapshot":{
-                "time_minutes":required,
-                "grid_temperature_C":sp_frame["grid_temperature_C"],
-                "surface_temperature_C":sp_frame["surface_temperature_C"],
-                "boundary_max_C":sp_frame["T_concrete_boundary_max_C"]}}
+        "status":"UNAVAILABLE","R_t_minutes":None,
+        "regulatory_result":"NOT_ESTABLISHED",
+        "source":"SP2026_TABLE9_10_SP5",
+        "normative_claim":False}
+    sp_heat=None
+    sp_thermal_timeline=[]
+    sp_heat_status="UNAVAILABLE"
+    sp_heat_problem=None
+    c_sp=copy.deepcopy(c)
+    c_sp["fire_minutes"]=horizon
+    # Preserve shared TKP section sample times for controlled comparison,
+    # and independently record every 5 minutes for accurate SP plots.
+    sp_samples=sorted(set([required,*(
+        float(p["time_minutes"]) for p in points
+        if 0<float(p["time_minutes"])<=horizon+1e-8
+    ),*(
+        5.*k for k in range(1,int(horizon/5.)+1)
+        if 5.*k<=horizon+1e-8
+    )]))
+    try:
+        sp_heat=solve_sp2026_2d_heat(
+            c_sp,
+            boundary=reference_sp2026_boundary(
+                moisture_mass_pct=float(moisture_mass_pct)),
+            cell_count_x=grid,cell_count_y=grid,
+            max_step_minutes=dt,sample_times_minutes=sp_samples)
+        sp_heat_status="SP2026_K1_FVM_EVALUATED_WITH_UNQUALIFIED_BOUNDARY"
+        g=sp_heat["grid"]
+        start_surface={
+            face:[20.]*(g["ny"] if face in ("left","right") else g["nx"])
+            for face in ("left","right","bottom","top")}
+        sp_thermal_timeline=[{
+            "minute":0., "gas_C":20.,"concrete_surface_C":20.,
+            "concrete_centre_C":20.,
+            "bars_C":{str(bar["id"]):20. for bar in c_sp.get("bars",[])},
+            "grid_temperature_C":[[20.]*g["nx"] for _ in range(g["ny"])],
+            "surface_temperature_C":start_surface,
+            "temperature_source":"SP2026 2D FVM initial t=0"}]
+        for time_value in sp_samples:
+            view=select_sp2026_snapshot(sp_heat,time_value)
+            snap=view["snapshot"]
+            sp_thermal_timeline.append({
+                "minute":time_value,
+                "gas_C":standard_fire_sp(time_value),
+                "concrete_surface_C":snap["boundary_max_C"],
+                "concrete_centre_C":sample_sp2026_temperature(
+                    view,c_sp["b_mm"]/2.,c_sp["h_mm"]/2.),
+                "bars_C":{
+                    str(bar["id"]):sample_sp2026_temperature(
+                        view,bar["x_mm"],bar["y_mm"])
+                    for bar in c_sp.get("bars",[])},
+                "grid_temperature_C":snap["grid_temperature_C"],
+                "surface_temperature_C":snap["surface_temperature_C"],
+                "temperature_source":"SP2026 2D FVM solved snapshot"})
+        hot=select_sp2026_snapshot(sp_heat,required)
         try:
             sp_preview=evaluate_sp2026_section_at_time(
-                c,heat_snapshot,grid=grid)
-            sp_preview["status"]="SP_MATERIAL_AND_SECTION_NUMERICAL_DIAGNOSTIC"
+                c_sp,hot,grid=grid)
+            sp_preview["status"]="SP2026_K1_FVM_AND_FIBRES_NUMERICAL_DIAGNOSTIC"
         except (SPSectionInputError,SPFireMaterialError,
                 ValueError,KeyError,TypeError) as exc:
             sp_preview={
-                "status":"BLOCKED_SP_STAGE1_MATERIAL_OR_SOURCE",
+                "status":"BLOCKED_SP2026_MECHANICAL_MATERIAL_OR_SOURCE",
                 "source":"SP2026_TABLE9_10_SP5",
                 "reason":str(exc),"R_t_minutes":None,
-                "regulatory_result":"NOT_ESTABLISHED",
-                "normative_claim":False}
+                "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
+    except (SPHeatError,ValueError,TypeError,KeyError) as exc:
+        # No fallback to TKP temperature for an SP-labelled mechanical
+        # assessment. This is a real SP calculation blocker, not a PASS.
+        sp_heat_problem=str(exc)
+        sp_heat_status="BLOCKED_SP2026_THERMAL"
+        sp_preview={
+            "status":"BLOCKED_SP2026_THERMAL",
+            "source":"SP2026_TABLE9_10_SP5",
+            "reason":sp_heat_problem,"R_t_minutes":None,
+            "regulatory_result":"NOT_ESTABLISHED","normative_claim":False}
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -291,6 +338,19 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "energy_balance":history.get("thermal_energy_balance"),
       "sp2026_stage1_at_required_time":sp_preview,
       "sp2026_stage1_material_qualification":sp_material_qualification(),
+      "sp2026_stage2_heat_status":sp_heat_status,
+      "sp2026_stage2_heat_horizon_minutes":horizon,
+      "sp2026_stage2_heat_blocker":sp_heat_problem,
+      "sp2026_stage2_thermal_timeline":sp_thermal_timeline,
+      "sp2026_stage2_thermal_grid":sp_heat.get("grid") if sp_heat else None,
+      "sp2026_stage2_heat_energy_balance":(
+          sp_heat.get("energy_balance") if sp_heat else None),
+      "sp2026_stage2_thermal_source":(
+          sp_heat.get("governing_source") if sp_heat else None),
+      "sp2026_stage2_boundary_source":(
+          sp_heat.get("external_boundary_source") if sp_heat else None),
+      "sp2026_stage2_moisture_model":(
+          sp_heat.get("moisture_model") if sp_heat else None),
       "sp2026_calculated_R_t_status":"NOT_ESTABLISHED_SP2026_MEMBER_NOT_IMPLEMENTED",
       "spalling_annex_L":spalling,
       "natural_sand_assumed":sand_source=="hidden_default_assumed_natural_unverified",
