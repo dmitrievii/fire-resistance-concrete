@@ -566,7 +566,8 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 sp7_phi=stage3_spec["nominal_sp5_phi_eff"]
                 sp7_at_required=assess_coupled_sp5_nominal_at_time(
                     c_sp,select_sp2026_snapshot(sp_heat,required),
-                    stage3_spec,grid=grid,effective_creep_phi=sp7_phi)
+                    stage3_spec,grid=grid,effective_creep_phi=sp7_phi,
+                    global_euler_audit=True)
                 sp7_status=sp7_at_required["status"]
                 if stage3_spec.get("coupled_sp5_history_requested") is True:
                     try:
