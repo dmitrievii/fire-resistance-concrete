@@ -328,8 +328,10 @@ def prepare_sp2026_full_nonlinear_section(column, thermal_snapshot, *, grid=12):
             t,prepared.sp_concrete,prepared.sp_concrete_normal)
         if p["fcm_theta_MPa"]>0 and p["shape_parameter_k"]<=1.:
             raise SPSectionInputError(
-                "full SP5 hot constitutive mapping singular: k<=1; "
-                "experimental εc1(T) needed; no interpolation or invented strain")
+                "full SP5 hot constitutive mapping singular: k<=1 "
+                f"at {t:.2f} C; computed k={p['shape_parameter_k']:.4f}, "
+                f"k_c={p['SP_table9_kc']:.4f}, beta={p['SP_table9_beta']:.4f}; "
+                "source-matched hot epsilon_c1(T) needed, no invented strain")
         material_data.append(p)
     prepared.sp_concrete_stress_fn=concrete_full_nonlinear_stress_sp
     prepared.sp_constitutive_mode=MODE
