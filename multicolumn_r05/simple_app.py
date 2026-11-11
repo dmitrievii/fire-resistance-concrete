@@ -329,6 +329,7 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                  "но нормативная эквивалентность требует проверки.")
         sp6_phi=0.
         sp6_history=False
+        sp6_grid=False
         if sp6_nominal:
             sp6_phi=field.number_input(
                 "Эффективный коэффициент ползучести φef, СП 5 §8.1.6.5",
@@ -342,6 +343,13 @@ with st.form(f"column_fire_design_v07_{cid}",clear_on_submit=False):
                 help="Для сохранённых моментов времени 1/3, 2/3 "
                      "и требуемой продолжительности. "
                      "Не интерполирует температурные поля.")
+            sp6_grid=field.checkbox(
+                "SP-R.6: проверить сходимость сетки волокон (8/12/16)",
+                value=False,
+                help="Исследуется только дискретизация механического "
+                     "сечения при одном замороженном температурном поле. "
+                     "Сходимость тепловой сетки и физическая проверка R "
+                     "этим не подтверждаются.")
             st.caption("При неравномерном нагреве интегрирование "
                        "βE(T) по волокнам — расчётная "
                        "гипотеза, а не буквально предписанная "
@@ -439,6 +447,8 @@ if run:
                     "SP5 Eq8.64 load-combination provenance not independently qualified")
                 if sp6_history:
                     column["member_spec"]["nominal_sp5_history_requested"]=True
+                if sp6_grid:
+                    column["member_spec"]["nominal_sp5_grid_study_requested"]=True
             if sp5_full_law:
                 column["member_spec"]["constitutive_model"]=(
                     "SP5_6_1_5_2_FULL_HOT_EXPLORATORY")
@@ -678,6 +688,26 @@ if record:
                            "учтён один раз; минимум e0≥max(h/30,20 мм) "
                            "применён как нижний предел, не добавлением "
                            "к уже учтённому эксцентриситету.")
+                mesh_report=r.get("sp2026_stage6_sp5_nominal_grid_study") or {}
+                if mesh_report.get("grids"):
+                    st.markdown("**Численная сходимость механического сечения**")
+                    st.dataframe(pd.DataFrame([{
+                        "Сетка":p["fibre_grid"],
+                        "Ncrit,x, кН":p["Ncrit_x_kN"],
+                        "Ncrit,y, кН":p["Ncrit_y_kN"],
+                        "ηa,x":p["eta_x"],"ηa,y":p["eta_y"]}
+                        for p in mesh_report["grids"]]),
+                        hide_index=True,use_container_width=True)
+                    st.write("Изменение Ncrit между сетками:",
+                             mesh_report["pairwise_comparisons"])
+                    st.caption("Тепловая сетка SP-R2 остаётся неизменной; "
+                               "физическая и нормативная сходимость R "
+                               "отсюда не следует.")
+                elif r.get("sp2026_stage6_sp5_nominal_grid_status") not in (
+                        None,"SP_R6_GRID_STUDY_NOT_REQUESTED"):
+                    st.warning("Исследование сетки: "+str(
+                        r.get("sp2026_stage6_sp5_nominal_grid_blocker") or
+                        r.get("sp2026_stage6_sp5_nominal_grid_status")))
                 series=r.get("sp2026_stage6_sp5_nominal_history") or {}
                 if series.get("samples"):
                     st.dataframe(pd.DataFrame([{
@@ -689,6 +719,12 @@ if record:
                         "ηa,y":(s["y_nominal"] or {}).get("eta_a")}
                         for s in series["samples"]]),
                         hide_index=True,use_container_width=True)
+                    if series.get("observed_strain_check_transitions"):
+                        st.warning(
+                            "Наблюдаемые между отсчётами переходы "
+                            "деформационного критерия модели: "+
+                            str(series["observed_strain_check_transitions"])+
+                            ". Это НЕ первое физическое разрушение t_R.")
             else:
                 st.warning("Ветвь не выполнена: "+str(
                     r.get("sp2026_stage6_sp5_nominal_blocker") or sp6_status))
