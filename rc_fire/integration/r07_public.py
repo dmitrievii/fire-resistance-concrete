@@ -33,7 +33,8 @@ from rc_fire.member.sp2026_member import (
     SP2026MemberInputError,evaluate_sp2026_member_at_time,
     scan_sp2026_member_history)
 from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
-from rc_fire.member.sp2026_resistance import evaluate_sp2026_member_resistance
+from rc_fire.member.sp2026_resistance import (
+    evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
 
 VERSION="R0.7-public-fire-workflow-v10-SP-R4-resistance-evidence"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
@@ -334,6 +335,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
     sp4_status="SP_R4_NOT_REQUESTED"
     sp4_result=None
     sp4_blocker=None
+    sp4_history=None
+    sp4_history_status="SP_R4_HISTORY_NOT_REQUESTED"
+    sp4_history_blocker=None
     if stage3_spec.get("resistance_scan_requested") is True:
         if stage3_spec.get("load_mode")!="explicit_sp2026_beam":
             sp4_status="BLOCKED_SP_R4_FULL_MEMBER_INPUT_REQUIRED"
@@ -355,6 +359,23 @@ def fire_assessment(column:dict,*,required_minutes:float,
                     max_factor=stage3_spec.get("resistance_scan_max_factor",2.),
                     relative_tolerance=.005,max_refinements=12)
                 sp4_status=sp4_result["status"]
+                if stage3_spec.get("resistance_time_history_requested") is True:
+                    try:
+                        times=stage3_spec.get("history_times_minutes")
+                        if not isinstance(times,(list,tuple)) or not 1<=len(times)<=12:
+                            raise SP2026MemberInputError(
+                                "SP-R4 requires 1..12 explicit stored heat times for history")
+                        sp4_history=scan_sp2026_resistance_time_history(
+                            c_sp,sp_heat,stage3_spec,times,grid=grid,
+                            first_factor=stage3_spec.get("resistance_scan_first_factor",.25),
+                            step=stage3_spec.get("resistance_scan_step",.25),
+                            max_factor=stage3_spec.get("resistance_scan_max_factor",2.),
+                            relative_tolerance=.005,max_refinements=12)
+                        sp4_history_status=sp4_history["status"]
+                    except (SP2026MemberInputError,SPHeatError,
+                            ValueError,TypeError,ArithmeticError,KeyError) as exc:
+                        sp4_history_status="BLOCKED_SP_R4_TIME_HISTORY"
+                        sp4_history_blocker=type(exc).__name__+": "+str(exc)
             except (SP2026MemberInputError,SPHeatError,
                     ValueError,TypeError,ArithmeticError,KeyError) as exc:
                 sp4_status="BLOCKED_SP_R4_RESISTANCE_SCAN"
@@ -437,6 +458,9 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage4_resistance_scan_status":sp4_status,
       "sp2026_stage4_resistance_scan_at_required_time":sp4_result,
       "sp2026_stage4_resistance_scan_blocker":sp4_blocker,
+      "sp2026_stage4_resistance_time_history_status":sp4_history_status,
+      "sp2026_stage4_resistance_time_history":sp4_history,
+      "sp2026_stage4_resistance_time_history_blocker":sp4_history_blocker,
       "sp2026_stage4_actual_member_utilisation_U_t":None,
       "sp2026_calculated_R_t_status":(
           "NOT_ESTABLISHED_SP2026_MEMBER_ULS_QUALIFICATION_PENDING"
