@@ -529,6 +529,35 @@ if record:
         st.caption("Фактические U(t), t_R и соответствие Rrequired пока не "
                    "установлены — требуется верификация материала, температур "
                    "и критерия первого физического отказа.")
+    qualification=r.get("sp2026_stage4q_mechanical_qualification")
+    qual_status=r.get("sp2026_stage4q_mechanical_qualification_status")
+    if qual_status not in (None,"SP_R4Q_MEMBER_MODEL_NOT_REQUESTED"):
+        with st.expander(
+            "SP-R.4Q · Независимая квалификация механического расчёта",
+            expanded=True):
+            if qualification:
+                st.write("Статус:",qual_status)
+                passed=qualification.get("numerical_pass_count",0)
+                st.metric("Независимые численные проверки",f"{passed}/5")
+                st.caption("Проверяются независимые решения Эйлера, прогиб "
+                           "при P–Δ, якобиан нагретого сечения и двухосная "
+                           "конденсированная жесткость. PASS означает "
+                           "численную согласованность, НЕ соответствие СП "
+                           "и НЕ экспериментальную валидацию.")
+                gates=qualification.get("gate_results") or []
+                if gates:
+                    st.dataframe(pd.DataFrame([{
+                        "Проверка":g["id"],"Статус":g["status"],
+                        "Основание / проблема":g["detail"]}
+                        for g in gates]),hide_index=True,use_container_width=True)
+                if qualification.get("remaining_blockers"):
+                    st.warning("Нормативное механическое предельное состояние "
+                               "не квалифицировано. U(t), t_R и Rrequired "
+                               "не установлены.")
+            else:
+                st.warning("Проверка SP-R.4Q не выполнена: "+str(
+                    r.get("sp2026_stage4q_mechanical_qualification_blocker")
+                    or qual_status))
     show_after_required=st.checkbox(
         "Показывать дополнительно период после Rrequired (до 2× Rrequired)",
         value=False,key=f"r074_extended_results_{cid}",

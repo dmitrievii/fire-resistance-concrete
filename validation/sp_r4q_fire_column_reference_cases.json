@@ -1,0 +1,118 @@
+{
+  "schema_version": "SP-R4Q-EXPERIMENT-CATALOG-v1",
+  "reference": {
+    "authors": "Kodur, Dwaikat, Raut",
+    "title": "Macroscopic FE model for tracing the fire response of reinforced concrete structures",
+    "journal": "Engineering Structures",
+    "year": 2009,
+    "volume": 31,
+    "pages": "2368-2379",
+    "doi": "10.1016/j.engstruct.2009.05.018",
+    "source_url": "https://staff.najah.edu/media/sites/default/files/Macroscopic_FE_Model_for_Tracing_the_Fire_Response_of_Reinforced_Concrete_Structures.pdf",
+    "source_table": "Table 1, printed page 2373, PDF page 6",
+    "primary_test_credit": "Lie and Woolerton (as credited in source Table 1)",
+    "note": "Reported experimental observations, not SP-R4Q computed predictions"
+  },
+  "cases": [
+    {
+      "id": "I3",
+      "cross_section_mm": [
+        305,
+        305
+      ],
+      "length_m": 3.8,
+      "supports": "fixed-fixed",
+      "longitudinal_bars": {
+        "count": 4,
+        "nominal_diameter_mm": 25
+      },
+      "concrete_compressive_strength_reported_MPa": 34.8,
+      "steel_yield_strength_reported_MPa": 444,
+      "applied_axial_load_kN": 800,
+      "reported_cover_mm": 48,
+      "aggregate_family": "siliceous",
+      "fire_exposure": "ASTM E119",
+      "observed_fire_failure_time_min": 218,
+      "source_macroscopic_FE_strength_failure_time_min": 205,
+      "sp_r4q_test_execution": "NOT_EXECUTED",
+      "independent_full_validation": "NOT_ESTABLISHED",
+      "source_compatibility_status": "BLOCKED_INPUT_MAPPING_AND_CONSTITUTIVE_VALIDATION",
+      "missing_preanalysis": [
+        "Original primary test report and actual rebar centre/stirrup cover definitions",
+        "Experiment concrete f_c prime cannot be silently reclassified to SP5 Cx/y f_ck",
+        "Measured 444 MPa reinforcement not the SP-R1 S500 catalog default",
+        "ASTM E119 furnace boundary is not identical to SP2026 fire without an explicit comparison",
+        "Thermal/radiation and moisture, spalling, actual boundary restraint stiffness, load eccentricity",
+        "Time dependent hot constitutive properties and physical first failure criterion"
+      ]
+    },
+    {
+      "id": "T3",
+      "cross_section_mm": [
+        305,
+        305
+      ],
+      "length_m": 3.8,
+      "supports": "pinned-pinned",
+      "longitudinal_bars": {
+        "count": 4,
+        "nominal_diameter_mm": 25
+      },
+      "concrete_compressive_strength_reported_MPa": 37.4,
+      "steel_yield_strength_reported_MPa": 444,
+      "applied_axial_load_kN": 1022,
+      "reported_cover_mm": 48,
+      "aggregate_family": "siliceous",
+      "fire_exposure": "ASTM E119",
+      "observed_fire_failure_time_min": 221,
+      "source_macroscopic_FE_strength_failure_time_min": 212,
+      "sp_r4q_test_execution": "NOT_EXECUTED",
+      "independent_full_validation": "NOT_ESTABLISHED",
+      "source_compatibility_status": "BLOCKED_INPUT_MAPPING_AND_CONSTITUTIVE_VALIDATION",
+      "missing_preanalysis": [
+        "Original primary test report and actual rebar centre/stirrup cover definitions",
+        "Experiment concrete f_c prime cannot be silently reclassified to SP5 Cx/y f_ck",
+        "Measured 444 MPa reinforcement not the SP-R1 S500 catalog default",
+        "ASTM E119 furnace boundary is not identical to SP2026 fire without an explicit comparison",
+        "Thermal/radiation and moisture, spalling, actual boundary restraint stiffness, load eccentricity",
+        "Time dependent hot constitutive properties and physical first failure criterion"
+      ]
+    },
+    {
+      "id": "II10",
+      "cross_section_mm": [
+        407,
+        407
+      ],
+      "length_m": 3.8,
+      "supports": "fixed-fixed",
+      "longitudinal_bars": {
+        "count": 4,
+        "nominal_diameter_mm": 36
+      },
+      "concrete_compressive_strength_reported_MPa": 38.4,
+      "steel_yield_strength_reported_MPa": 444,
+      "applied_axial_load_kN": 2418,
+      "reported_cover_mm": 48,
+      "aggregate_family": "siliceous",
+      "fire_exposure": "ASTM E119",
+      "observed_fire_failure_time_min": 262,
+      "source_macroscopic_FE_strength_failure_time_min": 240,
+      "sp_r4q_test_execution": "NOT_EXECUTED",
+      "independent_full_validation": "NOT_ESTABLISHED",
+      "source_compatibility_status": "BLOCKED_INPUT_MAPPING_AND_CONSTITUTIVE_VALIDATION",
+      "missing_preanalysis": [
+        "Original primary test report and actual rebar centre/stirrup cover definitions",
+        "Experiment concrete f_c prime cannot be silently reclassified to SP5 Cx/y f_ck",
+        "Measured 444 MPa reinforcement not the SP-R1 S500 catalog default",
+        "ASTM E119 furnace boundary is not identical to SP2026 fire without an explicit comparison",
+        "Thermal/radiation and moisture, spalling, actual boundary restraint stiffness, load eccentricity",
+        "Time dependent hot constitutive properties and physical first failure criterion"
+      ]
+    }
+  ],
+  "global_status": "REFERENCE_SOURCE_TRANSCRIBED_NOT_VALIDATED_BY_OUR_ENGINE",
+  "no_assumed_equivalence_with_SP_standard_fire": true,
+  "no_model_fitting_or_tuning_to_measured_failures": true,
+  "user_concrete_zero_above_800_is_not_an_experimental_measurement": true
+}

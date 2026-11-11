@@ -35,8 +35,14 @@ from rc_fire.member.sp2026_member import (
 from rc_fire.mechanics.sp2026_stiffness_audit import audit_sp2026_concrete_stiffness
 from rc_fire.member.sp2026_resistance import (
     evaluate_sp2026_member_resistance,scan_sp2026_resistance_time_history)
+from rc_fire.mechanics.sp2026_section import prepare_sp2026_section
+from rc_fire.member.sp2026_mechanical_qualification import (
+    verify_euler_critical_load,verify_biaxial_euler_coupling,
+    verify_pdelta_midspan,
+    verify_hot_section_jacobian,verify_condensed_hot_member_tangent,
+    mechanical_uls_admissibility)
 
-VERSION="R0.7-public-fire-workflow-v10-SP-R4-resistance-evidence"
+VERSION="R0.7-public-fire-workflow-v11-SP-R4Q-mechanical-gates"
 SUPPORTED_R_MINUTES=(30,45,60,90,120,150,180)
 
 
@@ -382,6 +388,38 @@ def fire_assessment(column:dict,*,required_minutes:float,
                 sp4_blocker=type(exc).__name__+": "+str(exc)
                 sp4_result=None
 
+    # SP-R4Q: external analytical checks verify the numerical FE kernel,
+    # not the physical hot RC law or global first physical failure.
+    sp4q_evidence=None
+    sp4q_status="SP_R4Q_MEMBER_MODEL_NOT_REQUESTED"
+    sp4q_blocker=None
+    if stage3_spec.get("load_mode")=="explicit_sp2026_beam":
+        if sp_heat is None:
+            sp4q_status="BLOCKED_SP_R4Q_SP_HEAT_MISSING"
+            sp4q_blocker=sp_heat_problem or "source-matched SP heat unavailable"
+        else:
+            try:
+                source_section=prepare_sp2026_section(
+                    c_sp,select_sp2026_snapshot(sp_heat,required),grid=grid)
+                numeric={
+                    "euler":verify_euler_critical_load(
+                        left_kind="pinned",right_kind="pinned",node_count=17),
+                    "coupled_euler":verify_biaxial_euler_coupling(node_count=17),
+                    "pdelta":verify_pdelta_midspan(node_count=17),
+                    "jacobian":verify_hot_section_jacobian(source_section),
+                    "condensed_tangent":verify_condensed_hot_member_tangent(
+                        source_section,
+                        stage3_spec["N_kN"])}
+                sp4q_evidence=mechanical_uls_admissibility(
+                    c_sp,stage3_spec,numeric_evidence=numeric)
+                sp4q_evidence["numerical_benchmarks"]=numeric
+                sp4q_status=sp4q_evidence["status"]
+            except Exception as exc:
+                # No numerical or normative PASS if a benchmark is invalid.
+                sp4q_evidence=mechanical_uls_admissibility(c_sp,stage3_spec)
+                sp4q_status="BLOCKED_SP_R4Q_NUMERICAL_VERIFICATION"
+                sp4q_blocker=type(exc).__name__+": "+str(exc)
+
     thermal_timeline=[{
         "minute":row["time_minutes"],
         "gas_C":row.get("T_gas_C"),
@@ -461,6 +499,10 @@ def fire_assessment(column:dict,*,required_minutes:float,
       "sp2026_stage4_resistance_time_history_status":sp4_history_status,
       "sp2026_stage4_resistance_time_history":sp4_history,
       "sp2026_stage4_resistance_time_history_blocker":sp4_history_blocker,
+      "sp2026_stage4q_mechanical_qualification_status":sp4q_status,
+      "sp2026_stage4q_mechanical_qualification":sp4q_evidence,
+      "sp2026_stage4q_mechanical_qualification_blocker":sp4q_blocker,
+      "sp2026_stage4q_mechanical_uls_qualified":False,
       "sp2026_stage4_actual_member_utilisation_U_t":None,
       "sp2026_calculated_R_t_status":(
           "NOT_ESTABLISHED_SP2026_MEMBER_ULS_QUALIFICATION_PENDING"
