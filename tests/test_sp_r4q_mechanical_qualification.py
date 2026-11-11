@@ -101,6 +101,26 @@ class TestSourceHotFibreAndGate(unittest.TestCase):
         self.assertTrue(tested["axial_force_solved_on_every_trial"])
         self.assertFalse(tested["normative_mechanical_fire_qualified"])
 
+    def test_asymmetric_two_face_fire_heated_biaxial_fibre_derivatives(self):
+        from rc_fire.thermal.sp2026_heat import (
+            solve_sp2026_2d_heat,reference_sp2026_boundary)
+        c=copy.deepcopy(self.column)
+        c["thermal_spec"]["exposed_faces"]=["left","top"]
+        thermal=solve_sp2026_2d_heat(
+            c,boundary=reference_sp2026_boundary(moisture_mass_pct=1.5),
+            cell_count_x=8,cell_count_y=8,max_step_minutes=2.5,
+            sample_times_minutes=[10.])
+        source=select_sp2026_snapshot(thermal,10.)
+        p=prepare_sp2026_section(c,source,grid=8)
+        jac=verify_hot_section_jacobian(
+            p,state=(.001,.0002,-.0001),perturbation=1.e-7)
+        self.assertLess(jac["max_relative_global_scale_error"],.001)
+        d=verify_condensed_hot_member_tangent(
+            p,c["sections"][0]["N_kN"],
+            curvature_1pm=(1.e-5,-2.e-5),perturbation_1pm=1.e-7)
+        self.assertLess(d["relative_global_scale_error"],.001)
+        self.assertFalse(d["normative_mechanical_fire_qualified"])
+
     def test_numerical_verification_cannot_promote_false_normative_R(self):
         snap=select_sp2026_snapshot(self.heat,5.)
         prepared=prepare_sp2026_section(self.column,snap,grid=8)
