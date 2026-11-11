@@ -27,7 +27,10 @@ from rc_fire.member.sp2026_member import (
     _validate_spec, _snapshot_checked, _finite, SP2026MemberInputError,
     SP2026MemberFiberLaw)
 from rc_fire.mechanics.sp2026_section import (
-    SPSectionInputError, prepare_sp2026_section)
+    SPSectionInputError, prepare_sp2026_section,
+    prepare_sp2026_full_nonlinear_section)
+from rc_fire.member.sp2026_global_stability import (
+    inspect_solved_member_global_stability,STABLE,UNSTABLE,AMBIGUOUS,UNKNOWN as STABILITY_UNKNOWN)
 from rc_fire.thermal.sp2026_heat import SPHeatError
 from rc_fire.materials.sp2026_fire import concrete_at_sp_fire,steel_at_sp_fire
 
@@ -108,11 +111,23 @@ class PreparedSP2026MemberResistance:
             raise SP2026MemberInputError("unknown member longitudinal temperature distribution")
         if type(grid) is not int or not 8<=grid<=80:
             raise SP2026MemberInputError("fibre grid must be integer 8..80")
+        self.constitutive_mode=member_spec.get(
+            "constitutive_model","SP5_6_1_5_4_SECTION_CHECK")
+        if self.constitutive_mode=="SP5_6_1_5_4_SECTION_CHECK":
+            prepare_section=prepare_sp2026_section
+        elif self.constitutive_mode=="SP5_6_1_5_2_FULL_HOT_EXPLORATORY":
+            prepare_section=prepare_sp2026_full_nonlinear_section
+        else:
+            raise SP2026MemberInputError("unknown SP5 constitutive mode")
+        self.check_global_stability=member_spec.get(
+            "global_stability_requested",False)
+        if type(self.check_global_stability) is not bool:
+            raise SP2026MemberInputError("global stability requested must be Boolean")
         cache={}
         def prepared(field):
             k=id(field)
             if k not in cache:
-                cache[k]=prepare_sp2026_section(column,field,grid=grid)
+                cache[k]=prepare_section(column,field,grid=grid)
             return cache[k]
         self.gauss_prepared=[[prepared(s) for s in row] for row in gauss]
         self.node_prepared=[prepared(s) for s in nodes]
@@ -200,6 +215,23 @@ class PreparedSP2026MemberResistance:
             result={"member":member,"uls":uls,
                     "z_m":self.z.tolist()}
             status,reason=_known_state(result)
+            stability=None
+            if self.check_global_stability:
+                stability=inspect_solved_member_global_stability(
+                    member,self.z,self.N*lam,
+                    law_at_gauss=lambda i,j:gauss[i][j],
+                    left=self.left,right=self.right,
+                    distributed_load_kNpm=self.q*lam,
+                    nodal_forces=self.f*lam,
+                    initial_imperfection=self.imperfection)
+                if stability.get("status") not in (STABLE,):
+                    # Stable equilibrium for a checked load factor cannot
+                    # be asserted if an independently rebuilt global tangent
+                    # is unstable, near singular or unresolved. In particular,
+                    # a negative tangent is no evidence of PHYSICAL collapse.
+                    status="UNRESOLVED_MEMBER_STATE"
+                    reason="global equilibrium/second variation not qualified: "+str(
+                        stability.get("status"))
             critical=(uls.get("critical_sample") or {})
             ratio=critical.get("maximum_ratio")
             if ratio is not None and (
@@ -209,6 +241,9 @@ class PreparedSP2026MemberResistance:
             return {
                 "load_factor":float(lam),
                 "state":status,
+                "constitutive_mode":self.constitutive_mode,
+                "global_stability_evidence":stability,
+                "first_global_failure_qualified":False,
                 "reason":reason,
                 "critical_model_strain_ratio":ratio,
                 "critical_sample":critical if ratio is not None else None,
@@ -396,6 +431,9 @@ def evaluate_sp2026_member_resistance(column,thermal_snapshot,member_spec, *,
     required=case.evaluate_factor(1.)
     return {**result,"fire_time_minutes":case.time,
         "member_model":"SP2026_SP-R2_HEAT_SP-R1_FIBRE_SP-R3_TWO_AXIS_PDELTA",
+        "constitutive_mode":case.constitutive_mode,
+        "global_spectral_requested":case.check_global_stability,
+        "global_first_physical_failure_qualified":False,
         "exposure_mode":case.mode,"beam_node_count":len(case.z),
         "temperature_station_count":len(case.node_prepared)+3*len(case.gauss_prepared),
         "reference_design_actions":{
