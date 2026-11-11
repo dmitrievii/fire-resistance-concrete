@@ -163,5 +163,62 @@ class TestGlobalStructuralStability(unittest.TestCase):
         self.assertFalse(evidence["normative_claim"])
 
 
+class TestSP5WholeColumnEndToEndFailClosed(unittest.TestCase):
+    def test_full_hot_source_branch_blocks_inadmissible_beta_peak_without_fake_R(self):
+        from test_r07_public_workflow import user_inputs
+        from rc_fire.integration.r07_inputs import (
+            make_column,explicit_pinned_uniform_sp2026_member)
+        from rc_fire.integration.r07_public import fire_assessment
+        c=make_column(user_inputs())
+        c["fire_minutes"]=30.
+        spec=explicit_pinned_uniform_sp2026_member(
+            c,confirmed_pinned_uniform_action_model=True,
+            confirmed_uniform_longitudinal_fire=True,
+            imperfection_x_mm=6.,imperfection_y_mm=3.)
+        spec.update({
+            "constitutive_model":"SP5_6_1_5_2_FULL_HOT_EXPLORATORY",
+            "global_stability_requested":True,
+            "resistance_scan_requested":True,
+            "resistance_scan_first_factor":.25,
+            "resistance_scan_step":.25,
+            "resistance_scan_max_factor":.5})
+        c["member_spec"]=spec
+        result=fire_assessment(
+            c,required_minutes=30.,steel_route="hot_rolled",
+            ductility_class="B",moisture_mass_pct=1.5,
+            grid=8,dt_minutes=3.)
+        self.assertEqual(result["regulatory_result"],"NOT_ESTABLISHED")
+        self.assertIsNone(result["R_t_minutes"])
+        self.assertIsNone(result["sp2026_stage5_actual_t_R_minutes"])
+        self.assertFalse(result["sp2026_stage5_first_physical_failure_qualified"])
+        self.assertIn(result["sp2026_stage5_constitutive_status"],(
+            "BLOCKED_FULL_HOT_CONSTITUTIVE_DOMAIN",
+            "RESEARCH_FULL_EQUATION_EVALUATED_HOT_STRAIN_UNQUALIFIED"))
+        if result["sp2026_stage5_constitutive_status"]=="BLOCKED_FULL_HOT_CONSTITUTIVE_DOMAIN":
+            self.assertIn("k<=1",result["sp2026_stage5_constitutive_blocker"])
+
+    def test_global_criterion_is_observed_on_actual_simplified_hot_column_only_when_solved(self):
+        from rc_fire.member.sp2026_resistance import (
+            PreparedSP2026MemberResistance)
+        SPR3ActualMemberNumerics.setUpClass()
+        c=copy.deepcopy(SPR3ActualMemberNumerics.column)
+        c["fire_minutes"]=10.
+        spec=copy.deepcopy(SPR3ActualMemberNumerics.spec)
+        spec["global_stability_requested"]=True
+        snap=select_sp2026_snapshot(SPR3ActualMemberNumerics.heat,5.)
+        solver=PreparedSP2026MemberResistance(
+            c,snap,spec,grid=8)
+        row=solver.evaluate_factor(.25)
+        self.assertIn(row["state"],(
+            "EQUILIBRATED_WITHIN_CHECKED_MODEL_LIMITS",
+            "EQUILIBRATED_SAMPLED_STRAIN_LIMIT_EXCEEDED",
+            "UNRESOLVED_MEMBER_STATE"))
+        if row["member_status"] in (
+                "evaluated_diagnostic","strain_limits_exceeded_diagnostic"):
+            self.assertIsNotNone(row["global_stability_evidence"])
+            self.assertTrue(row["global_stability_evidence"]["global_energy_second_variation_checked"])
+            self.assertFalse(row["first_global_failure_qualified"])
+
+
 if __name__=="__main__":
     unittest.main()
