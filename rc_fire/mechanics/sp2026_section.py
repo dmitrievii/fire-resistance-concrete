@@ -24,6 +24,8 @@ from rc_fire.mechanics.tkp_thermomechanical_fibres import (
     TKPPreparedFibres)
 from rc_fire.thermal.tkp_heat import sample_tkp_temperature
 from rc_fire.thermal.sp2026_heat import sample_sp2026_temperature
+from rc_fire.thermal.sp2026_annex_k_field import (
+    ANNEX_K_METHOD, sample_annex_k_temperature, validate_annex_k_snapshot)
 
 VERSION="SP-R2-2026-heated-section-fibre-coupling-v2"
 
@@ -181,7 +183,7 @@ class SPPreparedSection(TKPPreparedFibres):
 
 
 def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
-    """SP fibre inventory sampled ONLY from the provided FVM temperature field.
+    """SP fibre inventory sampled from an explicit FVM or Annex K field.
 
     SP Appendix K.1-based FVM is the primary source; the TKP field
     remains available only as an explicitly segregated legacy diagnostic.
@@ -190,15 +192,20 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
     if not isinstance(column,dict) or not isinstance(thermal_snapshot,dict):
         raise SPSectionInputError("column and explicit thermal snapshot required")
     method=thermal_snapshot.get("thermal_method")
-    if method not in ("SP2026_8.2.23_FVM","TKP_4.3.2_FVM") or not isinstance(
+    if method not in ("SP2026_8.2.23_FVM","TKP_4.3.2_FVM",ANNEX_K_METHOD) or not isinstance(
         thermal_snapshot.get("snapshot"),dict):
         raise SPSectionInputError("time-matched SP or legacy TKP FVM snapshot required")
-    expected_status=("evaluated_sp2026_thermal_diagnostic"
-                     if method=="SP2026_8.2.23_FVM" else "evaluated_tkp_diagnostic")
+    expected_status={"SP2026_8.2.23_FVM":"evaluated_sp2026_thermal_diagnostic",
+                     "TKP_4.3.2_FVM":"evaluated_tkp_diagnostic",
+                     ANNEX_K_METHOD:"evaluated_annex_k_conditional"}[method]
     if thermal_snapshot.get("status")!=expected_status:
         raise SPSectionInputError("source thermal solution not evaluated")
-    temperature_at=(sample_sp2026_temperature if method=="SP2026_8.2.23_FVM"
-                    else sample_tkp_temperature)
+    if method==ANNEX_K_METHOD:
+        validate_annex_k_snapshot(column,thermal_snapshot)
+        temperature_at=sample_annex_k_temperature
+    else:
+        temperature_at=(sample_sp2026_temperature if method=="SP2026_8.2.23_FVM"
+                        else sample_tkp_temperature)
     if type(grid) is not int or not 8<=grid<=80:
         raise SPSectionInputError("mechanical fibre grid integer 8..80 required")
     mat=resolve_materials(column)
@@ -224,7 +231,8 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
     if field.get("material_family")!=aggregate:
         raise SPSectionInputError("SP concrete aggregate differs from thermal solution")
     t=float(field["snapshot"]["time_minutes"])
-    if not 0<t<=float(column.get("fire_minutes",t))+1e-8:
+    if not (0<=t<=float(column.get("fire_minutes",t))+1e-8 and
+            (t>0 or method==ANNEX_K_METHOD)):
         raise SPSectionInputError("temperature snapshot outside source fire duration")
     xx=(np.arange(grid)+.5)*width/grid
     yy=(np.arange(grid)+.5)*height/grid
@@ -238,14 +246,17 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
         d=_positive(bar.get("diameter_mm"),"bar.d")/1000.
         if not d/2.<x<width-d/2. or not d/2.<y<height-d/2.:
             raise SPSectionInputError("bar outside section; check physical cover")
-        temperature=temperature_at(field,x*1000.,y*1000.)
+        concrete_temperature=temperature_at(field,x*1000.,y*1000.)
+        temperature=(sample_annex_k_temperature(field,x*1000.,y*1000.,
+                     bar_diameter_mm=d*1000.) if method==ANNEX_K_METHOD
+                     else concrete_temperature)
         # Explicit steel >800 fail-closed. Concrete >800 => 0 stress.
         steel_at_sp_fire(steel,temperature,normal=ss)
         ids.append(str(bar["id"]))
         bx.append(x);by.append(y)
         As.append(math.pi*(d/2.)**2)
         ts.append(float(temperature))
-        tcb.append(float(temperature))
+        tcb.append(float(concrete_temperature))
     if not ids or len(ids)!=len(set(ids)):
         raise SPSectionInputError("unique real reinforcing bars required")
     for theta in temps:
@@ -281,9 +292,11 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
             "SP_fire":"СП 2.02.05-2026 §§8.2.18–8.2.20, Tables9–12, Eq6",
             "SP_normal":"СП 5.03.01-2020 §§6.1.5.4,6.2.2.13",
             "concrete_policy":"USER_ASSUME_ZERO_STRENGTH_IF_T>800_C",
-            "thermal":("SP2026_8.2.23_K1_FVM_SOURCE_LAWS_WITH_UNQUALIFIED_BOUNDARY"
-                if method=="SP2026_8.2.23_FVM"
-                else "TKP_4.3.2_FVM_UNQUALIFIED_AS_SP_823"),
+            "thermal":({"SP2026_8.2.23_FVM":"SP2026_8.2.23_K1_FVM_SOURCE_LAWS_WITH_UNQUALIFIED_BOUNDARY",
+                        "TKP_4.3.2_FVM":"TKP_4.3.2_FVM_UNQUALIFIED_AS_SP_823",
+                        ANNEX_K_METHOD:"SP2026_ANNEX_K_CONDITIONAL_K5_K11"}[method]),
+            "thermal_method":method,
+            "annex_k_provenance":field.get("annex_k_provenance") if method==ANNEX_K_METHOD else None,
             "thermal_property_convergence_qualified":False,
             "full_member_R_t_qualified":False})
     # Explicit corners + exposed/unexposed face midpoints. Temperature is

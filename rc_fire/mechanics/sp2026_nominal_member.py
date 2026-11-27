@@ -29,6 +29,7 @@ import numpy as np
 
 from rc_fire.materials.sp2026_fire import (
     SPFireMaterialError,concrete_at_sp_fire,steel_at_sp_fire)
+from rc_fire.thermal.sp2026_annex_k_field import ANNEX_K_METHOD
 from rc_fire.mechanics.sp2026_section import (
     prepare_sp2026_section,SPSectionInputError)
 from rc_fire.mechanics.action_capacity import WITHIN as SECTION_WITHIN, EXCEEDED as SECTION_EXCEEDED, UNKNOWN as SECTION_UNKNOWN
@@ -102,8 +103,8 @@ def design_parameters(normal_concrete,normal_steel,factors=None):
 def prepare_sp2026_design_section(column,snapshot,*,grid=12):
     """Return separate SP5 design section strength, not SP-R1 fck-only law."""
     prepared=prepare_sp2026_section(column,snapshot,grid=grid)
-    if snapshot.get("thermal_method")!="SP2026_8.2.23_FVM":
-        raise SP5NominalMemberError("SP5 fire design section requires SP-R2 heat")
+    if snapshot.get("thermal_method") not in ("SP2026_8.2.23_FVM",ANNEX_K_METHOD):
+        raise SP5NominalMemberError("SP5 fire design section requires explicit SP FVM or Annex K heat")
     params=design_parameters(prepared.sp_concrete_normal,prepared.sp_steel_normal)
     def concrete_law(eps,temperature,concrete,normal):
         mat=concrete_at_sp_fire(concrete,temperature,normal)
