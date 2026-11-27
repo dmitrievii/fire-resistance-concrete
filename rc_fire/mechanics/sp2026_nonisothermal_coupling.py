@@ -122,6 +122,12 @@ def _correction_dissipation(E,e,z,d,zz,dd,pp,soft):
     return Dp,Dd
 
 def trial_step(s,*,time_s,temperature_C,total_compression):
+    """Preserve R9F public 550 C contract; extended research uses private core."""
+    return _trial_step(s,time_s=time_s,temperature_C=temperature_C,
+                       total_compression=total_compression,
+                       max_temperature=550.,lits=tr._update_lits)
+
+def _trial_step(s,*,time_s,temperature_C,total_compression,max_temperature,lits):
     """Pure endpoint solve; guaranteed monotonic scalar bracket or refuse.
 
     LITS increment uses affine stress along temperature path as in R9D.
@@ -132,9 +138,9 @@ def trial_step(s,*,time_s,temperature_C,total_compression):
     """
     p=s.parameters.validate();t=finite(time_s,"time");T=finite(temperature_C,"T")
     u=finite(total_compression,"total strain")
-    if t<=s.time_s or not 20<=T<=550:
-        raise DomainError("positive time increment and 20..550 C required")
-    if not (20<=s.temperature_C<=s.maximum_temperature_C<=550 and
+    if t<=s.time_s or not 20<=T<=max_temperature:
+        raise DomainError(f"positive time increment and 20..{max_temperature:g} C required")
+    if not (20<=s.temperature_C<=s.maximum_temperature_C<=max_temperature and
             0<=s.damage<=1 and min(s.stress_MPa,s.plastic_compression,
                          s.transient_compression,s.basic_creep_compression)>=0):
         raise DomainError("invalid committed history")
@@ -150,8 +156,8 @@ def trial_step(s,*,time_s,temperature_C,total_compression):
                  maximum_temperature_C=s.maximum_temperature_C,stress_MPa=s.stress_MPa,
                  transient_compression=s.transient_compression)
     tp=tr.Parameters(p.family,p.fc20_MPa,p.E20_MPa,p.K)
-    B,_=tr._update_lits(tp,old,T,0.)
-    one,_=tr._update_lits(tp,old,T,1.)
+    B,_=lits(tp,old,T,0.)
+    one,_=lits(tp,old,T,1.)
     a=max(0.,one-B)
     c=0. if p.viscosity_MPa_s is None else (t-s.time_s)/p.viscosity_MPa_s
     A=a+c
@@ -169,7 +175,7 @@ def trial_step(s,*,time_s,temperature_C,total_compression):
         if res>0:hi=m
         else:lo=m
     else:raise DomainError("coupled local root did not converge")
-    dtr,stresspath_work=tr._update_lits(tp,old,T,sig)
+    dtr,stresspath_work=lits(tp,old,T,sig)
     dcr=c*sig
     # Recompute actual compatibility from independent R9D quadrature.
     compat=m+s.transient_compression+dtr+s.basic_creep_compression+dcr-eth-u
