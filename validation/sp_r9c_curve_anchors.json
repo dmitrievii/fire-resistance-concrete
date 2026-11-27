@@ -1,0 +1,476 @@
+{
+  "schema": "SP-R9C-curve-anchors-v1",
+  "concrete": [
+    {
+      "id": "FURUMURA_30",
+      "temperature_C": 30,
+      "peak": [
+        0.225,
+        270
+      ],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0.05,
+          100
+        ],
+        [
+          0.1,
+          200
+        ],
+        [
+          0.15,
+          255
+        ],
+        [
+          0.2,
+          268
+        ],
+        [
+          0.225,
+          270
+        ],
+        [
+          0.3,
+          256
+        ],
+        [
+          0.4,
+          228
+        ],
+        [
+          0.5,
+          204
+        ],
+        [
+          0.6,
+          181
+        ],
+        [
+          0.7,
+          156
+        ],
+        [
+          0.745,
+          145
+        ]
+      ],
+      "source": "Baldwin & North, Fire Research Note 785 (1969), Fig.1 PDF index 8, reproducing Furumura 1966",
+      "url": "https://publications.iafss.org/publications/frn/785/-1/view/frn_785.pdf",
+      "source_tier": "secondary_graph_reproduction",
+      "protocol": "hot_cyclic_monotonic_envelope",
+      "aggregate": null,
+      "units": [
+        "strain_percent",
+        "stress_kgf_cm2"
+      ],
+      "reading_allowance": [
+        0.01,
+        5
+      ],
+      "end_reason": "graph_termination_not_failure",
+      "peak_is_approximate": true
+    },
+    {
+      "id": "FURUMURA_300",
+      "temperature_C": 300,
+      "peak": [
+        0.42,
+        260
+      ],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0.1,
+          120
+        ],
+        [
+          0.2,
+          200
+        ],
+        [
+          0.3,
+          245
+        ],
+        [
+          0.4,
+          259
+        ],
+        [
+          0.42,
+          260
+        ],
+        [
+          0.5,
+          249
+        ],
+        [
+          0.6,
+          229
+        ],
+        [
+          0.7,
+          211
+        ],
+        [
+          0.8,
+          195
+        ],
+        [
+          0.9,
+          177
+        ],
+        [
+          0.945,
+          169
+        ]
+      ],
+      "source": "Baldwin & North, Fire Research Note 785 (1969), Fig.1 PDF index 8, reproducing Furumura 1966",
+      "url": "https://publications.iafss.org/publications/frn/785/-1/view/frn_785.pdf",
+      "source_tier": "secondary_graph_reproduction",
+      "protocol": "hot_cyclic_monotonic_envelope",
+      "aggregate": null,
+      "units": [
+        "strain_percent",
+        "stress_kgf_cm2"
+      ],
+      "reading_allowance": [
+        0.01,
+        5
+      ],
+      "end_reason": "graph_termination_not_failure",
+      "peak_is_approximate": true
+    },
+    {
+      "id": "FURUMURA_600",
+      "temperature_C": 600,
+      "peak": [
+        0.75,
+        145
+      ],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0.1,
+          37
+        ],
+        [
+          0.2,
+          70
+        ],
+        [
+          0.3,
+          95
+        ],
+        [
+          0.4,
+          116
+        ],
+        [
+          0.5,
+          128
+        ],
+        [
+          0.6,
+          138
+        ],
+        [
+          0.7,
+          145
+        ],
+        [
+          0.75,
+          145
+        ],
+        [
+          0.8,
+          144
+        ],
+        [
+          0.9,
+          139
+        ],
+        [
+          1,
+          132
+        ]
+      ],
+      "source": "Baldwin & North, Fire Research Note 785 (1969), Fig.1 PDF index 8, reproducing Furumura 1966",
+      "url": "https://publications.iafss.org/publications/frn/785/-1/view/frn_785.pdf",
+      "source_tier": "secondary_graph_reproduction",
+      "protocol": "hot_cyclic_monotonic_envelope",
+      "aggregate": null,
+      "units": [
+        "strain_percent",
+        "stress_kgf_cm2"
+      ],
+      "reading_allowance": [
+        0.01,
+        5
+      ],
+      "end_reason": "graph_termination_not_failure",
+      "peak_is_approximate": true
+    }
+  ],
+  "steel": [
+    {
+      "id": "D8_600",
+      "temperature_C": 600,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          247
+        ],
+        [
+          2,
+          250
+        ],
+        [
+          5,
+          240
+        ],
+        [
+          10,
+          222
+        ],
+        [
+          15,
+          200
+        ],
+        [
+          15.8,
+          160
+        ]
+      ],
+      "source": "Elghazouli et al. 2009, author manuscript Fig.7(c,d), PDF index 21",
+      "doi": "10.1016/j.firesaf.2009.05.004",
+      "source_tier": "primary_graph",
+      "protocol": "hot_steady_state",
+      "units": [
+        "extension_mm",
+        "engineering_stress_MPa"
+      ],
+      "reading_allowance": [
+        0.5,
+        10
+      ],
+      "end_reason": "last_readable_prefracture_anchor_not_local_rupture_strain"
+    },
+    {
+      "id": "D8_700",
+      "temperature_C": 700,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          100
+        ],
+        [
+          5,
+          96
+        ],
+        [
+          10,
+          91
+        ],
+        [
+          15,
+          85
+        ],
+        [
+          20,
+          79
+        ],
+        [
+          25,
+          73
+        ],
+        [
+          30,
+          67
+        ],
+        [
+          33.5,
+          61
+        ]
+      ],
+      "source": "Elghazouli et al. 2009, author manuscript Fig.7(c,d), PDF index 21",
+      "doi": "10.1016/j.firesaf.2009.05.004",
+      "source_tier": "primary_graph",
+      "protocol": "hot_steady_state",
+      "units": [
+        "extension_mm",
+        "engineering_stress_MPa"
+      ],
+      "reading_allowance": [
+        0.5,
+        10
+      ],
+      "end_reason": "last_readable_prefracture_anchor_not_local_rupture_strain"
+    },
+    {
+      "id": "P10_500",
+      "temperature_C": 500,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          275
+        ],
+        [
+          5,
+          327
+        ],
+        [
+          10,
+          355
+        ],
+        [
+          15,
+          359
+        ],
+        [
+          20,
+          345
+        ],
+        [
+          25,
+          310
+        ],
+        [
+          27,
+          230
+        ]
+      ],
+      "source": "Elghazouli et al. 2009, author manuscript Fig.7(c,d), PDF index 21",
+      "doi": "10.1016/j.firesaf.2009.05.004",
+      "source_tier": "primary_graph",
+      "protocol": "hot_steady_state",
+      "units": [
+        "extension_mm",
+        "engineering_stress_MPa"
+      ],
+      "reading_allowance": [
+        0.5,
+        10
+      ],
+      "end_reason": "last_readable_prefracture_anchor_not_local_rupture_strain"
+    },
+    {
+      "id": "P10_750",
+      "temperature_C": 750,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          60
+        ],
+        [
+          10,
+          66
+        ],
+        [
+          20,
+          64
+        ],
+        [
+          30,
+          61
+        ],
+        [
+          40,
+          57
+        ],
+        [
+          50,
+          52
+        ],
+        [
+          60,
+          45
+        ],
+        [
+          63,
+          39
+        ]
+      ],
+      "source": "Elghazouli et al. 2009, author manuscript Fig.7(c,d), PDF index 21",
+      "doi": "10.1016/j.firesaf.2009.05.004",
+      "source_tier": "primary_graph",
+      "protocol": "hot_steady_state",
+      "units": [
+        "extension_mm",
+        "engineering_stress_MPa"
+      ],
+      "reading_allowance": [
+        0.5,
+        10
+      ],
+      "end_reason": "last_readable_prefracture_anchor_not_local_rupture_strain"
+    }
+  ],
+  "hsc_protocol_anchors": {
+    "source": "Creep Behavior of High-Strength Concrete Subjected to Elevated Temperatures, 2017, §3.1",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5551824/",
+    "temperature_C": 500,
+    "records": [
+      {
+        "nominal_strength_MPa": 70,
+        "unloaded_peak_strain": 0.0069,
+        "preloaded_peak_strain": 0.0024
+      },
+      {
+        "nominal_strength_MPa": 80,
+        "unloaded_peak_strain": 0.007,
+        "preloaded_peak_strain": 0.0026
+      },
+      {
+        "nominal_strength_MPa": 100,
+        "unloaded_peak_strain": 0.0079,
+        "preloaded_peak_strain": 0.0029
+      }
+    ],
+    "preload_ratio": 0.33,
+    "scope": "HSC separate, peak only, not full curve or NSC transfer"
+  },
+  "blocked": [
+    {
+      "source": "Neuenschwander 2016/2017",
+      "reason": "abstract/metadata only; full graphical data inaccessible"
+    },
+    {
+      "source": "Cheng Kodur Wang 2004",
+      "reason": "primary PDF text available, figure screenshots failed (404/403); no inferred curves"
+    },
+    {
+      "source": "Ren 2022",
+      "reason": "peak data only in admitted table; no complete curve recovered"
+    },
+    {
+      "source": "Bamonte Robert Gernay 2025",
+      "reason": "abstract only"
+    }
+  ]
+}
