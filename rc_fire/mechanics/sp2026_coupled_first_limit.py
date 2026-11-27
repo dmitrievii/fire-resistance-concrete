@@ -103,7 +103,10 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
         if global_euler_audit else None)
     section=None
     if coupled["status"]!="COUPLED_NOMINAL_MOMENTS_COMPUTED":
-        status=NOMINAL
+        ncrit=r.get("minimum_nominal_Euler_Ncrit_kN")
+        status=(NOMINAL if ncrit is not None and math.isfinite(ncrit) and
+                0<ncrit<=N and r.get("N_below_first_nominal_bifurcation") is False
+                else UNKNOWN)
     else:
         section=prep.solve_actions(N,*coupled["M2_kNm"])
         from rc_fire.mechanics.action_capacity import (

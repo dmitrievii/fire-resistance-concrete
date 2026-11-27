@@ -232,8 +232,13 @@ def prepare_sp2026_section(column,thermal_snapshot,*,grid=12):
         raise SPSectionInputError("SP concrete aggregate differs from thermal solution")
     t=float(field["snapshot"]["time_minutes"])
     if not (0<=t<=float(column.get("fire_minutes",t))+1e-8 and
-            (t>0 or method==ANNEX_K_METHOD)):
+            (t>0 or method in (ANNEX_K_METHOD,"SP2026_8.2.23_FVM"))):
         raise SPSectionInputError("temperature snapshot outside source fire duration")
+    if t==0 and method=="SP2026_8.2.23_FVM":
+        snap=field["snapshot"]
+        if (not np.all(np.asarray(snap["grid_temperature_C"])==20.) or
+            any(not np.all(np.asarray(v)==20.) for v in snap["surface_temperature_C"].values())):
+            raise SPSectionInputError("FVM initial field must equal declared 20 C initial state")
     xx=(np.arange(grid)+.5)*width/grid
     yy=(np.arange(grid)+.5)*height/grid
     X,Y=np.meshgrid(xx,yy,indexing="xy")
