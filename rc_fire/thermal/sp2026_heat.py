@@ -211,34 +211,34 @@ def _step(Told,*,time_step_s,dx,dy,rho,aggregate,moisture,
             raise SPHeatError("nonpositive enthalpy secant capacity")
         diag=(cap*area/time_step_s).ravel().copy()
         rhs=(cap*area/time_step_s*Told).ravel().copy()
-        rows=[];cols=[];values=[]
-        for y in range(ny):
-            for x in range(nx):
+        # Vectorized internal faces; each face contributes +g to both
+        # diagonals and -g to both symmetric off-diagonals. No change in
+        # governing discretization, harmonic mean or boundary law.
+        indices=np.arange(nx*ny).reshape(ny,nx)
+        ix=indices[:,:-1].ravel(); jx=indices[:,1:].ravel()
+        iy=indices[:-1,:].ravel(); jy=indices[1:,:].ravel()
+        gx=(2.*k[:,:-1]*k[:,1:]/(k[:,:-1]+k[:,1:])*dy/dx).ravel()
+        gy=(2.*k[:-1,:]*k[1:,:]/(k[:-1,:]+k[1:,:])*dx/dy).ravel()
+        ii=np.r_[ix,iy]; jj=np.r_[jx,jy]; gg=np.r_[gx,gy]
+        np.add.at(diag,ii,gg); np.add.at(diag,jj,gg)
+        # Boundary faces retain the original local nonlinear flux balance.
+        boundary_nodes=(
+            ("left",[(y,0) for y in range(ny)],dx/2,dy),
+            ("right",[(y,nx-1) for y in range(ny)],dx/2,dy),
+            ("bottom",[(0,x) for x in range(nx)],dy/2,dx),
+            ("top",[(ny-1,x) for x in range(nx)],dy/2,dx))
+        for side,positions,dhalf,length in boundary_nodes:
+            if side not in exposed:continue
+            for y,x in positions:
                 i=y*nx+x
-                ki=k[y,x]
-                for xx,yy,length,distance in (
-                    (x+1,y,dy,dx),(x,y+1,dx,dy)):
-                    if xx>=nx or yy>=ny: continue
-                    j=yy*nx+xx
-                    kj=k[yy,xx]
-                    g=2.*ki*kj/(ki+kj)*length/distance
-                    diag[i]+=g;diag[j]+=g
-                    rows.extend((i,j));cols.extend((j,i))
-                    values.extend((-g,-g))
-                for side,is_boundary,dhalf,length in (
-                    ("left",x==0,dx/2,dy),
-                    ("right",x==nx-1,dx/2,dy),
-                    ("bottom",y==0,dy/2,dx),
-                    ("top",y==ny-1,dy/2,dx)):
-                    if is_boundary and side in exposed:
-                        g,_,_=_boundary_flux(float(guess[y,x]),
-                            float(ki),dhalf,Tgas,hc,emissivity)
-                        g*=length
-                        diag[i]+=g
-                        rhs[i]+=g*Tgas
-        indices_row=np.r_[np.arange(nx*ny),np.asarray(rows,dtype=int)]
-        indices_col=np.r_[np.arange(nx*ny),np.asarray(cols,dtype=int)]
-        coefs=np.r_[diag,np.asarray(values,dtype=float)]
+                g,_,_=_boundary_flux(float(guess[y,x]),float(k[y,x]),
+                                      dhalf,Tgas,hc,emissivity)
+                g*=length
+                diag[i]+=g
+                rhs[i]+=g*Tgas
+        indices_row=np.r_[np.arange(nx*ny),ii,jj]
+        indices_col=np.r_[np.arange(nx*ny),jj,ii]
+        coefs=np.r_[diag,-gg,-gg]
         mat=coo_matrix((coefs,(indices_row,indices_col)),
                        shape=(nx*ny,nx*ny)).tocsr()
         result=np.asarray(spsolve(mat,rhs),dtype=float).reshape(ny,nx)
@@ -463,8 +463,13 @@ def sample_sp2026_temperature(field,x_mm,y_mm):
     iy=max(0,min(ny,int(np.searchsorted(yp,y,side="right")-1)))
     x0,x1=xp[ix],xp[ix+1];y0,y1=yp[iy],yp[iy+1]
     fx=(x-x0)/(x1-x0);fy=(y-y0)/(y1-y0)
-    return float(
-        (1-fx)*(1-fy)*extended[iy,ix]+
-        fx*(1-fy)*extended[iy,ix+1]+
-        (1-fx)*fy*extended[iy+1,ix]+
-        fx*fy*extended[iy+1,ix+1])
+    # A convex interpolation must remain inside its four-node hull.
+    # In a cold 20 C region, round-off can otherwise produce 19.999999999999996
+    # and falsely trigger the exact material-domain guard at 20 C.
+    nodes=extended[iy:iy+2,ix:ix+2]
+    value=float(
+        (1-fx)*(1-fy)*nodes[0,0]+
+        fx*(1-fy)*nodes[0,1]+
+        (1-fx)*fy*nodes[1,0]+
+        fx*fy*nodes[1,1])
+    return min(float(nodes.max()),max(float(nodes.min()),value))
