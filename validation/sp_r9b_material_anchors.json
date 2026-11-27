@@ -1,0 +1,292 @@
+{
+  "schema": "SP-R9B-material-anchors-v1",
+  "concrete": [
+    {
+      "id": "REN2022_U70",
+      "doi": "10.3390/ma15145014",
+      "url": "https://www.mdpi.com/1996-1944/15/14/5014",
+      "location": "Table 6; §§2.1–2.3",
+      "protocol": "hot_uniaxial",
+      "aggregate": "calcareous",
+      "aggregate_detail": "limestone coarse aggregate; carbonate fraction not quantified for TKP",
+      "specimen": "70.7 mm cube",
+      "replicates_per_reported_group": 3,
+      "ambient_reference": "S-U-1; do not use 150 mm cube S-U-0",
+      "measured_strength_basis": "cube group mean, not cylinder characteristic fck",
+      "modulus_definition": null,
+      "ultimate_strain_definition": null,
+      "records": [
+        {
+          "id": "S-U-1",
+          "temperature_C": 20,
+          "peak_stress_MPa": 58.43,
+          "peak_strain": 0.00206,
+          "initial_modulus_MPa": null,
+          "ultimate_strain": null,
+          "provenance": "published_table_group_result"
+        },
+        {
+          "id": "S-U-2",
+          "temperature_C": 200,
+          "peak_stress_MPa": 54.26,
+          "peak_strain": 0.00257,
+          "initial_modulus_MPa": null,
+          "ultimate_strain": null,
+          "provenance": "published_table_group_result"
+        },
+        {
+          "id": "S-U-3",
+          "temperature_C": 400,
+          "peak_stress_MPa": 52.78,
+          "peak_strain": 0.00344,
+          "initial_modulus_MPa": null,
+          "ultimate_strain": null,
+          "provenance": "published_table_group_result"
+        },
+        {
+          "id": "S-U-4",
+          "temperature_C": 600,
+          "peak_stress_MPa": 41.4,
+          "peak_strain": 0.00493,
+          "initial_modulus_MPa": null,
+          "ultimate_strain": null,
+          "provenance": "published_table_group_result"
+        },
+        {
+          "id": "S-U-5",
+          "temperature_C": 800,
+          "peak_stress_MPa": 16.6,
+          "peak_strain": 0.00728,
+          "initial_modulus_MPa": null,
+          "ultimate_strain": null,
+          "provenance": "published_table_group_result"
+        }
+      ]
+    }
+  ],
+  "steel": {
+    "id": "ELGHAZOULI2009",
+    "doi": "10.1016/j.firesaf.2009.05.004",
+    "url": "https://discovery.ucl.ac.uk/id/eprint/10163360/",
+    "pdf": "https://discovery.ucl.ac.uk/id/eprint/10163360/2/Cashell_Experimental%20Evaluation%20of%20the%20Mechanical_FullText.pdf",
+    "protocol": "hot_steady_state",
+    "modulus_location": "author manuscript p.24 Fig.8(a,b), PDF index 23",
+    "ambient_location": "author manuscript p.16, PDF index 15",
+    "extraction": "manual visual read, rounded to 0.01; +/-0.03 absolute reading allowance, not specimen scatter",
+    "bars": [
+      {
+        "id": "P6",
+        "route": "hot_rolled",
+        "ductility": "C",
+        "fy20_MPa": 251,
+        "fu20_MPa": 328,
+        "fracture_strain20": 0.2,
+        "nominal_SP_grade": null
+      },
+      {
+        "id": "P10",
+        "route": "hot_rolled",
+        "ductility": "C",
+        "fy20_MPa": 469,
+        "fu20_MPa": 550,
+        "fracture_strain20": 0.15,
+        "nominal_SP_grade": null
+      },
+      {
+        "id": "D6",
+        "route": "cold_worked",
+        "ductility": "A",
+        "fy20_MPa": 551,
+        "fu20_MPa": 592,
+        "fracture_strain20": 0.04,
+        "nominal_SP_grade": null
+      },
+      {
+        "id": "D8",
+        "route": "cold_worked",
+        "ductility": "B",
+        "fy20_MPa": 551,
+        "fu20_MPa": 624,
+        "fracture_strain20": 0.05,
+        "nominal_SP_grade": null
+      },
+      {
+        "id": "D10",
+        "route": "hot_rolled",
+        "ductility": "C",
+        "fy20_MPa": 581,
+        "fu20_MPa": 679,
+        "fracture_strain20": 0.14,
+        "nominal_SP_grade": null
+      }
+    ],
+    "modulus_anchors": [
+      {
+        "bar": "P6",
+        "temperature_C": 500,
+        "modulus_ratio": 0.33,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "P10",
+        "temperature_C": 500,
+        "modulus_ratio": 0.63,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D6",
+        "temperature_C": 200,
+        "modulus_ratio": 0.85,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D6",
+        "temperature_C": 400,
+        "modulus_ratio": 0.6,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D6",
+        "temperature_C": 600,
+        "modulus_ratio": 0.14,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D8",
+        "temperature_C": 300,
+        "modulus_ratio": 0.82,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D8",
+        "temperature_C": 500,
+        "modulus_ratio": 0.49,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D8",
+        "temperature_C": 600,
+        "modulus_ratio": 0.23,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      },
+      {
+        "bar": "D8",
+        "temperature_C": 700,
+        "modulus_ratio": 0.09,
+        "reading_allowance": 0.03,
+        "provenance": "manual_graph_anchor_not_raw"
+      }
+    ],
+    "transient": {
+      "protocol": "constant_tension_then_heating",
+      "heating_rate_C_min": 10,
+      "location": "author manuscript p.16, transient table; text §5 differs for D8A",
+      "records": [
+        {
+          "id": "P6A",
+          "stress_MPa": 203,
+          "rupture_temperature_C": 476,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "P6B",
+          "stress_MPa": 81,
+          "rupture_temperature_C": 637,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "D6A",
+          "stress_MPa": 451,
+          "rupture_temperature_C": 451,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "D6B",
+          "stress_MPa": 177,
+          "rupture_temperature_C": 666,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "D8A",
+          "stress_MPa": 497,
+          "rupture_temperature_C": 487,
+          "provenance": "published_transient_table",
+          "disputed": true,
+          "text_alternative_C": 482
+        },
+        {
+          "id": "D8B",
+          "stress_MPa": 175,
+          "rupture_temperature_C": 648,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "P10A",
+          "stress_MPa": 255,
+          "rupture_temperature_C": 550,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        },
+        {
+          "id": "D10A",
+          "stress_MPa": 318,
+          "rupture_temperature_C": 562,
+          "provenance": "published_transient_table",
+          "disputed": false,
+          "text_alternative_C": null
+        }
+      ]
+    }
+  },
+  "registry": [
+    {
+      "doi": "10.1016/j.cemconres.2015.07.013",
+      "scope": "Neuenschwander et al. hot cyclic compression, unload/reload and damage",
+      "state": "primary identified, quantitative full curves not acquired"
+    },
+    {
+      "doi": "10.14359/51689468",
+      "scope": "Neuenschwander et al. 2017 generic curve, unstressed/stressed, postpeak",
+      "state": "primary identified, table/curves not independently verified; no secondary transcription admitted"
+    },
+    {
+      "doi": "10.1016/j.cemconres.2006.05.029",
+      "scope": "Chang et al. siliceous concrete tested after cooling",
+      "state": "excluded from hot-state metrics; residual-only"
+    },
+    {
+      "doi": "10.14359/51749132",
+      "scope": "Bamonte Robert Gernay 2025 hot and residual carbonate/siliceous",
+      "state": "primary identified, numerical curves not acquired"
+    },
+    {
+      "doi": "10.1061/(ASCE)0899-1561(2004)16:1(84)",
+      "scope": "Cheng Kodur Wang HSC hot tests",
+      "state": "out-of-scope HSC; abstract not specimen dataset"
+    },
+    {
+      "url": "https://www.sciencedirect.com/science/article/pii/S0379711222000546",
+      "scope": "stressed concrete 0–70% during heating, 400–900 C",
+      "state": "primary identified; numerical curves not acquired"
+    }
+  ]
+}
