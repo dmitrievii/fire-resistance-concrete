@@ -1,0 +1,132 @@
+{
+  "schema": "SP-R9D-transient-anchors-v1",
+  "source": "Lange & Jansson (2014), A comparison of an explicit and an implicit transient strain formulation for concrete in fire; Table 1 and Fig. 2, printed pp.574–575, reproducing Anderberg & Thelandersson (1976) Bulletin 54",
+  "doi": "10.3801/IAFSS.FSS.11-572",
+  "url": "https://publications.iafss.org/publications/fss/11/572/view/fss_11-572.pdf",
+  "source_tier": "secondary_graph_reproduction",
+  "protocol": "constant compression applied before heating, 5 C/min, 75x150 mm cylinder with 10 mm central hole; stored at 20 C and 65% RH for 21–26 weeks",
+  "stress_basis": "reported preload ratio relative to 0.75 times cube strength, as in reproduction",
+  "strain_basis": "extension-positive longitudinal strain change with initial mechanical strain removed; not isolated transient strain",
+  "graph_reading_allowance_permille": 0.5,
+  "ambient_modulus_measured": null,
+  "aggregate_family_confirmed": null,
+  "coefficient_independent_holdout": false,
+  "records": [
+    {
+      "id": "A5",
+      "preload_ratio": 0,
+      "cube_strength_MPa": 55.1,
+      "points": [
+        [
+          200,
+          1.8
+        ],
+        [
+          300,
+          2.9
+        ],
+        [
+          400,
+          4.4
+        ],
+        [
+          500,
+          6.6
+        ]
+      ]
+    },
+    {
+      "id": "A6",
+      "preload_ratio": 0.225,
+      "cube_strength_MPa": 58.4,
+      "points": [
+        [
+          200,
+          0.6
+        ],
+        [
+          300,
+          1.2
+        ],
+        [
+          400,
+          2.1
+        ],
+        [
+          500,
+          2.9
+        ]
+      ]
+    },
+    {
+      "id": "A7",
+      "preload_ratio": 0.35,
+      "cube_strength_MPa": 52.4,
+      "points": [
+        [
+          200,
+          0.2
+        ],
+        [
+          300,
+          0.5
+        ],
+        [
+          400,
+          0.8
+        ],
+        [
+          500,
+          0.8
+        ]
+      ]
+    },
+    {
+      "id": "A8",
+      "preload_ratio": 0.45,
+      "cube_strength_MPa": 64,
+      "points": [
+        [
+          200,
+          -0.5
+        ],
+        [
+          300,
+          -0.7
+        ],
+        [
+          400,
+          -0.9
+        ],
+        [
+          500,
+          -2
+        ]
+      ]
+    },
+    {
+      "id": "A9",
+      "preload_ratio": 0.675,
+      "cube_strength_MPa": 58.4,
+      "points": [
+        [
+          200,
+          -2.1
+        ],
+        [
+          300,
+          -3
+        ],
+        [
+          400,
+          -3.9
+        ]
+      ]
+    }
+  ],
+  "notes": [
+    "Manual visual anchors from figure, not raw measurements. Use before rapid strain excursion only; no failure-temperature inference.",
+    "K=2.35 reported for this test family, so screening is not independent validation of K.",
+    "No specimen-specific modulus, aggregate or instantaneous hot curve available in admitted reproduction; SP modulus scenario is a sensitivity only."
+  ]
+}
