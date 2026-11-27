@@ -19,6 +19,7 @@ from rc_fire.mechanics.sp2026_nominal_member import (
 from rc_fire.mechanics.sp2026_coupled_rigidity import (
     coupled_sp5_hot_section_stiffness,magnify_coupled_first_order_moments,
     audit_independent_global_coupled_euler)
+from rc_fire.thermal.sp2026_annex_k_field import ANNEX_K_METHOD
 from rc_fire.thermal.sp2026_heat import (
     SPHeatError,select_sp2026_snapshot)
 
@@ -90,8 +91,8 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
                                        grid=12,effective_creep_phi,
                                        global_euler_audit=False):
     N,L,m0,actions=_public_pinned_actions(column,member_spec)
-    if snapshot.get("thermal_method")!="SP2026_8.2.23_FVM":
-        raise SP5NominalMemberError("SP-R2 time-matched heat only")
+    if snapshot.get("thermal_method") not in ("SP2026_8.2.23_FVM",ANNEX_K_METHOD):
+        raise SP5NominalMemberError("time-matched SP FVM or Annex K heat only")
     prep=prepare_sp2026_design_section(column,snapshot,grid=grid)
     r=coupled_sp5_hot_section_stiffness(
         prep,N_kN=N,length_m=L,
@@ -131,6 +132,8 @@ def assess_coupled_sp5_nominal_at_time(column,snapshot,member_spec, *,
     return {
         "version":VERSION,
         "time_minutes":float(snapshot["snapshot"]["time_minutes"]),
+        "temperature_method":snapshot["thermal_method"],
+        "thermal_source_provenance":prep.source,
         "status":status,
         "N_kN":N,
         "first_order_midspan_M0_kNm":m0.tolist(),

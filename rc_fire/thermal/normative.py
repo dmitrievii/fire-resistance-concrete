@@ -145,23 +145,25 @@ def heating_depth_m(a_red_m2_h:float,t_minutes:float):
     return math.sqrt(12*a_red_m2_h*t/60.)
 
 
-def _relative_distance(x_m:np.ndarray, a:float, phi1:float, phi2:float, d_m:float, l_m:float):
+def _relative_distance(x_m:np.ndarray, a:float, phi1:float, phi2:float, d_m:float, l_m:float, bar_distance_convention='clear'):
     if l_m==0:return np.ones_like(x_m,dtype=float)
     # xi = distance to concrete surface. For bar temperature, K.5 yi is
     # interpreted as clear distance to bar outer surface; preserve this choice
     # explicitly in the provenance and test against the K18 reference.
-    equivalent=x_m-(d_m/2 if d_m>0 else 0)+phi1*math.sqrt(a)+(phi2*d_m if d_m>0 else 0)
+    equivalent=x_m-(d_m/2 if d_m>0 and bar_distance_convention=='clear' else 0)+phi1*math.sqrt(a)+(phi2*d_m if d_m>0 else 0)
     return np.minimum(1.,np.maximum(0.,equivalent/l_m))
 
 
 def temperature_rectangle(exposure:RectangularExposure, coeff:dict, t_minutes:float,
-                          x_mm:Any, y_mm:Any, bar_diameter_mm:float=0):
+                          x_mm:Any, y_mm:Any, bar_diameter_mm:float=0, *, bar_distance_convention='clear'):
     """Equations K.4--K.12: temperatures at concrete points or bar surfaces.
 
     Input arrays broadcast; public values in mm, resulting temperatures in C.
     A one-face K.6 limit flag is returned separately, not silently ignored.
     """
     exposure.validate()
+    if bar_distance_convention not in ('clear','centre'):
+        raise ThermalError('К.5: explicit clear or centre distance required')
     b=exposure.b_mm/1000.;h=exposure.h_mm/1000.
     t=float(t_minutes); a=float(coeff['a_red_m2_h'])
     d=float(bar_diameter_mm)/1000.
@@ -181,7 +183,7 @@ def temperature_rectangle(exposure:RectangularExposure, coeff:dict, t_minutes:fl
                   'outside_approximation_C':np.zeros(x.shape,dtype=bool),'l_m':0.}
     phi1,phi2=float(coeff['phi_1']),float(coeff['phi_2'])
     dist={'left':x,'right':b-x,'bottom':y,'top':h-y}
-    r={f:_relative_distance(dist[f],a,phi1,phi2,d,l) for f in exposure.faces}
+    r={f:_relative_distance(dist[f],a,phi1,phi2,d,l,bar_distance_convention) for f in exposure.faces}
     faces=set(exposure.faces)
     one_face_ok=np.ones(x.shape,dtype=bool)
     p=lambda f:(1-r[f])**2
