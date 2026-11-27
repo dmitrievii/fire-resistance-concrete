@@ -328,7 +328,7 @@ def solve_sp2026_2d_heat(column,*,boundary,cell_count_x=12,
     if desired is None: desired=[duration]
     if not isinstance(desired,(tuple,list)) or not desired:
         raise SPHeatError("at least one explicit sample time required")
-    wanted=sorted(set(_number(t,"sample time",minv=.000001,maxv=duration)
+    wanted=sorted(set(_number(t,"sample time",minv=0.,maxv=duration)
                       for t in desired))
     if wanted[-1]<duration-1e-9:
         wanted.append(duration)
