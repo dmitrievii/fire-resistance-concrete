@@ -18,6 +18,7 @@ from rc_fire.mechanics.sp2026_nominal_member import prepare_sp2026_design_sectio
 from rc_fire.thermal.sp2026_heat import solve_sp2026_2d_heat,select_sp2026_snapshot
 
 def curve(path,anchor_w):
+    if not path or not path.get("path",{}).get("rows"):return None
     rows=[dict(path["path"]["rows"][0],midspan_x_mm=anchor_w)] + path["path"]["rows"][1:]
     if path["path"]["stop"] is not None or len(rows)<3 or any(
         y["midspan_x_mm"]<=x["midspan_x_mm"] for x,y in zip(rows,rows[1:])):
@@ -27,7 +28,9 @@ def curve(path,anchor_w):
 
 def compare_paths(a,b,anchor_w,*,N):
     X=curve(a,anchor_w);Y=curve(b,anchor_w)
-    if a["anchor_minute"]!=b["anchor_minute"] or a["initial_inventory"]!=b["initial_inventory"] or X is None or Y is None:
+    if (X is None or Y is None or not math.isfinite(N) or N<=0 or
+        a["anchor_minute"]!=b["anchor_minute"] or a["initial_inventory"]!=b["initial_inventory"] or
+        X[0].get("coordinates") is None or X[0]["coordinates"]!=Y[0].get("coordinates")):
         return {"comparable":False,"research_pass":False,"reason":"incomplete or different anchor"}
     lo=max(X[0]["midspan_x_mm"],Y[0]["midspan_x_mm"])
     hi=min(X[-1]["midspan_x_mm"],Y[-1]["midspan_x_mm"])

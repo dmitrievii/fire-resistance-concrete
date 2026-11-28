@@ -17,12 +17,20 @@ class TestR11E(unittest.TestCase):
  def test_reserve_not_total_load(self):
     def path(peak):
         return {"anchor_minute":83.75,"initial_inventory":{},"path":{"stop":None,
-            "rows":[{"lambda":1.},{"midspan_x_mm":2.,"lambda":peak},{"midspan_x_mm":3.,"lambda":1.}],
+            "rows":[{"lambda":1.,"coordinates":[0.,1.]},{"midspan_x_mm":2.,"lambda":peak},{"midspan_x_mm":3.,"lambda":1.}],
             "sampled_maximum_intervals":[{}]}}
     r=e.compare_paths(path(1.002),path(1.0025),1.,N=1500.)
     self.assertTrue(r["sampled_turns_on_both"]);self.assertFalse(r["research_pass"])
     self.assertAlmostEqual(r["peak_reserve_relative_delta"],.2)
     self.assertTrue(e.compare_paths(path(1.0025),path(1.0025),1.,N=1500.)["research_pass"])
+ def test_empty_and_mismatched_anchor(self):
+    a={"anchor_minute":83.75,"initial_inventory":{},"path":{"stop":"unresolved","rows":[]}}
+    self.assertFalse(e.compare_paths(a,a,1.,N=1500.)["comparable"])
+    def path(anchor):
+        return {"anchor_minute":83.75,"initial_inventory":{},"path":{"stop":None,
+           "rows":[{"lambda":1.,"coordinates":anchor},{"midspan_x_mm":2.,"lambda":1.002},{"midspan_x_mm":3.,"lambda":1.}],
+           "sampled_maximum_intervals":[{}]}}
+    self.assertFalse(e.compare_paths(path([0.,1.]),path([.01,1.]),1.,N=1500.)["comparable"])
  def test_actual_matched_reconciliation(self):
     r=e.campaign(fixture(),reference_sp2026_boundary(moisture_mass_pct=1.5))
     self.assertFalse(r["physical_failure_proven"]);self.assertIsNone(r["actual_t_R_minutes"])
