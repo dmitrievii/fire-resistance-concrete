@@ -1,0 +1,19 @@
+name: SP-R11B targeted extended member verification
+on:
+  push:
+    branches: [feat/sp-r11b-extended-member]
+jobs:
+  member-tests:
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: R11A and R11B targeted tests
+        run: python -m unittest discover -s tests -p 'test_sp_r11[ab]*.py' -v

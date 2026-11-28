@@ -81,6 +81,25 @@ class Beam:
         C=K[np.ix_(lat,ax)]
         T=K[np.ix_(lat,lat)]-C@np.linalg.solve(A,C.T)
         return (T+T.T)/2
+    def geometric_margin(self,K):
+        """Frozen current tangent pencil; not a nonlinear load multiplier.
+
+        K already includes -N*G. The lowest generalized eigenvalue of
+        (K_condensed,G) is an additive dead-load perturbation in kN with
+        material tangent, equilibrium configuration and history frozen.
+        """
+        from scipy.linalg import eigvalsh
+        T=self.condensed(K)
+        lat=[k for k in range(self.nd) if k not in self.fixed]
+        G=self.G[np.ix_(lat,lat)]
+        # Free rigid translation can produce singular G; do not regularize.
+        if np.linalg.eigvalsh(G)[0]<=0:return None
+        values=eigvalsh(T,G)
+        delta=float(values[0])
+        return {"additive_geometric_margin_kN":delta,
+                "frozen_tangent_eigenload_kN":self.N+delta,
+                "eigenload_over_applied_N":(self.N+delta)/self.N if self.N>0 else None,
+                "not_nonlinear_capacity":True}
     def solve(self,old,law,*,max_iterations=30,tolerance=1e-6):
         x=np.asarray(old,dtype=float).copy();cached=None;calls=0
         if x.shape!=(self.total,) or not np.all(np.isfinite(x)) or any(abs(x[k]-v)>1e-12 for k,v in self.fixed.items()):
@@ -99,11 +118,14 @@ class Beam:
                     return None,{"status":"UNRESOLVED_AXIAL_CONDENSATION","reason":str(e)}
                 if eig[0]<=max(1e-9,1e-12*max(1.,eig[-1])):
                     return None,{"status":"UNRESOLVED_NONPOSITIVE_GLOBAL_ALGORITHMIC_TANGENT",
-                                 "eigen_min_scaled_kNm":float(eig[0])}
+                                 "eigen_min_scaled_kNm":float(eig[0]),
+                                 "converged_equilibrium":True,
+                                 "algorithmic_geometric_margin":self.geometric_margin(K)}
                 return (x,recs,K),{"status":"EQUILIBRATED_RESEARCH_MEMBER","iterations":it,
                     "assembly_calls":calls,"scaled_free_residual_kNm":err,"max_axial_residual_kN":axial,
                     "algorithmic_global_eigen_min_scaled_kNm":float(eig[0]),
                     "algorithmic_global_eigen_max_scaled_kNm":float(eig[-1]),
+                    "algorithmic_geometric_margin":self.geometric_margin(K),
                     "support_reactions_scaled_kNm":{str(k):float(r[k]) for k in self.fixed}}
             try:step=np.linalg.solve(K[np.ix_(self.free,self.free)],-r[self.free])
             except np.linalg.LinAlgError:return None,{"status":"UNRESOLVED_SINGULAR_GLOBAL_TANGENT"}
@@ -189,8 +211,9 @@ def advance(s,column,spec,field,*,max_iterations=30):
             "max_steel_plastic_strain":max(a.accumulated_plastic_strain for a in st),
             "steel_yield_ratio":float(np.max(np.abs(ss)/fy))})
     Ku[:beam.nd,:beam.nd]+=-beam.N*beam.G+np.diag(beam.springs)
-    try:eig_u=float(np.linalg.eigvalsh(beam.condensed(Ku))[0])
-    except (ValueError,np.linalg.LinAlgError):eig_u=None
+    try:
+        eig_u=float(np.linalg.eigvalsh(beam.condensed(Ku))[0]);margin_u=beam.geometric_margin(Ku)
+    except (ValueError,np.linalg.LinAlgError):eig_u=None;margin_u=None
     physical=(x[:beam.nd]+beam.initial)*beam.scale
     n=beam.n
     # Check longitudinal slopes at Gauss stations and element endpoints.
@@ -205,6 +228,7 @@ def advance(s,column,spec,field,*,max_iterations=30):
     return newstate,{**report,"time_minutes":minute,"station_count":len(stations),"stations":stations,
         "total_w_x_m":physical[:2*n:2].tolist(),"total_w_y_m":physical[2*n::2].tolist(),
         "max_sampled_slope":maxs,"frozen_unloading_global_eigen_min_scaled_kNm":eig_u,
+        "frozen_unloading_geometric_margin":margin_u,
         "global_physical_failure_proven":False,"normative_claim":False,"actual_U_t":None,"actual_t_R_minutes":None}
 
 def history(column,spec,fields,*,grid=8,quadrature=None):
