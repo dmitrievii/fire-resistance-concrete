@@ -26,6 +26,24 @@ class TestR12B(unittest.TestCase):
     sol,rep=b.correct(op,x,1.,[0,1],0,.6)
     self.assertIsNone(sol);self.assertEqual(x.tolist(),[.5,0.])
     self.assertEqual(rep["status"],"UNRESOLVED_CONTROLLED_TRIAL")
+ def test_native_numeric_endpoint_contract(self):
+    from types import SimpleNamespace
+    from rc_fire.member import sp2026_r12a_resistance as r
+    beam=SimpleNamespace(n=1,free=np.array([0]),initial=np.array([0.]),scale=np.array([1.]))
+    def op(x,l):
+        u=x[0]
+        return np.array([u-u**3-l]),np.array([[1.-3*u*u]]),np.array([-1.]),None
+    seed=(np.array([.5]),.375)
+    rows=[]
+    for u in (.5,.58,.65):
+        sol,row=b.controlled(beam,op,lambda sol:{"axial_residual_kN":0.},seed,u)
+        self.assertIsNotNone(sol)
+        self.assertIs(type(row["midspan_x_mm"]),float)
+        rows.append(row);seed=sol
+    sample=r.endpoint({"rows":rows,"stop":None},N=1500.,expected_count=3)
+    self.assertEqual(sample["status"],"INTERIOR_SAMPLED_MAXIMUM")
+    self.assertAlmostEqual(sample["sampled_peak_lambda"],.58-.58**3)
+    json.dumps(sample,allow_nan=False)
  def test_actual_coupled_endpoint(self):
     q=b.campaign(fixture(),reference_sp2026_boundary(moisture_mass_pct=1.5))
     self.assertIsNotNone(q["last_accepted_minute"])

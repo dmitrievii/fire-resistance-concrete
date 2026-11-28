@@ -104,7 +104,7 @@ def controlled(beam,ev,verify,seed,target):
     except c.ERRORS as exc:return None,{"status":"UNRESOLVED_DOMAIN_CHECK","reason":str(exc)}
     x,lam,_,_=sol
     return sol,{**rep,**v,"lambda":lam,
-        "midspan_x_mm":1000*(x[control]+beam.initial[control])*beam.scale[control]}
+        "midspan_x_mm":float(1000*(x[control]+beam.initial[control])*beam.scale[control])}
 
 def thermal_homotopy(anchor,column,spec,fields):
     """Same fixed predecessor across actual snapshots; no commits.
