@@ -1,0 +1,19 @@
+name: SP-R11D targeted sequential path verification
+on:
+  push:
+    branches: [feat/sp-r11d-sequential-limit-path]
+jobs:
+  sequential-tests:
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Targeted sequential path tests
+        run: python -m unittest discover -s tests -p test_sp_r11d_sequential.py -v
