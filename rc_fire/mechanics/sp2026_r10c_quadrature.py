@@ -57,12 +57,20 @@ class Quadrature:
     base_grid:int
     boundary_band_m:float
     unresolved_gradient_cells:int
+    front_refined_cells:int=0
+    unresolved_front_cells:int=0
+    unresolved_front_gross_area_m2:float=0.
+    unresolved_probe_cells:int=0
     def evidence(self):
         return {"cell_count":len(self.cells),"point_count":len(self.points),
                 "min_cell_width_mm":1000*min(min(x1-x0,y1-y0) for x0,x1,y0,y1 in self.cells),
                 "max_cell_width_mm":1000*max(max(x1-x0,y1-y0) for x0,x1,y0,y1 in self.cells),
                 "pilot_minutes":list(self.pilot_minutes),"max_level":self.max_level,
                 "delta_C":self.delta_C,"unresolved_gradient_cells":self.unresolved_gradient_cells,
+                "front_refined_cells":self.front_refined_cells,
+                "unresolved_front_cells":self.unresolved_front_cells,
+                "unresolved_front_gross_area_m2":self.unresolved_front_gross_area_m2,
+                "unresolved_probe_cells":self.unresolved_probe_cells,
                 "net_area_m2":sum(a for x,y,a in self.points),
                 "net_centroid_m":[sum(x*a for x,y,a in self.points)/sum(a for x,y,a in self.points),
                                   sum(y*a for x,y,a in self.points)/sum(a for x,y,a in self.points)]}
@@ -72,7 +80,7 @@ def _sampler(field):
     if field["thermal_method"]=="SP2026_8.2.23_FVM":return sample_sp2026_temperature
     raise ValueError("explicit SP thermal route required")
 
-def build(p,fields,*,base_grid=8,max_level=3,delta_C=60.,boundary_band_mm=25.,max_cells=24000):
+def build(p,fields,*,base_grid=8,max_level=3,delta_C=60.,boundary_band_mm=25.,max_cells=24000,front_indicator=None):
     if (type(base_grid)!=int or not 1<=base_grid<=80 or type(max_level)!=int or not 0<=max_level<=5
         or not math.isfinite(delta_C) or delta_C<=0 or not math.isfinite(boundary_band_mm)
         or boundary_band_mm<0 or type(max_cells)!=int or max_cells<base_grid**2 or not fields):
@@ -86,22 +94,27 @@ def build(p,fields,*,base_grid=8,max_level=3,delta_C=60.,boundary_band_mm=25.,ma
     @lru_cache(maxsize=None)
     def values(x,y):
         return tuple(float(sample(f,min(b*1000,max(0.,x*1000)),min(h*1000,max(0.,y*1000)))) for f in fields)
-    cells=[];unresolved=0
+    cells=[];unresolved=0;front_refined=0;front_unresolved=0;front_area=0.;probe_unresolved=0
     def visit(x0,x1,y0,y1,level):
-        nonlocal unresolved
+        nonlocal unresolved,front_refined,front_unresolved,front_area,probe_unresolved
         xm=(x0+x1)/2;ym=(y0+y1)/2
         near=min(x0,b-x1,y0,h-y1)<boundary_band_mm/1000.-1e-12
+        samples=((x0,y0),(x1,y0),(x0,y1),(x1,y1),(xm,ym),(xm,y0),(xm,y1),(x0,ym),(x1,ym))
         if max_level==0:variation=0.
         else:
-            V=np.asarray([values(x,y) for x,y in ((x0,y0),(x1,y0),(x0,y1),(x1,y1),(xm,ym),
-                                      (xm,y0),(xm,y1),(x0,ym),(x1,ym))])
+            V=np.asarray([values(x,y) for x,y in samples])
             variation=float(np.ptp(V,axis=0).max())
-        if level<max_level and (near or variation>delta_C):
+        mixed,unknown=front_indicator(samples) if front_indicator is not None else (False,False)
+        if level<max_level and (near or variation>delta_C or mixed or unknown):
+            if mixed or unknown:front_refined+=1
             for a,c in ((x0,xm),(xm,x1)):
                 for d,e in ((y0,ym),(ym,y1)):visit(a,c,d,e,level+1)
         else:
             cells.append((x0,x1,y0,y1))
             if variation>delta_C:unresolved+=1
+            if mixed or unknown:
+                front_unresolved+=1;front_area+=(x1-x0)*(y1-y0)
+            if unknown:probe_unresolved+=1
             if len(cells)>max_cells:raise ValueError("quadrature resource cap exceeded")
     for j in range(base_grid):
         for i in range(base_grid):
@@ -134,7 +147,8 @@ def build(p,fields,*,base_grid=8,max_level=3,delta_C=60.,boundary_band_mm=25.,ma
         raise ArithmeticError("net concrete area/first moment not conserved")
     return Quadrature(b,h,sig,method,tuple(cells),tuple(pts),
                       tuple(float(f["snapshot"]["time_minutes"]) for f in fields),
-                      max_level,float(delta_C),base_grid,boundary_band_mm/1000.,unresolved)
+                      max_level,float(delta_C),base_grid,boundary_band_mm/1000.,unresolved,
+                      front_refined,front_unresolved,front_area,probe_unresolved)
 
 def apply_quadrature(p,field,q):
     if (p.b_m,p.h_m,bar_signature(p),field["thermal_method"])!=(q.width,q.height,q.bars,q.method):
