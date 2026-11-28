@@ -83,13 +83,23 @@ def prepare(column,t,grid,bar_distance_convention):
     # Check every active cell and node (including boundary) at the same
     # temperature law. This is sampled, not a continuum extremum proof.
     D=list(C[active]);limit=list(eu-th[active])
+    metadata=[{"kind":"concrete_cell","x_mm":1000*xx,"y_mm":1000*yy,
+               "temperature_C":float(T),"free_strain_permille":float(e)}
+              for xx,yy,T,e in zip(x[active],y[active],tc[active],th[active])]
     for j in range(grid+1):
         for i in range(grid+1):
             xx,yy=i*dx,j*dy;T=temp(xx,yy)
             if T<=800.:
-                D.append(shape(xx,yy));limit.append(eu-1000*concrete_free_thermal_strain_sp(T,family))
+                e=1000*concrete_free_thermal_strain_sp(T,family)
+                D.append(shape(xx,yy));limit.append(eu-e)
+                metadata.append({"kind":"concrete_boundary_node" if i in (0,grid) or j in (0,grid) else "concrete_interior_node",
+                    "x_mm":1000*xx,"y_mm":1000*yy,"temperature_C":float(T),"free_strain_permille":float(e)})
     D.extend(-B);limit.extend(10.+ths)
+    metadata.extend({"kind":"steel_tension","id":id,"x_mm":1000*xx,"y_mm":1000*yy,
+                     "temperature_C":float(T),"free_strain_permille":float(e)}
+                    for (xx,yy,_,id),T,e in zip(bars,ts,ths))
     section=Section(C,A,fc,th,B,As,fy,Es,ths,D,limit,ep,eu,n)
+    section.constraint_metadata=metadata
     # Exact net gross geometry; temperature-weighted concrete stiffness
     # uses net cell areas and approximate own cell moments (mesh study).
     xx=x-b/2;yy=y-h/2
@@ -112,9 +122,18 @@ def prepare(column,t,grid,bar_distance_convention):
         "fck":float(c["f_ck_MPa"]),"hot_axial_concrete_kN":float(1000*A@fc),
         "hot_axial_total_kN":float(1000*(A@fc+As@fy)),
         "bar_temperatures_C":{v[3]:float(T) for v,T in zip(bars,ts)},
-        "max_concrete_cell_T_C":float(max(tc)),"strain_parameters_permille":{"eps_c2":ep,"eps_cu2":eu,"steel_tension":10.},
+        "max_concrete_cell_T_C":float(max(tc)),"max_concrete_boundary_T_C":float(f["snapshot"]["boundary_max_C"]),"strain_parameters_permille":{"eps_c2":ep,"eps_cu2":eu,"steel_tension":10.},
         "thermal_provenance":f["annex_k_provenance"],"grid":grid,
         "nonuniform_nominal_stiffness_extension":True}
+
+def governing_constraint(sec,result):
+    q=result.get("q_permille")
+    if q is None:return None
+    v=sec.D@np.asarray(q)-sec.d;i=int(np.argmax(v))
+    point=sec.constraint_metadata[i]
+    limit=10. if point["kind"]=="steel_tension" else sec.epsu
+    return {**point,"limit_permille":limit,"checked_strain_permille":float(limit+v[i]),
+            "excess_permille":float(v[i])}
 
 def nominal(g,N,L,mu,phi):
     l0=L*mu;require(g["hot_axial_concrete_kN"]>0,"zero concrete compression capacity")
@@ -158,6 +177,10 @@ def assess(column,t,*,grid=12,creep_by_axis,action_contract,bar_distance_convent
                     target=[N,M2["x"]/(g["h"]/2),M2["y"]/(g["b"]/2)]
                     u=utilization(sec,target) if calculate_U else {"applied":sec.check(target),"U":None,"U_interval":None}
                     row["section"]=u;state=u["applied"]["status"]
+                    u["applied"]["governing_constraint"]=governing_constraint(sec,u["applied"])
+                    diagnostic=u["applied"].get("unrestricted_equilibrium_diagnostic")
+                    if diagnostic is not None:
+                        diagnostic["governing_constraint"]=governing_constraint(sec,diagnostic)
                     row["status"]=WITHIN if state==PASS else EXCEEDED if state==FAIL else UNRESOLVED
                     # Section utilization based on FIXED amplified actions,
                     # plus separate nominal stability ratio at actual load.
@@ -192,8 +215,9 @@ def history(column,*,end_minute,required_minutes=None,**kw):
         else:first_unknown=t;break
         if required_minutes==t:required="MODEL_WITHIN_AT_ALL_SAMPLED_MINUTES"
     return {"samples":rows,"last_within_whole_minute":last,"first_unresolved_minute":first_unknown,
-        "model_limit_interval_min":bracket,"R_model_whole_minutes":last if bracket else None,
+        "model_limit_interval_min":bracket,"first_sampled_section_check_interval_min":bracket,
+        "R_model_whole_minutes":None,"section_check_limit_is_not_global_collapse":True,
         "required_minutes":required_minutes,"required_check":required or "NOT_ESTABLISHED",
         "actual_t_R_minutes":None,"normative_claim":False,
-        "status":"SAMPLED_ENGINEERING_LIMIT" if bracket else "NO_ESTABLISHED_LIMIT",
+        "status":"SAMPLED_SECTION_CHECK_LIMIT" if bracket else "NO_ESTABLISHED_LIMIT",
         "remaining_gates":GATES}

@@ -51,7 +51,7 @@ class TestProd1(unittest.TestCase):
           "sections":[{"id":s["id"],"status":s["status"],"reason":s.get("reason"),"section":s.get("section")} for s in r["sections"]],
           "bar_temperatures_C":r.get("geometry",{}).get("bar_temperatures_C")} for r in rows]},allow_nan=False),flush=True)
     self.assertEqual(rows[0]["status"],p.WITHIN,rows[0])
-    self.assertIsNone(q["actual_t_R_minutes"])
+    self.assertIsNone(q["actual_t_R_minutes"]);self.assertIsNone(q["R_model_whole_minutes"])
     self.assertGreater(len(rows),1)
     if q["model_limit_interval_min"]:
         lo,hi=q["model_limit_interval_min"]
@@ -73,3 +73,31 @@ class TestProd1(unittest.TestCase):
         for n in ast.walk(ast.parse((root/name).read_text())):
             if isinstance(n,ast.ImportFrom):
                 self.assertFalse(any(v in (n.module or "") for v in ("r9","r10","r11","r12","r13","tkp","damage","creep_history")))
+
+ def test_boundary_and_grid_diagnostic(self):
+    for N,times,grids in ((5000.,(4,5,10,20,45,90),(8,16,32,64)),
+                           (50.,(0,5,10,20,45,60,90),(16,32))):
+        for grid in grids:
+            for t in times:
+                if grid in (8,64) and t not in (4,5):continue
+                q=p.assess(case(N),t,**{**KW,"grid":grid,"calculate_U":False})
+                g=q.get("geometry",{})
+                compact={"N_kN":N,"grid":grid,"t":t,"status":q["status"],"reason":q.get("reason"),
+                         "cell_Tmax":g.get("max_concrete_cell_T_C"),"boundary_Tmax":g.get("max_concrete_boundary_T_C"),
+                         "steel_Tmax":max(g["bar_temperatures_C"].values()) if g else None,
+                         "axial_material_upper_kN":g.get("hot_axial_total_kN"),
+                         "sections":[{"id":s["id"],"status":s["status"],
+                           "nominal":{a:s.get("nominal",{}).get(a,{}).get("Ncrit_kN") for a in ("x","y")},
+                           "applied":s.get("section",{}).get("applied")} for s in q["sections"]]}
+                print("SP_PROD1_GRID_AUDIT",json.dumps(compact,allow_nan=False),flush=True)
+                self.assertIn(q["status"],(p.WITHIN,p.EXCEEDED,p.UNRESOLVED))
+                for s in q["sections"]:
+                    a=s.get("section",{}).get("applied")
+                    if a and a["status"]==PASS:
+                        self.assertLessEqual(a["governing_constraint"]["excess_permille"],1e-8)
+                    if a and a["status"]==FAIL:
+                        self.assertGreater(a["certificate_margin"],a["numerical_allowance"])
+ def test_actual_transitive_engine_isolation(self):
+    import subprocess,sys
+    cmd="import sys; import rc_fire.integration.sp_prod1_engineering; print([k for k in sys.modules if k.startswith('rc_fire.') and any(x in k for x in ('sp2026_r9','sp2026_r10','sp2026_r11','sp2026_r12','sp2026_r13','damage_plasticity','nonisothermal_coupling','tkp_'))])"
+    self.assertEqual(subprocess.check_output([sys.executable,"-c",cmd],text=True).strip(),"[]")

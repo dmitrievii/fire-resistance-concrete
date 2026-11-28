@@ -83,10 +83,18 @@ class Section:
         # A first unconstrained equilibrium attempt is cheap. Its stress
         # extension is merely a numerical device; never classify an
         # out-of-domain root as failure without independent certificate.
+        unrestricted=None
         for x in (x0,np.zeros(3)):
             q=least_squares(res,x,jac=jac,ftol=1e-12,gtol=1e-12,xtol=1e-12,max_nfev=100).x
             out=result(q)
             if out:return out
+            err=float(np.max(abs(self.evaluate(q)[0]-target)))
+            if err<=tol:
+                v={"q_permille":q.tolist(),"residual_kN":err,
+                   "max_constraint_excess_permille":float(np.max(self.D@q-self.d)),
+                   "diagnostic_only":True}
+                if unrestricted is None or v["max_constraint_excess_permille"]<unrestricted["max_constraint_excess_permille"]:
+                    unrestricted=v
         def objective(q):
             F,J,W,e,s=self.evaluate(q)
             return (W-target@q)/scale,(F-target)/scale
@@ -118,7 +126,8 @@ class Section:
             return {"status":FAIL,"certificate":"DISCRETE_MONOTONE_SUPPORT_EXCLUSION",
                     "q_permille":q.tolist(),"residual_kN":float(np.max(abs(v))),
                     "necessary_work_kN_permille":necessary,"support_upper_kN_permille":upper,
-                    "certificate_margin":margin,"numerical_allowance":rounding}
+                    "certificate_margin":margin,"numerical_allowance":rounding,
+                    "unrestricted_equilibrium_diagnostic":unrestricted}
         return {"status":UNKNOWN,"reason":"no equilibrium or positive exclusion margin established",
                 "residual_kN":float(np.max(abs(v))),"certificate_margin":margin}
 
@@ -148,11 +157,14 @@ def utilization(section,target,*,max_factor=16.,bisections=12):
             if b["status"]!=FAIL:return out
             hi=lo;lo*=.5
         else:return out
+    interrupted=False
     for _ in range(bisections):
         mid=(lo+hi)/2;b=section.check(mid*target,seed)
         if b["status"]==PASS:lo=mid;seed=b.get("q_permille")
         elif b["status"]==FAIL:hi=mid
-        else:break
+        else:interrupted=True;break
     out.update({"factor_interval":[lo,hi],"U_interval":[1/hi,1/lo],
-                "U":1/lo,"U_is_upper_reciprocal_of_observed_bracket":True})
+                "U":1/lo,"U_is_upper_reciprocal_of_observed_bracket":True,
+                "refinement_interrupted_by_unknown":interrupted,
+                "continuous_maximum_proven":False})
     return out
