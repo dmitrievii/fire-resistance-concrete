@@ -26,7 +26,7 @@ def classify_stop(stop):
     if "ATTEMPT_BUDGET" in k:return "COMPUTATIONAL_BUDGET"
     return "UNRESOLVED_OTHER_DOMAIN_OR_NUMERICS"
 
-def sequential(initial,y0,operator,commit,*,steps=12,ds=.06,min_ds=.0075,tol=1e-10,max_iterations=18):
+def sequential(initial,y0,operator,commit,*,steps=12,ds=.06,min_ds=.0075,tol=1e-10,anchor_tol=None,max_iterations=18):
     """Secant-predictor pseudo-arclength, fresh operator per committed state.
 
     operator(state) -> callable(y) -> (r, J, trial_record).
@@ -38,6 +38,8 @@ def sequential(initial,y0,operator,commit,*,steps=12,ds=.06,min_ds=.0075,tol=1e-
     y=np.asarray(y0,dtype=float).copy();state=initial;prev=None;rows=[];attempts=[];stop=None
     if y.ndim!=1 or len(y)<2 or steps<1 or not 0<min_ds<=ds or tol<=0:
         raise ValueError("invalid continuation controls")
+    anchor_tol=tol if anchor_tol is None else float(anchor_tol)
+    if not math.isfinite(anchor_tol) or anchor_tol<tol:raise ValueError("invalid anchor tolerance")
     def checked(ev,x):
         r,J,trial=ev(x);r=np.asarray(r);J=np.asarray(J)
         if r.shape!=(len(y)-1,) or J.shape!=(len(y)-1,len(y)) or not np.all(np.isfinite(r)) or not np.all(np.isfinite(J)):
@@ -46,7 +48,7 @@ def sequential(initial,y0,operator,commit,*,steps=12,ds=.06,min_ds=.0075,tol=1e-
     for i in range(steps+1):
         try:
             ev=operator(state);r,J,_=checked(ev,y)
-            if np.max(np.abs(r))>tol:
+            if np.max(np.abs(r))>(anchor_tol if i==0 else tol):
                 raise ValueError("committed state not re-equilibrated under zero-change return map")
             # At yield the exact endpoint tangent may choose unloading.
             # Use previous accepted secant to orient subsequent predictors.
@@ -165,7 +167,7 @@ def trace_member(anchor,column,spec,field,*,steps=8,ds=.06):
         return n,{"midspan_x_mm":1000*float(w[2*(beam.n//2)]),"axial_residual_kN":axial,
                  "global_residual_kNm":err,"tangent_min_scaled_kNm":eig,**material_inventory(n)}
     start=PathState(anchor,1.)
-    final,r=sequential(start,np.r_[ref[free]/scale,1.],operator,commit,steps=steps,ds=ds,min_ds=ds/8,tol=min(1e-10,1e-8/force))
+    final,r=sequential(start,np.r_[ref[free]/scale,1.],operator,commit,steps=steps,ds=ds,min_ds=ds/8,tol=min(1e-10,5e-7/force),anchor_tol=1.1e-6/force)
     # Do not expose a branch state as a resumable fire MemberState.
     return {"anchor_minute":anchor.thermal_minutes,"initial_inventory":material_inventory(start),
             "final_inventory":material_inventory(final),"committed_path_increments":final.increments,
