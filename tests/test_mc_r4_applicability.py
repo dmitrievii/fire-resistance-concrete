@@ -17,7 +17,7 @@ class TestMC4(unittest.TestCase):
         self.assertEqual([q["state"] for q in rows],[
             "NO_CONCRETE_ABOVE_CRITICAL","NO_CONCRETE_ABOVE_CRITICAL",
             "CORNER_ONLY_K27_DOMAIN_UNRESOLVED","CORNER_ONLY_K27_DOMAIN_UNRESOLVED",
-            "K27_AREA_AVAILABLE_NOT_MECHANICAL_QUALIFICATION",
+            "K27_DOMAIN_UNRESOLVED",  # legacy helper also requires K.23 delta >= 0
             "K27_AREA_AVAILABLE_NOT_MECHANICAL_QUALIFICATION"])
         self.assertAlmostEqual(rows[2]["corner_onset_min"],7.193602619254521)
         self.assertAlmostEqual(rows[2]["side_onset_min"],14.690322240671279)
