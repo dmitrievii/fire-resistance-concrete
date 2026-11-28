@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import math
 import numpy as np
 from rc_fire.mechanics import sp2026_r9g_hot_domain as hot
+from rc_fire.mechanics import sp2026_r10b_steel_history as steel_history
 from rc_fire.mechanics import sp2026_nonisothermal_coupling as material
 from rc_fire.mechanics.sp2026_nominal_member import prepare_sp2026_design_section
 from rc_fire.materials.sp2026_fire import steel_at_sp_fire
@@ -28,7 +29,7 @@ def _circle_rectangle_area(cx,cy,r,x0,x1,y0,y1):
     lo=y0-cy;hi=y1-cy
     cuts=[a,b]
     for v in (lo,hi):
-        if abs(v)<r:
+        if abs(v)<=r:  # include tangent split at x=0 for y=±r
             z=math.sqrt(max(0.,r*r-v*v))
             cuts.extend(x for x in (-z,z) if a<x<b)
     cuts=sorted(set(cuts))
@@ -82,9 +83,14 @@ class SectionState:
     concrete:tuple
     probes:tuple
     steel_temperatures:tuple
+    steel_states:tuple
+    steel_mode:str
+    steel_strain_limit:float
 
 def make_initial(column,field,*,grid,mode,length_mm,Gwork_N_mm,yield_fraction,
-                 strength_basis):
+                 strength_basis,steel_mode=steel_history.ELASTIC,steel_strain_limit=.02):
+    if steel_mode not in (steel_history.ELASTIC,steel_history.PLASTIC):raise SectionHistoryError("explicit steel mode required")
+    if not math.isfinite(steel_strain_limit) or steel_strain_limit<=0:raise SectionHistoryError("positive steel research domain guard required")
     p=prepare_sp2026_design_section(column,field,grid=grid)
     if field["snapshot"]["time_minutes"]!=0.:
         raise SectionHistoryError("history must start at ambient time zero")
@@ -100,7 +106,8 @@ def make_initial(column,field,*,grid,mode,length_mm,Gwork_N_mm,yield_fraction,
     states=tuple(hot.initial_state(pars,mode) for _ in A)
     probes=tuple(hot.initial_state(pars,mode) for _ in p.sp_boundary_u)
     return SectionState(_geometry(p,A),grid,field["thermal_method"],0.,0.,
-                        (0.,0.,0.),states,probes,tuple(p.theta_s))
+                        (0.,0.,0.),states,probes,tuple(p.theta_s),
+                        tuple(steel_history.SteelState() for _ in p.theta_s),steel_mode,steel_strain_limit)
 
 def _shape(u,v):
     return np.column_stack((np.ones(len(u)),v,u))
@@ -127,11 +134,14 @@ def _trial(s,p,A,C,B,E,fy,t,q):
         cs.append(new);stress.append(r["stress_MPa"]);tangent.append(r["effective_tangent_MPa"]);rows.append(r)
     sc=np.asarray(stress);tc=np.asarray(tangent)
     es=B@q+p.eps_th_s
-    ss=E*es
-    # Elastic predictor used in Newton only. Admission rejects yield.
+    trials=[steel_history.trial(old,temperature_C=T,mechanical_strain=e,E_MPa=ee,fy_MPa=f,mode=s.steel_mode)
+            for old,T,e,ee,f in zip(s.steel_states,p.theta_s,es,E,fy)]
+    steel_states=tuple(x[0] for x in trials)
+    ss=np.asarray([x.stress_MPa for x in steel_states]);ts=np.asarray([x[1] for x in trials])
+    predictor_ratios=np.asarray([x[2] for x in trials])
     Fc=1000*C.T@(A*sc);Fs=1000*B.T@(p.bar_area*ss)
-    J=1000*((C.T*(A*tc))@C+(B.T*(p.bar_area*E))@B)
-    return Fc+Fs,J,cs,rows,sc,ss,Fc,Fs,es
+    J=1000*((C.T*(A*tc))@C+(B.T*(p.bar_area*ts))@B)
+    return Fc+Fs,J,cs,rows,sc,ss,Fc,Fs,es,steel_states,predictor_ratios
 
 def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35):
     """Solve force control on locally positive tangent branch; atomic commit.
@@ -156,7 +166,7 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
         try:out=ev(q)
         except (ValueError,ArithmeticError) as exc:
             return s,{"status":"UNRESOLVED_MATERIAL_TRIAL","reason":str(exc)}
-        F,J,cs,rows,sc,ss,Fc,Fs,es=out
+        F,J,cs,rows,sc,ss,Fc,Fs,es,steel_states,predictor_ratios=out
         err=residual(F)
         if err<=tolerance_kN:break
         try:dq=np.linalg.solve(J,target-F)
@@ -175,8 +185,8 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
     if eig[0]<=1e-9*max(1.,eig[-1]):
         return s,{"status":"UNRESOLVED_NONPOSITIVE_SECTION_TANGENT","eigenvalues_kN":eig.tolist()}
     yield_ratio=float(np.max(np.abs(ss)/fy))
-    if yield_ratio>1.+1e-10:
-        return s,{"status":"UNRESOLVED_STEEL_YIELD_HISTORY","steel_yield_ratio":yield_ratio}
+    if not all(steel_history.admitted(a,s.steel_mode,float(f),diagnostic_strain_limit=s.steel_strain_limit) for a,f in zip(steel_states,fy)):
+        return s,{"status":"UNRESOLVED_STEEL_YIELD_OR_RESEARCH_DOMAIN","steel_yield_ratio":yield_ratio}
     # Boundary samples carry independent histories but zero integration weight.
     probes=[];pr=[]
     try:
@@ -186,16 +196,29 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
     except (ValueError,ArithmeticError) as exc:
         return s,{"status":"UNRESOLVED_BOUNDARY_HISTORY","reason":str(exc)}
     new=SectionState(s.geometry,s.grid,s.thermal_method,t,minute,tuple(q),
-                     tuple(cs),tuple(probes),tuple(p.theta_s))
+                     tuple(cs),tuple(probes),tuple(p.theta_s),steel_states,s.steel_mode,s.steel_strain_limit)
     concrete_damage=np.array([a.active.damage for a in cs])
     inactive=np.array([a.thermal_cutoff for a in cs])
     D=J[1:,1:]-np.outer(J[1:,0],J[0,1:])/J[0,0]
     D=D*np.outer(scale[1:],scale[1:])
+    # Frozen-state elastic unloading reference: only currently compressed concrete,
+    # no history increments, full steel elastic unloading. Not a loading tangent.
+    Eu=[]
+    for a,r in zip(cs,rows):
+        if a.thermal_cutoff or a.active.damage==1. or r["stress_MPa"]<=0.:Eu.append(0.)
+        else:Eu.append((1-a.active.damage)*material._material(a.active.parameters,a.active.maximum_temperature_C)[0])
+    Ju=1000*((C.T*(A*np.asarray(Eu)))@C+(B.T*(p.bar_area*E))@B)
+    Du=(Ju[1:,1:]-np.outer(Ju[1:,0],Ju[0,1:])/Ju[0,0])*np.outer(scale[1:],scale[1:])
     return new,{"status":"EQUILIBRATED_RESEARCH_SECTION","time_minutes":minute,
         "q":q.tolist(),"actions_kN_kNm":(F*scale).tolist(),
         "concrete_actions_kN_kNm":(Fc*scale).tolist(),"steel_actions_kN_kNm":(Fs*scale).tolist(),
         "max_conjugate_residual_kN":err,"iterations":iteration,
         "section_tangent_eigenvalues_kN":eig.tolist(),"condensed_D_kNm2":D.tolist(),
+        "frozen_elastic_unloading_D_kNm2":Du.tolist(),"steel_mode":s.steel_mode,
+        "steel_predictor_yield_ratio":float(np.max(predictor_ratios)),
+        "steel_plastic_strains":[a.plastic_strain for a in steel_states],
+        "steel_max_accumulated_plastic_strain":max(a.accumulated_plastic_strain for a in steel_states),
+        "steel_yielded_bar_count":sum(a.accumulated_plastic_strain>0. for a in steel_states),
         "concrete_net_area_m2":float(A.sum()),"steel_area_m2":float(p.bar_area.sum()),
         "area_weighted_damage":float(A@concrete_damage/A.sum()),
         "max_cell_damage":float(concrete_damage.max()),
@@ -213,15 +236,19 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
         "actual_t_R_minutes":None}
 
 def run_history(column,fields,actions,*,grid,mode,length_mm=50.,Gwork_N_mm=5.,
-                yield_fraction=.4,strength_basis="SP5_ACCIDENTAL_FCD"):
+                yield_fraction=.4,strength_basis="SP5_ACCIDENTAL_FCD",
+                steel_mode=steel_history.ELASTIC,steel_strain_limit=.02):
     s=make_initial(column,fields[0],grid=grid,mode=mode,length_mm=length_mm,
-                   Gwork_N_mm=Gwork_N_mm,yield_fraction=yield_fraction,strength_basis=strength_basis)
+                   Gwork_N_mm=Gwork_N_mm,yield_fraction=yield_fraction,strength_basis=strength_basis,
+                   steel_mode=steel_mode,steel_strain_limit=steel_strain_limit)
     rows=[]
     for field in fields:
         minute=float(field["snapshot"]["time_minutes"])
         # Explicit ambient preload at 1 s with no conventional creep.
-        new,r=advance(s,column,field,actions,time_s=1.+60*minute)
-        rows.append(r)
+        try:new,r=advance(s,column,field,actions,time_s=1.+60*minute)
+        except (ValueError,ArithmeticError,np.linalg.LinAlgError) as exc:
+            new=s;r={"status":"UNRESOLVED_INPUT_OR_MATERIAL_DOMAIN","reason":str(exc)}
+        rows.append({**r,"requested_time_minutes":minute})
         if r["status"]!="EQUILIBRATED_RESEARCH_SECTION":
             return {"status":"UNRESOLVED_HISTORY_STOP","rows":rows,"last_committed_minute":s.thermal_minutes,
                     "actual_t_R_minutes":None}
