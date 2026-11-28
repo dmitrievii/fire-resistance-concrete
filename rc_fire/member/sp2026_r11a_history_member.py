@@ -167,7 +167,7 @@ def initial(column,spec,field,*,grid=8,mode=hot.MODIFIED_AT,quadrature=None):
                  for _ in beam.stations)
     return MemberState(tuple(beam.zero()),states,0.,0.,contract(beam))
 
-def advance(s,column,spec,field,*,max_iterations=30):
+def advance(s,column,spec,field,*,max_iterations=30,initial_guess=None):
     beam=make_beam(column,spec)
     if contract(beam)!=s.contract:raise ValueError("member contract changed")
     minute=float(field["snapshot"]["time_minutes"]);_snapshot_checked(field,minute,column)
@@ -182,7 +182,9 @@ def advance(s,column,spec,field,*,max_iterations=30):
     def law(i,q):
         r=sec._trial(s.sections[i],p,A,C,B,E,fy,t,q)
         return r[0],r[1],(tuple(q),r)
-    solved,report=beam.solve(s.x,law,max_iterations=max_iterations)
+    # A diagnostic equilibrium can seed Newton, but all trial histories
+    # still originate from the exact committed predecessor s.
+    solved,report=beam.solve(s.x if initial_guess is None else initial_guess,law,max_iterations=max_iterations)
     if solved is None:return s,report
     x,recs,K=solved;new=[];stations=[];Ku=np.zeros_like(K)
     for i,(F,J,(q,r)) in enumerate(recs):
