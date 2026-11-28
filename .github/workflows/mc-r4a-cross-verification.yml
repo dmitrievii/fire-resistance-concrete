@@ -1,0 +1,21 @@
+name: MC-R4A common-field qualification
+on:
+  push:
+    branches: [feat/mc-r4a-cross-verification]
+  workflow_dispatch:
+jobs:
+  cross:
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -p test_mc_r4_applicability.py -v
+      - run: python -m unittest discover -s tests -p test_mc_r4a_cross_verification.py -v
+      - run: python -m unittest discover -s tests -p test_mc_r3_reconciliation.py -v
+      - run: python -m unittest discover -s tests -p test_mc_r2_reduced.py -v
