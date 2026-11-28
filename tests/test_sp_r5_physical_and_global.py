@@ -92,7 +92,8 @@ class TestSP5PhysicalSourceConstitutive(unittest.TestCase):
         self.assertLess(abs(s2-s),.005)
         peak,_,_,_,_=steel_sp5_ascending_stress(
             eu,20.,steel,ductility=measured)
-        self.assertAlmostEqual(peak,fy*1.08,places=4)
+        self.assertAlmostEqual(peak,fy+(fy*1.08-fy)*(eu-ey)/(.05-ey),places=4)
+        self.assertLess(peak,fy*1.08)
         with self.assertRaises(SPFireMaterialError):
             steel_sp5_ascending_stress(
                 eu+1.e-5,20.,steel,ductility=measured)

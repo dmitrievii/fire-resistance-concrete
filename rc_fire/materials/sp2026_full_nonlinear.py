@@ -148,8 +148,8 @@ def steel_sp5_ascending_stress(eps_mechanical,theta_C,steel, *,
     """SP5 §6.2.2.13 ascending DESIGN bilinear steel branch.
 
     At the actual hot temperature E_theta=beta E_s and
-    f_yd,theta=k_s f_yk/gamma_s. A linear hardening branch reaches
-    k f_yd,theta at epsilon_ud=0.9 epsilon_uk. εuk at high temperature
+    f_yd,theta=k_s f_yk/gamma_s. A linear hardening branch is defined
+    through k f_yd,theta at epsilon_uk, and truncated at epsilon_ud=0.9 epsilon_uk. εuk at high temperature
     is NOT qualified by the ambient Table 6.7 and must be confirmed by
     experiment for any regulatory use.
     """
@@ -171,7 +171,7 @@ def steel_sp5_ascending_stress(eps_mechanical,theta_C,steel, *,
         sigma=E*eps
         tangent=E
     else:
-        slope=(fu-fy)/(eu-ey)
+        slope=(fu-fy)/(d.epsilon_uk-ey)
         sigma=math.copysign(fy+slope*(abs_eps-ey),eps)
         tangent=slope
     return sigma,tangent,eu,mat,{
