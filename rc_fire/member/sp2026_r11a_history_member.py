@@ -157,12 +157,13 @@ def make_beam(column,spec):
         raise ValueError("R11A requires explicit uniform longitudinal heating")
     return Beam(z,N,left,right,q,f,initial,(float(column["h_mm"])/2000,float(column["b_mm"])/2000))
 
-def initial(column,spec,field,*,grid=8,mode=hot.MODIFIED_AT,quadrature=None):
+def initial(column,spec,field,*,grid=8,mode=hot.MODIFIED_AT,quadrature=None,
+            strength_basis="SP5_ACCIDENTAL_FCD"):
     beam=make_beam(column,spec);_snapshot_checked(field,0.,column)
     # Independent immutable section histories. Identical initial values
     # are not a shared mutable constitutive state.
     states=tuple(sec.make_initial(column,field,grid=grid,mode=mode,length_mm=50.,
-                    Gwork_N_mm=5.,yield_fraction=.4,strength_basis="SP5_ACCIDENTAL_FCD",
+                    Gwork_N_mm=5.,yield_fraction=.4,strength_basis=strength_basis,
                     steel_mode=steel.PLASTIC,steel_strain_limit=.02,quadrature=quadrature)
                  for _ in beam.stations)
     return MemberState(tuple(beam.zero()),states,0.,0.,contract(beam))
