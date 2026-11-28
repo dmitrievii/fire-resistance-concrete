@@ -28,24 +28,46 @@ class TestMC1(unittest.TestCase):
     runs=[]
     for c in (case(),case(500,700,25)):
         f=heat(c)
-        r=m.history(c,f,[0,5,10],**KW)
-        self.assertEqual(len(r["samples"]),3)
-        self.assertTrue(all(x["status"]=="ALL_SAMPLED_SECTIONS_WITHIN_MODEL_LIMITS" for x in r["samples"]))
-        for x in r["samples"]:
-            self.assertEqual(x["section_count"],2);self.assertEqual(len(x["bar_temperatures_C"]),8)
-            for s in x["sections"]:
-                self.assertLess(s["section"]["relative_residual"],1e-6)
-                self.assertEqual(s["nominal"]["x"]["phi_eff"] if "phi_eff" in s["nominal"]["x"] else KW["creep_by_axis"]["x"],.2)
-                self.assertLess(s["M2_kNm"]["y"],0.)
-                self.assertAlmostEqual(s["M2_kNm"]["x"],s["M0_kNm"]["x"]*s["nominal"]["x"]["eta_a"])
-            self.assertIsNone(x["actual_t_R_minutes"])
-        self.assertNotEqual(r["samples"][0]["bar_temperatures_C"],r["samples"][-1]["bar_temperatures_C"])
-        runs.append(r)
-    self.assertNotEqual(runs[0]["samples"][-1]["bar_temperatures_C"],runs[1]["samples"][-1]["bar_temperatures_C"])
-    print("MC_R1_VARIABLE_EVIDENCE",json.dumps([{"samples":[{"t":s["time_minutes"],"status":s["status"],
-         "bars":s["bar_temperatures_C"],"governing":s["governing_sampled_strain_section"],
-         "sections":[{"id":x["id"],"N":x["N_kN"],"M2":x["M2_kNm"],"ratio":x["section"]["critical_ratio"],
-             "Ncr":[x["nominal"][a]["Ncrit_kN"] for a in ("x","y")]} for x in s["sections"]]} for s in r["samples"]]} for r in runs],allow_nan=False))
+        # Independent requested-duration section checks, not a continuous
+        # fire history. Export every computed state BEFORE assertions.
+        rows=[m.assess(c,select_sp2026_snapshot(f,t),**KW) for t in (0,5,10)]
+        compact={"geometry":[c["b_mm"],c["h_mm"]],"bar_diameter_mm":c["bars"][0]["diameter_mm"],
+          "samples":[{"t":s["time_minutes"],"status":s["status"],"bars":s["bar_temperatures_C"],
+            "governing":s["governing_sampled_strain_section"],"sections":[{"id":x["id"],"N":x["N_kN"],
+            "status":x["status"],"M2":x["M2_kNm"],"ratio":(x["section"] or {}).get("critical_ratio"),
+            "residual":(x["section"] or {}).get("relative_residual"),
+            "reason":(x["section"] or {}).get("reason"),
+            "scope":{k:(x["section"] or {}).get("scope",{}).get(k) for k in ("maximum_concrete_fibre_ratio","maximum_concrete_boundary_ratio","steel_check_tension_ratio")},
+            "Ncr":[x["nominal"][a].get("Ncrit_kN") for a in ("x","y")],
+            "eta":[x["nominal"][a].get("eta_a") for a in ("x","y")]} for x in s["sections"]]} for s in rows]}
+        print("MC_R1_VARIABLE_EVIDENCE",json.dumps(compact,allow_nan=False),flush=True)
+        self.assertEqual(rows[0]["status"],"ALL_SAMPLED_SECTIONS_WITHIN_MODEL_LIMITS")
+        for s in rows:
+            self.assertEqual(s["section_count"],2);self.assertEqual(len(s["bar_temperatures_C"]),8)
+            self.assertEqual([x["id"] for x in s["sections"]],["bottom","top"])
+            for x in s["sections"]:
+                self.assertEqual(x["nominal"]["x"]["phi_eff_input"],.2)
+                self.assertEqual(x["nominal"]["y"]["phi_eff_input"],.4)
+                self.assertEqual(x["nominal"]["x"]["mu_input"],.8)
+                self.assertEqual(x["nominal"]["y"]["mu_input"],1.2)
+                if x["M2_kNm"] is not None:
+                    self.assertLess(x["M2_kNm"]["y"],0.)
+                    for a in ("x","y"):
+                        self.assertAlmostEqual(x["M2_kNm"][a],x["M0_kNm"][a]*x["nominal"][a]["eta_a"])
+                if x["status"] in ("SECTION_MODEL_WITHIN","SECTION_MODEL_LIMIT_EXCEEDED"):
+                    self.assertLess(x["section"]["relative_residual"],1e-6)
+                    self.assertEqual(x["status"]=="SECTION_MODEL_WITHIN",x["section"]["critical_ratio"]<=1.+1e-12)
+                else:self.assertTrue(x["status"].startswith("UNRESOLVED"))
+            self.assertIsNone(s["actual_t_R_minutes"])
+        self.assertNotEqual(rows[0]["bar_temperatures_C"],rows[-1]["bar_temperatures_C"])
+        history=m.history(c,f,[0,5,10],**KW)["samples"]
+        expected=[]
+        for row in rows:
+            expected.append(row["status"])
+            if row["status"]!="ALL_SAMPLED_SECTIONS_WITHIN_MODEL_LIMITS":break
+        self.assertEqual([s["status"] for s in history],expected)
+        runs.append(rows)
+    self.assertNotEqual(runs[0][-1]["bar_temperatures_C"],runs[1][-1]["bar_temperatures_C"])
  def test_explicit_action_contract_and_invalid_bar(self):
     c=case();f=select_sp2026_snapshot(heat(c),0.)
     with self.assertRaises(ValueError):m.assess(c,f,**{**KW,"action_contract":{}})

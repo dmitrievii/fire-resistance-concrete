@@ -86,7 +86,8 @@ def assess(column,snapshot,*,basis,creep_by_axis,action_contract,grid=12):
         axes={}
         for a in ("x","y"):
             v=nonuniform_sp5_nominal_axis(p,N_kN=N,length_m=L,mu_x=mu["x"],mu_y=mu["y"],effective_creep_phi=phi[a])
-            axes[a]=v.get(a,{"status":v["status"] if "status" in v else "UNRESOLVED_NOMINAL"})
+            axes[a]={**v.get(a,{"status":v["status"] if "status" in v else "UNRESOLVED_NOMINAL"}),
+                     "phi_eff_input":phi[a],"mu_input":mu[a]}
         row={"id":str(s["id"]),"z_m":z,"N_kN":N,"M0_kNm":M,"nominal":axes,
              "M2_kNm":None,"section":None}
         if any(axes[a].get("eta_a") is None for a in axes):
