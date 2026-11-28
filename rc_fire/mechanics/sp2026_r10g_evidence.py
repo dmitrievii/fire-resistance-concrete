@@ -169,8 +169,13 @@ def consolidate(receipts):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt",action="append",default=[],help="STAGE=metadata.json,job.log")
+    parser.add_argument("--archived",action="append",default=[],help="Selected, provenance-labelled archived receipt JSON")
     parser.add_argument("--output",required=True)
     args=parser.parse_args();receipts={}
+    for path in args.archived:
+        r=json.loads(Path(path).read_text());stage=r["stage"]
+        if stage in receipts:raise ValueError("duplicate stage")
+        receipts[stage]=r
     for spec in args.receipt:
         stage,paths=spec.split("=",1);meta,log=paths.split(",",1)
         if stage in receipts:raise ValueError("duplicate stage")

@@ -1,0 +1,3877 @@
+{
+  "stage": "D",
+  "run_id": 46088772938,
+  "head_sha": "42a38c7b82c79d11102afd65459d241c4283368f",
+  "status": "completed",
+  "conclusion": "success",
+  "source_kind": "selected_actual_CI_checkpoint_fields",
+  "source_job_id": 140804480068,
+  "evidence": {
+    "runs": [
+      {
+        "id": "PILOT32_A2",
+        "status": "DIAGNOSTIC_COMPLETE",
+        "last_committed_minute": 90,
+        "quadrature": {
+          "cell_count": 688,
+          "point_count": 688,
+          "min_cell_width_mm": 18.749999999999932,
+          "max_cell_width_mm": 75.00000000000001,
+          "pilot_minutes": [
+            1,
+            3,
+            5,
+            10,
+            30,
+            60,
+            90
+          ],
+          "max_level": 2,
+          "delta_C": 100,
+          "unresolved_gradient_cells": 460,
+          "front_refined_cells": 0,
+          "unresolved_front_cells": 0,
+          "unresolved_front_gross_area_m2": 0,
+          "unresolved_probe_cells": 0,
+          "net_area_m2": 0.35748672587712815,
+          "net_centroid_m": [
+            0.3,
+            0.3
+          ]
+        },
+        "rows": [
+          {
+            "time_minutes": 0,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.842170943040401e-14,
+            "concrete_actions_kN_kNm": [
+              48.342124879335856,
+              0.9447003570775957,
+              0.9447003570775904
+            ],
+            "condensed_D_kNm2": [
+              [
+                460845.6449109147,
+                1.2199696525894884e-11
+              ],
+              [
+                1.9881128273565024e-12,
+                460845.64491091494
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                460845.6449109147,
+                1.2199696525894884e-11
+              ],
+              [
+                1.9881128273565024e-12,
+                460845.64491091494
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              0.000003298237756034694,
+              6.509771836034029e-7,
+              6.509771836033996e-7
+            ],
+            "compressed_net_area_m2": 0.35748672587712815,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 1,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.6880505881999852e-9,
+            "concrete_actions_kN_kNm": [
+              87.33690612489623,
+              0.7411962217878141,
+              0.7411962217878181
+            ],
+            "condensed_D_kNm2": [
+              [
+                102909.84204034334,
+                1.1662445829247484e-12
+              ],
+              [
+                1.8263809769448812e-12,
+                102909.84204034334
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                123208.2812787206,
+                2.0455412184278583e-12
+              ],
+              [
+                2.066189150263902e-12,
+                123208.28127872062
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.000081795835672085,
+              0.000003047562208074097,
+              0.0000030475622080740967
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 2,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 6.835421118012164e-10,
+            "concrete_actions_kN_kNm": [
+              142.25907632538136,
+              0.6251727463579465,
+              0.6251727463579525
+            ],
+            "condensed_D_kNm2": [
+              [
+                93368.40738496943,
+                2.583771675861329e-12
+              ],
+              [
+                2.685562179586811e-12,
+                93368.40738496947
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                118751.13169787619,
+                5.034311446965184e-12
+              ],
+              [
+                5.056165892917658e-12,
+                118751.13169787615
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00021301559139136916,
+              0.000004417894147963583,
+              0.0000044178941479636
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 3,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 6.811546882090624e-10,
+            "concrete_actions_kN_kNm": [
+              190.35499246088756,
+              0.5159859489164944,
+              0.5159859489165026
+            ],
+            "condensed_D_kNm2": [
+              [
+                88324.49462870348,
+                -2.4301068736959678e-12
+              ],
+              [
+                -2.2463012543835558e-12,
+                88324.4946287035
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                113713.62437370302,
+                3.3852413292905783e-12
+              ],
+              [
+                8.512209843206087e-13,
+                113713.62437370309
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0003468582205209882,
+              0.000005713958523519841,
+              0.000005713958523519844
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 4,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.3767476048087701e-9,
+            "concrete_actions_kN_kNm": [
+              227.9020498574182,
+              0.42347873516091555,
+              0.4234787351609358
+            ],
+            "condensed_D_kNm2": [
+              [
+                85041.3092062322,
+                1.7237935237188956e-12
+              ],
+              [
+                1.750648493773742e-12,
+                85041.30920623231
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                108822.09564415192,
+                1.5754639172892888e-13
+              ],
+              [
+                1.8440136178377416e-13,
+                108822.09564415192
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0004756287536891352,
+              0.000006821420919046969,
+              0.00000682142091904706
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 5,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.5009220533102052e-9,
+            "concrete_actions_kN_kNm": [
+              253.25021170608815,
+              0.3494878116921801,
+              0.34948781169215876
+            ],
+            "condensed_D_kNm2": [
+              [
+                82869.19528263202,
+                3.557650923384176e-12
+              ],
+              [
+                4.78722631966314e-12,
+                82869.19528263205
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                104428.54839468068,
+                3.737507053373441e-12
+              ],
+              [
+                4.887146391879388e-12,
+                104428.54839468066
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0005946874148049594,
+              0.000007718907809559983,
+              0.000007718907809560151
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 6,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 8.785434602032183e-10,
+            "concrete_actions_kN_kNm": [
+              267.706033475659,
+              0.291101986210018,
+              0.2911019862100157
+            ],
+            "condensed_D_kNm2": [
+              [
+                80949.33768712996,
+                2.7383841392787387e-12
+              ],
+              [
+                4.052226156548279e-12,
+                80949.33768712998
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                100053.58783670227,
+                4.803619485581787e-14
+              ],
+              [
+                8.290128775717368e-14,
+                100053.58783670233
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0007047906427655133,
+              0.00000844020564829049,
+              0.00000844020564829063
+            ],
+            "compressed_net_area_m2": 0.043593749999999924,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 7,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.3805752097084678e-9,
+            "concrete_actions_kN_kNm": [
+              274.14612088954067,
+              0.26879012684328324,
+              0.26879012684326686
+            ],
+            "condensed_D_kNm2": [
+              [
+                81623.83292134861,
+                6.478728491862318e-13
+              ],
+              [
+                4.811913945505381e-14,
+                81623.8329213486
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                98987.27140968984,
+                -4.737299614413403e-13
+              ],
+              [
+                9.249177731527675e-13,
+                98987.2714096898
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0008097007243163439,
+              0.00000873923927173733,
+              0.000008739239271737408
+            ],
+            "compressed_net_area_m2": 0.04485873742035296,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 8,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.121760793258545e-10,
+            "concrete_actions_kN_kNm": [
+              274.3378782575095,
+              0.2308467492742743,
+              0.23084674927429785
+            ],
+            "condensed_D_kNm2": [
+              [
+                79322.09030048091,
+                -2.386992016346331e-12
+              ],
+              [
+                -3.775475270307922e-12,
+                79322.09030048085
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                94209.22525392642,
+                -2.5943261661950927e-12
+              ],
+              [
+                -1.2649834558743006e-12,
+                94209.22525392647
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0009110176505206049,
+              0.000009231385857476535,
+              0.000009231385857476748
+            ],
+            "compressed_net_area_m2": 0.04485873742035296,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 9,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.1620529245278703e-10,
+            "concrete_actions_kN_kNm": [
+              269.2419666422027,
+              0.1998017042156275,
+              0.19980170421563992
+            ],
+            "condensed_D_kNm2": [
+              [
+                76675.54166038835,
+                -3.1476312901485204e-12
+              ],
+              [
+                -4.535806040985253e-12,
+                76675.54166038835
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                89169.81867925919,
+                3.3646594165464856e-12
+              ],
+              [
+                3.5752058211699773e-12,
+                89169.81867925919
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0010088676166361513,
+              0.000009647252241955082,
+              0.00000964725224195532
+            ],
+            "compressed_net_area_m2": 0.04485873742035296,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 10,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.0187496119206116e-10,
+            "concrete_actions_kN_kNm": [
+              260.6851332821637,
+              0.17479579556028768,
+              0.17479579556026717
+            ],
+            "condensed_D_kNm2": [
+              [
+                73957.36285333057,
+                -1.463525996503646e-12
+              ],
+              [
+                -4.4240136582026925e-13,
+                73957.36285333056
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                84348.88841290928,
+                5.266090867261733e-12
+              ],
+              [
+                3.649325591435734e-12,
+                84348.8884129093
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0011053398802361297,
+              0.000009995898248188861,
+              0.000009995898248189073
+            ],
+            "compressed_net_area_m2": 0.04485873742035296,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 15,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 9.897291874949588e-10,
+            "concrete_actions_kN_kNm": [
+              203.93748071057237,
+              0.14514010446909698,
+              0.1451401044691083
+            ],
+            "condensed_D_kNm2": [
+              [
+                52915.76065542167,
+                -2.3026268662290123e-12
+              ],
+              [
+                -2.2150044514421723e-12,
+                52915.760655421655
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                73955.23774123352,
+                8.748314302481807e-13
+              ],
+              [
+                9.624538450350194e-13,
+                73955.2377412335
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0016029960967486373,
+              0.00001062309971046176,
+              0.000010623099710461677
+            ],
+            "compressed_net_area_m2": 0.04709291888963501,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 20,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 8.022027486731531e-10,
+            "concrete_actions_kN_kNm": [
+              138.67079366996333,
+              0.09625898934169401,
+              0.09625898934170414
+            ],
+            "condensed_D_kNm2": [
+              [
+                49880.9354205554,
+                -1.0253729329827832e-12
+              ],
+              [
+                -1.2729151845080728e-12,
+                49880.9354205554
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                64204.55849715155,
+                -3.1037104350810853e-12
+              ],
+              [
+                -2.352051964443735e-12,
+                64204.55849715152
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.002091709479779171,
+              0.000011481883783447584,
+              0.000011481883783447224
+            ],
+            "compressed_net_area_m2": 0.04709291888963501,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 25,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.36583222299214e-10,
+            "concrete_actions_kN_kNm": [
+              80.86402660903877,
+              0.06969263002761765,
+              0.06969263002763916
+            ],
+            "condensed_D_kNm2": [
+              [
+                46896.28261041766,
+                3.592953981915769e-12
+              ],
+              [
+                3.783053941215233e-12,
+                46896.28261041766
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                56747.457843597724,
+                6.309483411548873e-13
+              ],
+              [
+                8.410323148976037e-13,
+                56747.4578435977
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0025666693440048304,
+              0.000011990792924889131,
+              0.000011990792924889116
+            ],
+            "compressed_net_area_m2": 0.04709291888963501,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 30,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.7057645840832265e-10,
+            "concrete_actions_kN_kNm": [
+              33.8056376410306,
+              0.05549207245960995,
+              0.0554920724596072
+            ],
+            "condensed_D_kNm2": [
+              [
+                42994.330185164836,
+                2.4528632970619078e-12
+              ],
+              [
+                2.124710748585533e-12,
+                42994.33018516482
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                50227.542769387466,
+                1.2919169579991886e-12
+              ],
+              [
+                1.447130327657244e-12,
+                50227.54276938749
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.003016270514383464,
+              0.000012420167391498911,
+              0.00001242016739149958
+            ],
+            "compressed_net_area_m2": 0.04568666888963502,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 35,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.2304647018245305e-10,
+            "concrete_actions_kN_kNm": [
+              2.3496174887731045,
+              0.010674527990014043,
+              0.010674527990011937
+            ],
+            "condensed_D_kNm2": [
+              [
+                24969.667558539728,
+                9.570614411060361e-13
+              ],
+              [
+                4.1014946795470115e-13,
+                24969.667558539724
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                25807.788603669214,
+                5.384581684553539e-13
+              ],
+              [
+                3.151422419052468e-14,
+                25807.788603669214
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0034481163853952827,
+              0.000013273275592329017,
+              0.000013273275592329205
+            ],
+            "compressed_net_area_m2": 0.0034991688896350856,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 40,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.8474111129762605e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21952.479942235394,
+                -6.333265396425077e-13
+              ],
+              [
+                -1.077386608255105e-12,
+                21952.479942235394
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21952.479942235394,
+                -6.333265396425077e-13
+              ],
+              [
+                -1.077386608255105e-12,
+                21952.479942235394
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.003902465176081692,
+              0.000013665881977317311,
+              0.000013665881977316945
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 45,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.0658141036401503e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21583.92807666628,
+                -8.01105419407153e-13
+              ],
+              [
+                -1.139265033595197e-12,
+                21583.92807666628
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21583.92807666628,
+                -8.01105419407153e-13
+              ],
+              [
+                -1.139265033595197e-12,
+                21583.92807666628
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004324585760767332,
+              0.000013899230896916816,
+              0.000013899230896916657
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.001406249999999995
+          },
+          {
+            "time_minutes": 50,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.949551631241775e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21194.589117230775,
+                9.666794584169942e-14
+              ],
+              [
+                -2.2282028191289718e-13,
+                21194.589117230775
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21194.589117230775,
+                9.666794584169942e-14
+              ],
+              [
+                -2.2282028191289718e-13,
+                21194.589117230775
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004717191074892836,
+              0.000014154556068092778,
+              0.000014154556068091277
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.001406249999999995
+          },
+          {
+            "time_minutes": 55,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.5631940186722204e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20916.530356943156,
+                4.3925436248666587e-13
+              ],
+              [
+                4.594528254174296e-14,
+                20916.530356943156
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20916.530356943156,
+                4.3925436248666587e-13
+              ],
+              [
+                4.594528254174296e-14,
+                20916.530356943156
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00508560239190253,
+              0.00001434272295072187,
+              0.00001434272295072206
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.001406249999999995
+          },
+          {
+            "time_minutes": 60,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 6.616929226765933e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20678.682036153503,
+                -5.826855006791677e-13
+              ],
+              [
+                -9.666820081587589e-13,
+                20678.682036153506
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20678.682036153503,
+                -5.826855006791677e-13
+              ],
+              [
+                -9.666820081587589e-13,
+                20678.682036153506
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005429325153217868,
+              0.000014507694420540322,
+              0.000014507694420539082
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0042187499999999925
+          },
+          {
+            "time_minutes": 65,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.81756864903582e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7275.644538308308,
+                0
+              ],
+              [
+                -1.5729473439516363e-29,
+                7275.644538308309
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20458.851219623248,
+                -7.947079462988353e-13
+              ],
+              [
+                -1.17015164046571e-12,
+                20458.85121962325
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005575491263755875,
+              0.000041233460268762424,
+              0.00004123346026876344
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0042187499999999925
+          },
+          {
+            "time_minutes": 70,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.973799150320701e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7194.82545344902,
+                -3.36898866964613e-29
+              ],
+              [
+                -5.200229223788589e-29,
+                7194.82545344902
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20240.12898857262,
+                -7.082651007147782e-13
+              ],
+              [
+                -1.074875915185314e-12,
+                20240.128988572622
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005689202600062456,
+              0.0000416966334959772,
+              0.00004169663349597787
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.007031249999999991
+          },
+          {
+            "time_minutes": 75,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 8.526512829121202e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7118.90204498198,
+                -3.9852682960296905e-29
+              ],
+              [
+                -4.0192723462690184e-29,
+                7118.90204498198
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19974.01078987498,
+                -1.729822343014878e-12
+              ],
+              [
+                -1.9989858002358694e-12,
+                19974.01078987498
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005840608550486859,
+              0.00004214132995571374,
+              0.00004214132995571258
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.009843749999999981
+          },
+          {
+            "time_minutes": 80,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.6201263381153694e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7047.36681982063,
+                -4.321096219151706e-29
+              ],
+              [
+                -3.3972537061907435e-29,
+                7047.366819820631
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19725.60793756366,
+                -5.34600066076581e-13
+              ],
+              [
+                -8.777000451288199e-13,
+                19725.60793756366
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005984168574333407,
+              0.000042569091076147375,
+              0.00004256909107614932
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.012656249999999978
+          },
+          {
+            "time_minutes": 85,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.684341886080802e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6979.779290397963,
+                -2.3138329879058565e-29
+              ],
+              [
+                -1.52942524675064e-29,
+                6979.779290397963
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19492.964459532017,
+                -7.463532797700186e-13
+              ],
+              [
+                -9.936160777716014e-13,
+                19492.964459532017
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.006120581626346628,
+              0.000042981301774496045,
+              0.00004298130177449382
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.043593749999999924
+          },
+          {
+            "time_minutes": 90,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.1958437552457326e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6915.756145612553,
+                2.1018675750098947e-29
+              ],
+              [
+                2.0985393971358203e-29,
+                6915.756145612554
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19274.406588114867,
+                -4.892381409609154e-13
+              ],
+              [
+                -1.7237945055361739e-13,
+                19274.406588114867
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.006250469968490297,
+              0.00004337920448370446,
+              0.000043379204483705284
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.04485873742035296
+          }
+        ]
+      },
+      {
+        "id": "T32_FRONT3",
+        "status": "DIAGNOSTIC_COMPLETE",
+        "last_committed_minute": 90,
+        "quadrature": {
+          "cell_count": 2416,
+          "point_count": 2412,
+          "min_cell_width_mm": 9.374999999999911,
+          "max_cell_width_mm": 75.00000000000001,
+          "pilot_minutes": [
+            1,
+            3,
+            5,
+            10,
+            30,
+            60,
+            90
+          ],
+          "max_level": 3,
+          "delta_C": 60,
+          "unresolved_gradient_cells": 1484,
+          "front_refined_cells": 336,
+          "unresolved_front_cells": 764,
+          "unresolved_front_gross_area_m2": 0.06714843750000049,
+          "unresolved_probe_cells": 0,
+          "net_area_m2": 0.35748672587712815,
+          "net_centroid_m": [
+            0.3,
+            0.3
+          ]
+        },
+        "rows": [
+          {
+            "time_minutes": 0,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 7.105427357601002e-15,
+            "concrete_actions_kN_kNm": [
+              48.34212487933583,
+              0.9447309638716496,
+              0.9447309638716486
+            ],
+            "condensed_D_kNm2": [
+              [
+                461100.85123860504,
+                3.9484426787173225e-11
+              ],
+              [
+                3.6946704634843927e-11,
+                461100.851238605
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                461100.85123860504,
+                3.9484426787173225e-11
+              ],
+              [
+                3.6946704634843927e-11,
+                461100.851238605
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              0.000003298237756034687,
+              6.506168860763194e-7,
+              6.506168860763165e-7
+            ],
+            "compressed_net_area_m2": 0.35748672587712815,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 1,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.1390666188049181e-10,
+            "concrete_actions_kN_kNm": [
+              148.8393563104369,
+              0.4697337996410059,
+              0.4697337996410029
+            ],
+            "condensed_D_kNm2": [
+              [
+                50704.616684069406,
+                -280.4582334886422
+              ],
+              [
+                -280.4582334886421,
+                50704.616684069406
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                73310.52614315331,
+                -283.04181206874557
+              ],
+              [
+                -283.04181206874716,
+                73310.52614315336
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00020418621495762248,
+              0.000006244187174899123,
+              0.000006244187174899132
+            ],
+            "compressed_net_area_m2": 0.022412109375000024,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 2,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.787476998695638e-10,
+            "concrete_actions_kN_kNm": [
+              184.7249029015971,
+              0.32264318070538406,
+              0.3226431807053836
+            ],
+            "condensed_D_kNm2": [
+              [
+                56181.291166641066,
+                -15.496822178089458
+              ],
+              [
+                -15.496822178089284,
+                56181.29116664105
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                73834.14661493858,
+                -27.169186863761386
+              ],
+              [
+                -27.169186863762587,
+                73834.1466149386
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00029759346108439025,
+              0.000007983653002814771,
+              0.000007983653002814839
+            ],
+            "compressed_net_area_m2": 0.023906250000000014,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 3,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.987281615991378e-10,
+            "concrete_actions_kN_kNm": [
+              220.356819354993,
+              0.4911004013915078,
+              0.49110040139150135
+            ],
+            "condensed_D_kNm2": [
+              [
+                85036.6638652537,
+                -194.99934153010108
+              ],
+              [
+                -194.9993415300996,
+                85036.66386525365
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                109447.83080673634,
+                -253.85416074086802
+              ],
+              [
+                -253.8541607408667,
+                109447.83080673625
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00040669820521687994,
+              0.000006007741289403943,
+              0.000006007741289404037
+            ],
+            "compressed_net_area_m2": 0.04385742187499993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 4,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 6.03108674113173e-10,
+            "concrete_actions_kN_kNm": [
+              249.90208105687566,
+              0.41838155108032155,
+              0.41838155108030844
+            ],
+            "condensed_D_kNm2": [
+              [
+                82743.76423997153,
+                9.73839490417186e-14
+              ],
+              [
+                1.2423891909656547e-13,
+                82743.76423997158
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                104505.08394054473,
+                -1.5946766479640865e-12
+              ],
+              [
+                -2.8467986022774196e-12,
+                104505.08394054479
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0005195983062410688,
+              0.000006881730992763761,
+              0.000006881730992763785
+            ],
+            "compressed_net_area_m2": 0.04394531249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 5,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.06020114698913e-10,
+            "concrete_actions_kN_kNm": [
+              268.32690856796717,
+              0.34980221451144405,
+              0.3498022145114302
+            ],
+            "condensed_D_kNm2": [
+              [
+                80252.58409324604,
+                2.767074442978534e-12
+              ],
+              [
+                3.1173532037543746e-12,
+                80252.584093246
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                99043.25521186265,
+                9.26776954367464e-13
+              ],
+              [
+                2.9783900742391636e-13,
+                99043.2552118626
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0006248978190364924,
+              0.000007715177137756398,
+              0.000007715177137756457
+            ],
+            "compressed_net_area_m2": 0.04394531249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 6,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.2043034064722633e-10,
+            "concrete_actions_kN_kNm": [
+              277.4856084251051,
+              0.3060130424227722,
+              0.3060130424227934
+            ],
+            "condensed_D_kNm2": [
+              [
+                79270.63462704861,
+                5.841602167017432e-13
+              ],
+              [
+                1.9379702628577877e-12,
+                79270.63462704867
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                95676.14059577287,
+                -3.971353179253555e-13
+              ],
+              [
+                -2.920224073760356e-12,
+                95676.14059577286
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0007244468547975631,
+              0.000008262673226210727,
+              0.000008262673226210776
+            ],
+            "compressed_net_area_m2": 0.04464843749999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 7,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.35729213926561e-10,
+            "concrete_actions_kN_kNm": [
+              279.4871972269085,
+              0.27324173626871134,
+              0.2732417362687074
+            ],
+            "condensed_D_kNm2": [
+              [
+                78203.06024372221,
+                5.752053564221245e-12
+              ],
+              [
+                7.870125818772451e-12,
+                78203.0602437222
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                92500.68874303043,
+                -8.131169188921171e-13
+              ],
+              [
+                -7.533981519959501e-13,
+                92500.6887430305
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0008204731995123084,
+              0.000008686034732853557,
+              0.000008686034732853512
+            ],
+            "compressed_net_area_m2": 0.04535156249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 8,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.498143996694125e-10,
+            "concrete_actions_kN_kNm": [
+              277.3475719863747,
+              0.24338994486974794,
+              0.24338994486978144
+            ],
+            "condensed_D_kNm2": [
+              [
+                77146.49554632143,
+                -335.7550098836365
+              ],
+              [
+                -335.7550098836383,
+                77146.49554632143
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                89833.02666909106,
+                -411.5009349055673
+              ],
+              [
+                -411.5009349055674,
+                89833.02666909098
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0009171111047133586,
+              0.000009080842282484928,
+              0.000009080842282485137
+            ],
+            "compressed_net_area_m2": 0.045878906249999934,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 9,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.639239937707316e-10,
+            "concrete_actions_kN_kNm": [
+              271.8101534099224,
+              0.23493872496512422,
+              0.2349387249651531
+            ],
+            "condensed_D_kNm2": [
+              [
+                77169.9386581483,
+                308.74402866000355
+              ],
+              [
+                308.74402866000344,
+                77169.93865814831
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                88835.34461605942,
+                371.64146537377945
+              ],
+              [
+                371.6414653737796,
+                88835.34461605955
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.001014088484191303,
+              0.000009223637614157241,
+              0.000009223637614157429
+            ],
+            "compressed_net_area_m2": 0.04693359374999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 10,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.453806129982695e-10,
+            "concrete_actions_kN_kNm": [
+              264.9694778557546,
+              0.39261126594143114,
+              0.3926112659414186
+            ],
+            "condensed_D_kNm2": [
+              [
+                97924.75280576028,
+                1.0276693016660423e-12
+              ],
+              [
+                2.378530170663088e-12,
+                97924.75280576023
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                112528.01089033045,
+                -4.985783963819963e-13
+              ],
+              [
+                3.789932595773213e-12,
+                112528.0108903305
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0011140871229009368,
+              0.00000735744673963609,
+              0.0000073574467396362415
+            ],
+            "compressed_net_area_m2": 0.06454623742035298,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 15,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.5904788597254083e-10,
+            "concrete_actions_kN_kNm": [
+              216.0492007665287,
+              0.26418691674909495,
+              0.26418691674910655
+            ],
+            "condensed_D_kNm2": [
+              [
+                64771.768697410436,
+                -1.4110002545632696e-12
+              ],
+              [
+                -9.436095151638133e-14,
+                64771.76869741047
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                94089.29205152925,
+                -4.770879176607078e-12
+              ],
+              [
+                -3.0845356063600128e-12,
+                94089.29205152932
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00162830882306927,
+              0.00000914373898207039,
+              0.000009143738982070501
+            ],
+            "compressed_net_area_m2": 0.06473604872468165,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 20,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.691691397023078e-10,
+            "concrete_actions_kN_kNm": [
+              146.94816362026745,
+              0.19235555047039393,
+              0.1923555504703357
+            ],
+            "condensed_D_kNm2": [
+              [
+                61102.692381220106,
+                -8.406202695414203e-12
+              ],
+              [
+                -7.95680244323105e-12,
+                61102.692381220106
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                80733.42021060218,
+                -1.0231790427955232e-12
+              ],
+              [
+                -9.060130307314482e-13,
+                80733.42021060214
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.002109376648572038,
+              0.000010260992472315902,
+              0.000010260992472315887
+            ],
+            "compressed_net_area_m2": 0.06473604872468165,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 25,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.7846169814438326e-10,
+            "concrete_actions_kN_kNm": [
+              71.85218124897519,
+              0.13822329204447462,
+              0.13822329204446576
+            ],
+            "condensed_D_kNm2": [
+              [
+                55187.87699125707,
+                -1.886338433428796e-13
+              ],
+              [
+                1.0238548220308066e-12,
+                55187.87699125698
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                70650.78882829583,
+                -1.0330132071000164e-12
+              ],
+              [
+                -1.1416004930310399e-12,
+                70650.78882829587
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0025471400590583197,
+              0.000011107496709663594,
+              0.000011107496709663443
+            ],
+            "compressed_net_area_m2": 0.06438448622468165,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 30,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.589786163298413e-10,
+            "concrete_actions_kN_kNm": [
+              22.858040145302734,
+              0.08186499239693909,
+              0.08186499239699227
+            ],
+            "condensed_D_kNm2": [
+              [
+                38372.56886903397,
+                -59.14391068368071
+              ],
+              [
+                -59.143910683680716,
+                38372.56886903397
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                43658.93478782999,
+                -109.48474102330199
+              ],
+              [
+                -109.48474102330184,
+                43658.93478782998
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.002992098843075442,
+              0.000012073366618262557,
+              0.000012073366618263323
+            ],
+            "compressed_net_area_m2": 0.027294642474681614,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 35,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.3077542361279484e-11,
+            "concrete_actions_kN_kNm": [
+              1.5724663993238261,
+              0.018890124477210692,
+              0.018890124477200735
+            ],
+            "condensed_D_kNm2": [
+              [
+                25529.079897282973,
+                131.39058303094455
+              ],
+              [
+                131.3905830309441,
+                25529.079897282973
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                26601.55831030496,
+                172.1142398717636
+              ],
+              [
+                172.11423987176317,
+                26601.55831030496
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0034463715348650864,
+              0.00001316305112201287,
+              0.000013163051122013126
+            ],
+            "compressed_net_area_m2": 0.005146204974681698,
+            "thermal_inactive_net_area_m2": 0.0003515625000000008
+          },
+          {
+            "time_minutes": 40,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 8.304468224196171e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21952.479942235394,
+                -6.333265396425077e-13
+              ],
+              [
+                -1.077386608255105e-12,
+                21952.479942235394
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21952.479942235394,
+                -6.333265396425077e-13
+              ],
+              [
+                -1.077386608255105e-12,
+                21952.479942235394
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0039024651760816917,
+              0.000013665881977316991,
+              0.000013665881977316895
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0010546874999999983
+          },
+          {
+            "time_minutes": 45,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.3100631690576847e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21583.92807666628,
+                -8.01105419407153e-13
+              ],
+              [
+                -1.139265033595197e-12,
+                21583.92807666628
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21583.92807666628,
+                -8.01105419407153e-13
+              ],
+              [
+                -1.139265033595197e-12,
+                21583.92807666628
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004324585760767332,
+              0.000013899230896916685,
+              0.000013899230896916379
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0017578125000000003
+          },
+          {
+            "time_minutes": 50,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.3011813848606835e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21194.589117230775,
+                9.666794584169942e-14
+              ],
+              [
+                -2.2282028191289718e-13,
+                21194.589117230775
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21194.589117230775,
+                9.666794584169942e-14
+              ],
+              [
+                -2.2282028191289718e-13,
+                21194.589117230775
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004717191074892836,
+              0.000014154556068092907,
+              0.000014154556068091833
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0031640625000000032
+          },
+          {
+            "time_minutes": 55,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.5631940186722204e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20916.530356943156,
+                4.3925436248666587e-13
+              ],
+              [
+                4.594528254174296e-14,
+                20916.530356943156
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20916.530356943156,
+                4.3925436248666587e-13
+              ],
+              [
+                4.594528254174296e-14,
+                20916.530356943156
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00508560239190253,
+              0.000014342722950722215,
+              0.000014342722950722364
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.004921874999999999
+          },
+          {
+            "time_minutes": 60,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.5409895581797173e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20678.682036153503,
+                -5.826855006791677e-13
+              ],
+              [
+                -9.666820081587589e-13,
+                20678.682036153506
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20678.682036153503,
+                -5.826855006791677e-13
+              ],
+              [
+                -9.666820081587589e-13,
+                20678.682036153506
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005429325153217868,
+              0.000014507694420539746,
+              0.000014507694420539356
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.02250000000000002
+          },
+          {
+            "time_minutes": 65,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.906386491005833e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7275.644538308308,
+                0
+              ],
+              [
+                -1.5729473439516363e-29,
+                7275.644538308309
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20458.851219623248,
+                -7.947079462988353e-13
+              ],
+              [
+                -1.17015164046571e-12,
+                20458.85121962325
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005575491263755875,
+              0.000041233460268763075,
+              0.00004123346026876372
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.02320312500000002
+          },
+          {
+            "time_minutes": 70,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.46229728115577e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7194.82545344902,
+                -3.36898866964613e-29
+              ],
+              [
+                -5.200229223788589e-29,
+                7194.82545344902
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20240.12898857262,
+                -7.082651007147782e-13
+              ],
+              [
+                -1.074875915185314e-12,
+                20240.128988572622
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005689202600062456,
+              0.00004169663349597679,
+              0.000041696633495977086
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.023906250000000018
+          },
+          {
+            "time_minutes": 75,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 8.526512829121202e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7118.90204498198,
+                -3.9852682960296905e-29
+              ],
+              [
+                -4.0192723462690184e-29,
+                7118.90204498198
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19974.01078987498,
+                -1.729822343014878e-12
+              ],
+              [
+                -1.9989858002358694e-12,
+                19974.01078987498
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005840608550486859,
+              0.00004214132995571333,
+              0.000042141329955712745
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.023906250000000018
+          },
+          {
+            "time_minutes": 80,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.906386491005833e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7047.36681982063,
+                -4.321096219151706e-29
+              ],
+              [
+                -3.3972537061907435e-29,
+                7047.366819820631
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19725.60793756366,
+                -5.34600066076581e-13
+              ],
+              [
+                -8.777000451288199e-13,
+                19725.60793756366
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005984168574333407,
+              0.000042569091076147965,
+              0.00004256909107614948
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.024960937500000016
+          },
+          {
+            "time_minutes": 85,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.684341886080802e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6979.779290397963,
+                -2.3138329879058565e-29
+              ],
+              [
+                -1.52942524675064e-29,
+                6979.779290397963
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19492.964459532017,
+                -7.463532797700186e-13
+              ],
+              [
+                -9.936160777716014e-13,
+                19492.964459532017
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.006120581626346628,
+              0.00004298130177449572,
+              0.000042981301774493985
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.025664062500000008
+          },
+          {
+            "time_minutes": 90,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.3076653355456074e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6915.756145612553,
+                2.1018675750098947e-29
+              ],
+              [
+                2.0985393971358203e-29,
+                6915.756145612554
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19274.406588114867,
+                -4.892381409609154e-13
+              ],
+              [
+                -1.7237945055361739e-13,
+                19274.406588114867
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.006250469968490297,
+              0.00004337920448370413,
+              0.000043379204483705446
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.027773437500000005
+          }
+        ]
+      },
+      {
+        "id": "T64_FRONT3",
+        "status": "DIAGNOSTIC_COMPLETE",
+        "last_committed_minute": 90,
+        "quadrature": {
+          "cell_count": 2416,
+          "point_count": 2412,
+          "min_cell_width_mm": 9.374999999999911,
+          "max_cell_width_mm": 75.00000000000001,
+          "pilot_minutes": [
+            1,
+            3,
+            5,
+            10,
+            30,
+            60,
+            90
+          ],
+          "max_level": 3,
+          "delta_C": 60,
+          "unresolved_gradient_cells": 1484,
+          "front_refined_cells": 336,
+          "unresolved_front_cells": 764,
+          "unresolved_front_gross_area_m2": 0.06714843750000049,
+          "unresolved_probe_cells": 0,
+          "net_area_m2": 0.35748672587712815,
+          "net_centroid_m": [
+            0.3,
+            0.3
+          ]
+        },
+        "rows": [
+          {
+            "time_minutes": 0,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 7.105427357601002e-15,
+            "concrete_actions_kN_kNm": [
+              48.34212487933583,
+              0.9447309638716496,
+              0.9447309638716486
+            ],
+            "condensed_D_kNm2": [
+              [
+                461100.85123860504,
+                3.9484426787173225e-11
+              ],
+              [
+                3.6946704634843927e-11,
+                461100.851238605
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                461100.85123860504,
+                3.9484426787173225e-11
+              ],
+              [
+                3.6946704634843927e-11,
+                461100.851238605
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              0.000003298237756034687,
+              6.506168860763194e-7,
+              6.506168860763165e-7
+            ],
+            "compressed_net_area_m2": 0.35748672587712815,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 1,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.6117419338334e-10,
+            "concrete_actions_kN_kNm": [
+              98.2677452070356,
+              0.5642398999576704,
+              0.5642398999576627
+            ],
+            "condensed_D_kNm2": [
+              [
+                60392.205700464154,
+                -242.58305085547835
+              ],
+              [
+                -242.58305085547866,
+                60392.20570046413
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                76344.94909911006,
+                -289.11761315376793
+              ],
+              [
+                -289.1176131537679,
+                76344.94909911006
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00009749601965331571,
+              0.000005130007281702295,
+              0.00000513000728170228
+            ],
+            "compressed_net_area_m2": 0.022412109375000024,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 2,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.8887026931888613e-10,
+            "concrete_actions_kN_kNm": [
+              150.25435193070228,
+              0.3825840969166954,
+              0.3825840969167
+            ],
+            "condensed_D_kNm2": [
+              [
+                57021.444378647786,
+                -432.5275655872174
+              ],
+              [
+                -432.5275655872174,
+                57021.4443786478
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                74483.51690812396,
+                -548.1823063142696
+              ],
+              [
+                -548.1823063142696,
+                74483.51690812396
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00020842134430057118,
+              0.000007270859912105087,
+              0.000007270859912105008
+            ],
+            "compressed_net_area_m2": 0.02302734375000002,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 3,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.1168489183764905e-10,
+            "concrete_actions_kN_kNm": [
+              193.5472378806066,
+              0.5280737462393157,
+              0.5280737462392976
+            ],
+            "condensed_D_kNm2": [
+              [
+                87639.43350733542,
+                5.589481443639926e-12
+              ],
+              [
+                6.250700270748152e-12,
+                87639.43350733534
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                112870.68349268986,
+                -2.956022880858032e-12
+              ],
+              [
+                -1.6553155915657166e-12,
+                112870.68349268982
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0003129215166898971,
+              0.000005561822660003548,
+              0.000005561822660003454
+            ],
+            "compressed_net_area_m2": 0.04359374999999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 4,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.0250824895338155e-10,
+            "concrete_actions_kN_kNm": [
+              233.47621084860586,
+              0.45207955753447615,
+              0.45207955753445556
+            ],
+            "condensed_D_kNm2": [
+              [
+                84375.68962327868,
+                -1.9949330813863667e-12
+              ],
+              [
+                7.863540037733463e-13,
+                84375.68962327881
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                107836.28622471156,
+                1.7443837214797176e-12
+              ],
+              [
+                4.888998891023624e-13,
+                107836.28622471166
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0004248424927757068,
+              0.000006466213658460841,
+              0.0000064662136584607014
+            ],
+            "compressed_net_area_m2": 0.04359374999999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 5,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.0304247172475698e-10,
+            "concrete_actions_kN_kNm": [
+              262.491976964778,
+              0.38286425288659426,
+              0.38286425288659415
+            ],
+            "condensed_D_kNm2": [
+              [
+                82519.11381426241,
+                7.66272280650263e-12
+              ],
+              [
+                9.007738482128346e-12,
+                82519.11381426231
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                103737.46826498053,
+                4.134590619174907e-14
+              ],
+              [
+                1.366377567374211e-12,
+                103737.4682649806
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0005304163352186848,
+              0.000007297576259653663,
+              0.000007297576259653482
+            ],
+            "compressed_net_area_m2": 0.04394531249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 6,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.8757085601682775e-10,
+            "concrete_actions_kN_kNm": [
+              280.14944953032557,
+              0.3193550878864532,
+              0.31935508788644046
+            ],
+            "condensed_D_kNm2": [
+              [
+                79975.675980874,
+                -3.2570059949262516e-12
+              ],
+              [
+                -3.867059382996405e-12,
+                79975.67598087393
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                98337.52512324908,
+                -3.3974874264930655e-12
+              ],
+              [
+                -4.627045262304055e-12,
+                98337.52512324891
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0006284263608616973,
+              0.000008069627689447406,
+              0.000008069627689447277
+            ],
+            "compressed_net_area_m2": 0.04394531249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 7,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.6403768060845323e-10,
+            "concrete_actions_kN_kNm": [
+              288.2276338798307,
+              0.2812172461016666,
+              0.28121724610166027
+            ],
+            "condensed_D_kNm2": [
+              [
+                78938.4037615462,
+                2.2046565238549187e-12
+              ],
+              [
+                2.803044390413641e-12,
+                78938.40376154616
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                94979.49263491518,
+                -8.90653052485918e-13
+              ],
+              [
+                -9.317536481112848e-13,
+                94979.4926349152
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0007210910191561466,
+              0.000008548930027289912,
+              0.000008548930027289759
+            ],
+            "compressed_net_area_m2": 0.04464843749999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 8,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.081148586796644e-10,
+            "concrete_actions_kN_kNm": [
+              289.13370323858794,
+              0.23971459549674737,
+              0.2397145954967657
+            ],
+            "condensed_D_kNm2": [
+              [
+                76772.7698197447,
+                347.9889421359286
+              ],
+              [
+                347.98894213592945,
+                76772.76981974466
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                90493.7781827932,
+                433.3554079771906
+              ],
+              [
+                433.3554079771894,
+                90493.7781827933
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0008113980289742168,
+              0.000009075836031934115,
+              0.000009075836031934068
+            ],
+            "compressed_net_area_m2": 0.04482421874999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 9,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.1393020688265096e-10,
+            "concrete_actions_kN_kNm": [
+              286.19036274760106,
+              0.22054039662894737,
+              0.2205403966289349
+            ],
+            "condensed_D_kNm2": [
+              [
+                75803.79167629345,
+                -6.131652614192022e-12
+              ],
+              [
+                -3.5203579251286724e-12,
+                75803.79167629342
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                88065.26806605748,
+                3.912433803468574e-12
+              ],
+              [
+                2.6768057122057553e-12,
+                88065.26806605747
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0009040589719089794,
+              0.00000934286574699251,
+              0.000009342865746992436
+            ],
+            "compressed_net_area_m2": 0.04535156249999993,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 10,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.9692159841943067e-10,
+            "concrete_actions_kN_kNm": [
+              279.4205265260793,
+              0.2190335218388965,
+              0.21903352183893787
+            ],
+            "condensed_D_kNm2": [
+              [
+                76536.23330018208,
+                -321.7608212659799
+              ],
+              [
+                -321.76082126597845,
+                76536.23330018204
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                87974.87738182808,
+                -390.0586229211115
+              ],
+              [
+                -390.0586229211134,
+                87974.87738182803
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00099720905477163,
+              0.000009402494124088745,
+              0.00000940249412408875
+            ],
+            "compressed_net_area_m2": 0.04679233117035296,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 15,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.1123058857597243e-10,
+            "concrete_actions_kN_kNm": [
+              232.75055256949068,
+              0.31006764507264983,
+              0.31006764507266094
+            ],
+            "condensed_D_kNm2": [
+              [
+                65102.55290708407,
+                -2.555547190149411e-12
+              ],
+              [
+                -1.8363794111365886e-12,
+                65102.55290708404
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                96807.23246226522,
+                -6.99060549587578e-12
+              ],
+              [
+                -6.721078041836146e-12,
+                96807.23246226515
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0015073079800571175,
+              0.000008517750171651479,
+              0.000008517750171651288
+            ],
+            "compressed_net_area_m2": 0.06473604872468165,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 20,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.45852671554303e-10,
+            "concrete_actions_kN_kNm": [
+              161.3760571816239,
+              0.216778270097573,
+              0.21677827009406087
+            ],
+            "condensed_D_kNm2": [
+              [
+                61456.21087321464,
+                -7.624199659444733e-12
+              ],
+              [
+                -7.430009768454273e-12,
+                61456.21087321466
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                82325.47201715947,
+                -1.4094458906114801e-12
+              ],
+              [
+                -8.955117685289745e-13,
+                82325.4720171594
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0019949107430217348,
+              0.000009916063424125706,
+              0.000009916063424107718
+            ],
+            "compressed_net_area_m2": 0.06403292372468165,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 25,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.1366020064306213e-10,
+            "concrete_actions_kN_kNm": [
+              81.93416449908678,
+              0.15558314977073376,
+              0.15558314977182305
+            ],
+            "condensed_D_kNm2": [
+              [
+                55484.61979217818,
+                42.52719057148696
+              ],
+              [
+                42.52719057148668,
+                55484.61979217814
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                71683.11908219321,
+                64.37405337353641
+              ],
+              [
+                64.3740533735378,
+                71683.11908219325
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.002438978481281155,
+              0.000010849903963387396,
+              0.000010849903963373498
+            ],
+            "compressed_net_area_m2": 0.06385714247468166,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 30,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.6770229649409885e-10,
+            "concrete_actions_kN_kNm": [
+              26.09202813196747,
+              0.09444402492991007,
+              0.09444402493043398
+            ],
+            "condensed_D_kNm2": [
+              [
+                40533.28171970309,
+                94.61199260180037
+              ],
+              [
+                94.61199260180052,
+                40533.28171970308
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                46699.07853980026,
+                125.64282642802361
+              ],
+              [
+                125.64282642802347,
+                46699.07853980026
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0028861991987308012,
+              0.00001185223728156909,
+              0.000011852237281561019
+            ],
+            "compressed_net_area_m2": 0.029755579974681614,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 35,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.7193359503362444e-11,
+            "concrete_actions_kN_kNm": [
+              2.257053089774762,
+              0.024991728844334555,
+              0.02499172884447501
+            ],
+            "condensed_D_kNm2": [
+              [
+                26409.66363207102,
+                -8.78164489155463e-13
+              ],
+              [
+                -1.3451731678415188e-12,
+                26409.663632071024
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                27836.062657157603,
+                -9.241080021209198e-13
+              ],
+              [
+                -1.151308507487942e-12,
+                27836.062657157603
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0033476330641176834,
+              0.000013026562419863008,
+              0.000013026562419860702
+            ],
+            "compressed_net_area_m2": 0.006376673724681694,
+            "thermal_inactive_net_area_m2": 0.0003515625000000008
+          },
+          {
+            "time_minutes": 40,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.04121180963557e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                22035.304430963322,
+                -7.618541237549264e-13
+              ],
+              [
+                -1.1253732516433164e-12,
+                22035.304430963326
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                22035.304430963322,
+                -7.618541237549264e-13
+              ],
+              [
+                -1.1253732516433164e-12,
+                22035.304430963326
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.003812498759766518,
+              0.000013614515784881579,
+              0.000013614515784880559
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0010546874999999983
+          },
+          {
+            "time_minutes": 45,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.7186252421197423e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21657.912250852856,
+                -1.1427270321719332e-12
+              ],
+              [
+                -1.5703600216506778e-12,
+                21657.91225085286
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21657.912250852856,
+                -1.1427270321719332e-12
+              ],
+              [
+                -1.5703600216506778e-12,
+                21657.91225085286
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004242962407718451,
+              0.000013851750645458332,
+              0.000013851750645455221
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0017578125000000003
+          },
+          {
+            "time_minutes": 50,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.7541523789077473e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                21272.88236013114,
+                -7.564884621589918e-13
+              ],
+              [
+                -1.0797651280778736e-12,
+                21272.88236013114
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                21272.88236013114,
+                -7.564884621589918e-13
+              ],
+              [
+                -1.0797651280778736e-12,
+                21272.88236013114
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.004641494563719501,
+              0.00001410246128950821,
+              0.000014102461289507573
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.0024609375000000013
+          },
+          {
+            "time_minutes": 55,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.9939605522267811e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20966.681277542735,
+                9.079370969995329e-13
+              ],
+              [
+                5.125619838886171e-13,
+                20966.681277542735
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20966.681277542735,
+                9.079370969995329e-13
+              ],
+              [
+                5.125619838886171e-13,
+                20966.681277542735
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005014253359875313,
+              0.000014308416102139655,
+              0.000014308416102137947
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.004921874999999999
+          },
+          {
+            "time_minutes": 60,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.1324274851176597e-13,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                20725.13089832613,
+                1.3917884390328961e-14
+              ],
+              [
+                -3.7197247035666903e-13,
+                20725.130898326133
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20725.13089832613,
+                1.3917884390328961e-14
+              ],
+              [
+                -3.7197247035666903e-13,
+                20725.130898326133
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005362471478636423,
+              0.00001447517998664463,
+              0.000014475179986641062
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.02250000000000002
+          },
+          {
+            "time_minutes": 65,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.842170943040401e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7291.694487052809,
+                2.06208012968063e-28
+              ],
+              [
+                2.0122248910010636e-28,
+                7291.694487052809
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20502.205637143248,
+                1.12352425525413e-12
+              ],
+              [
+                8.315968018836758e-13,
+                20502.205637143248
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005558485283309439,
+              0.000041142700168350456,
+              0.00004114270016834125
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.02320312500000002
+          },
+          {
+            "time_minutes": 70,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.842170943040401e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7210.185514420312,
+                2.0164535523267736e-28
+              ],
+              [
+                1.9737811533737356e-28,
+                7210.185514420312
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20295.581956456077,
+                -3.096031093394699e-12
+              ],
+              [
+                -2.1862329874419416e-12,
+                20295.581956456077
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0056620434371252295,
+              0.000041607805985020556,
+              0.000041607805985010025
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.023906250000000018
+          },
+          {
+            "time_minutes": 75,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 7.105427357601002e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7133.682812961427,
+                1.0419435930837032e-28
+              ],
+              [
+                7.472271969946936e-29,
+                7133.682812961429
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                20028.31807474961,
+                8.277939422665579e-13
+              ],
+              [
+                -8.338970305046261e-14,
+                20028.31807474962
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005812473738149935,
+              0.00004205401443626306,
+              0.0000420540144362536
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.023906250000000018
+          },
+          {
+            "time_minutes": 80,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.973799150320701e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                7061.655778404331,
+                3.4371307686361095e-28
+              ],
+              [
+                3.581157338562012e-28,
+                7061.655778404333
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19777.01503108946,
+                3.6036678553465433e-13
+              ],
+              [
+                6.543778028178211e-13,
+                19777.015031089464
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.005956469832635594,
+              0.00004248295434017955,
+              0.00004248295434016435
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.024960937500000016
+          },
+          {
+            "time_minutes": 85,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 5.1958437552457326e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6993.646431254975,
+                3.058790462889035e-28
+              ],
+              [
+                2.3928070395622055e-28,
+                6993.646431254976
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19541.834500077573,
+                -1.7272011860817476e-12
+              ],
+              [
+                -1.4224826324113871e-12,
+                19541.834500077573
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.006093229915291221,
+              0.00004289607759684426,
+              0.00004289607759683245
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.025664062500000008
+          },
+          {
+            "time_minutes": 90,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.973799150320701e-14,
+            "concrete_actions_kN_kNm": [
+              0,
+              0,
+              0
+            ],
+            "condensed_D_kNm2": [
+              [
+                6929.2580858567435,
+                1.0698899491354512e-28
+              ],
+              [
+                7.455334784461029e-29,
+                6929.258085856746
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                19321.038011747245,
+                -1.5127026121112404e-12
+              ],
+              [
+                -1.1127007808310865e-12,
+                19321.038011747245
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0062233956264266185,
+              0.000043294678345483195,
+              0.00004329467834546963
+            ],
+            "compressed_net_area_m2": 0,
+            "thermal_inactive_net_area_m2": 0.027070312500000006
+          }
+        ]
+      },
+      {
+        "id": "T64_FRONT4_SHORT",
+        "status": "DIAGNOSTIC_COMPLETE",
+        "last_committed_minute": 10,
+        "quadrature": {
+          "cell_count": 9772,
+          "point_count": 9708,
+          "min_cell_width_mm": 4.687499999999956,
+          "max_cell_width_mm": 75.00000000000001,
+          "pilot_minutes": [
+            1,
+            3,
+            5,
+            10,
+            30,
+            60,
+            90
+          ],
+          "max_level": 4,
+          "delta_C": 30,
+          "unresolved_gradient_cells": 6180,
+          "front_refined_cells": 1100,
+          "unresolved_front_cells": 3006,
+          "unresolved_front_gross_area_m2": 0.06604980468750092,
+          "unresolved_probe_cells": 0,
+          "net_area_m2": 0.35748672587712815,
+          "net_centroid_m": [
+            0.3,
+            0.3
+          ]
+        },
+        "rows": [
+          {
+            "time_minutes": 0,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.8421709430404007e-13,
+            "concrete_actions_kN_kNm": [
+              48.342124879336104,
+              0.9448704495715816,
+              0.9448704495715852
+            ],
+            "condensed_D_kNm2": [
+              [
+                462267.50277986174,
+                -2.8785409408193332e-11
+              ],
+              [
+                -2.3029765566572708e-11,
+                462267.5027798615
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                462267.50277986174,
+                -2.8785409408193332e-11
+              ],
+              [
+                -2.3029765566572708e-11,
+                462267.5027798615
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              0.0000032982377560347108,
+              6.489748861772372e-7,
+              6.489748861772465e-7
+            ],
+            "compressed_net_area_m2": 0.3574867258771281,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 1,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.301301288947343e-10,
+            "concrete_actions_kN_kNm": [
+              111.27767460203535,
+              0.5409072656392592,
+              0.5409072656438855
+            ],
+            "condensed_D_kNm2": [
+              [
+                57984.356309356626,
+                -0.26678568680664616
+              ],
+              [
+                -0.26678568680599507,
+                57984.356309356655
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                75995.53097931309,
+                -2.750753912494294
+              ],
+              [
+                -2.750753912494281,
+                75995.53097931309
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00012337990464586366,
+              0.000005404691871200823,
+              0.000005404691871172736
+            ],
+            "compressed_net_area_m2": 0.022587890625000023,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 2,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 7.676703717152122e-11,
+            "concrete_actions_kN_kNm": [
+              165.47482234700692,
+              0.500870561203823,
+              0.5008705612009756
+            ],
+            "condensed_D_kNm2": [
+              [
+                72010.42935900083,
+                -4.310720668606551e-12
+              ],
+              [
+                -2.6912736389373735e-12,
+                72010.42935900087
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                94204.49225643482,
+                -7.393196811610953e-13
+              ],
+              [
+                -7.285858141737694e-13,
+                94204.49225643401
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00023871183969498264,
+              0.000005877885892774643,
+              0.000005877885892760407
+            ],
+            "compressed_net_area_m2": 0.033046874999999976,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 3,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.0959411156363785e-10,
+            "concrete_actions_kN_kNm": [
+              209.800985578708,
+              0.39349550791820614,
+              0.3934955079185271
+            ],
+            "condensed_D_kNm2": [
+              [
+                69806.76595147523,
+                3.4310215606401084e-13
+              ],
+              [
+                5.496846545882351e-13,
+                69806.7659514752
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                90647.87734928551,
+                6.383855990710326e-12
+              ],
+              [
+                9.133404327138472e-12,
+                90647.87734928553
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00034529084953103845,
+              0.000007147876178528243,
+              0.000007147876178531198
+            ],
+            "compressed_net_area_m2": 0.033398437499999975,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 4,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 4.945377440890297e-12,
+            "concrete_actions_kN_kNm": [
+              241.27601594848124,
+              0.4289888899097088,
+              0.42898888990963147
+            ],
+            "condensed_D_kNm2": [
+              [
+                81282.61407779373,
+                -1995.1569797621555
+              ],
+              [
+                -1995.1569797621542,
+                81282.61407779377
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                103476.32608349509,
+                -2541.264483453494
+              ],
+              [
+                -2541.264483453495,
+                103476.32608349517
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00044039483572487324,
+              0.000006738715244942578,
+              0.000006738715244944714
+            ],
+            "compressed_net_area_m2": 0.042319335937499925,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 5,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 3.2875568933832255e-10,
+            "concrete_actions_kN_kNm": [
+              267.52577583508537,
+              0.37190984835114327,
+              0.3719098483510513
+            ],
+            "condensed_D_kNm2": [
+              [
+                81544.57517523313,
+                -93.83549564630415
+              ],
+              [
+                -93.83549564630461,
+                81544.57517523324
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                101812.56101760175,
+                -120.97929303873079
+              ],
+              [
+                -120.97929303873075,
+                101812.56101760195
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.00054047150933826,
+              0.000007427111137551113,
+              0.000007427111137552426
+            ],
+            "compressed_net_area_m2": 0.043989257812499925,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 6,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.1982016207289234e-10,
+            "concrete_actions_kN_kNm": [
+              283.6008315237348,
+              0.31858777144507616,
+              0.31858777144499995
+            ],
+            "condensed_D_kNm2": [
+              [
+                79784.31643644905,
+                90.5936583586361
+              ],
+              [
+                90.5936583586361,
+                79784.31643644918
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                97526.8958046582,
+                114.54956693345473
+              ],
+              [
+                114.54956693345473,
+                97526.89580465884
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0006353369229583208,
+              0.00000807872488293481,
+              0.0000080787248829359
+            ],
+            "compressed_net_area_m2": 0.044340820312499925,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 7,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.6764723770611454e-10,
+            "concrete_actions_kN_kNm": [
+              291.1934124439728,
+              0.28415805726186355,
+              0.2841580572609198
+            ],
+            "condensed_D_kNm2": [
+              [
+                79199.90271977123,
+                81.06455897041334
+              ],
+              [
+                81.06455897041346,
+                79199.90271977117
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                94942.94335661067,
+                99.77152142948908
+              ],
+              [
+                99.77152142949048,
+                94942.94335661083
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0007270464108976503,
+              0.000008513953131407763,
+              0.000008513953131404668
+            ],
+            "compressed_net_area_m2": 0.04521972656249992,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 8,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 1.3064660464578992e-10,
+            "concrete_actions_kN_kNm": [
+              295.64326380224674,
+              0.34953360733609046,
+              0.3495336073360677
+            ],
+            "condensed_D_kNm2": [
+              [
+                89433.65521652959,
+                87.75021899551419
+              ],
+              [
+                87.75021899551518,
+                89433.65521652956
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                106003.70904027177,
+                110.18723955745618
+              ],
+              [
+                110.1872395574574,
+                106003.7090402717
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0008245131190837496,
+              0.000007764881832499507,
+              0.000007764881832498465
+            ],
+            "compressed_net_area_m2": 0.05436035156249988,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 9,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 6.407718800005568e-11,
+            "concrete_actions_kN_kNm": [
+              295.5758407491416,
+              0.31548339720001,
+              0.3154833972000417
+            ],
+            "condensed_D_kNm2": [
+              [
+                87350.51349553808,
+                85.8818257625106
+              ],
+              [
+                85.88182576250935,
+                87350.51349553827
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                101994.85963742684,
+                106.4756483375523
+              ],
+              [
+                106.47564833755233,
+                101994.85963742713
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0009230387189503814,
+              0.000008204846913583295,
+              0.00000820484691358259
+            ],
+            "compressed_net_area_m2": 0.054624023437499884,
+            "thermal_inactive_net_area_m2": 0
+          },
+          {
+            "time_minutes": 10,
+            "status": "EQUILIBRATED_RESEARCH_SECTION",
+            "max_conjugate_residual_kN": 2.687556843739003e-10,
+            "concrete_actions_kN_kNm": [
+              290.9961567433636,
+              0.28439680780847537,
+              0.28439680780857346
+            ],
+            "condensed_D_kNm2": [
+              [
+                85243.03105897646,
+                83.88775414164917
+              ],
+              [
+                83.88775414165018,
+                85243.03105897672
+              ]
+            ],
+            "frozen_elastic_unloading_D_kNm2": [
+              [
+                98194.67828106653,
+                102.76178481969482
+              ],
+              [
+                102.7617848196948,
+                98194.67828106653
+              ]
+            ],
+            "area_weighted_damage": 0,
+            "q": [
+              -0.0010207124158892545,
+              0.000008615548806503145,
+              0.00000861554880650256
+            ],
+            "compressed_net_area_m2": 0.054799804687499884,
+            "thermal_inactive_net_area_m2": 0
+          }
+        ]
+      }
+    ],
+    "thermal_comparison": {
+      "rows": [
+        {
+          "t": 0,
+          "max_centroid_delta_C": 0,
+          "area_weighted_RMSE_C": 0,
+          "max_bar_delta_C": 0,
+          "max_boundary_delta_C": 0
+        },
+        {
+          "t": 1,
+          "max_centroid_delta_C": 38.42907082259079,
+          "area_weighted_RMSE_C": 7.729428752034187,
+          "max_bar_delta_C": 0.6923216612291974,
+          "max_boundary_delta_C": 26.215212216110288
+        },
+        {
+          "t": 2,
+          "max_centroid_delta_C": 42.741219824404226,
+          "area_weighted_RMSE_C": 9.397791351508696,
+          "max_bar_delta_C": 2.3334419114958074,
+          "max_boundary_delta_C": 29.67905306015433
+        },
+        {
+          "t": 3,
+          "max_centroid_delta_C": 44.49924746348242,
+          "area_weighted_RMSE_C": 9.930872388969773,
+          "max_bar_delta_C": 4.55522348566959,
+          "max_boundary_delta_C": 28.85471349065722
+        },
+        {
+          "t": 4,
+          "max_centroid_delta_C": 43.381412031938225,
+          "area_weighted_RMSE_C": 10.019104709603186,
+          "max_bar_delta_C": 6.951039861601405,
+          "max_boundary_delta_C": 26.619759221872926
+        },
+        {
+          "t": 5,
+          "max_centroid_delta_C": 40.91472459975253,
+          "area_weighted_RMSE_C": 9.883541528923262,
+          "max_bar_delta_C": 9.22939558623954,
+          "max_boundary_delta_C": 23.917383057486347
+        },
+        {
+          "t": 6,
+          "max_centroid_delta_C": 38.515984350996376,
+          "area_weighted_RMSE_C": 9.624253700619272,
+          "max_bar_delta_C": 11.227140402432333,
+          "max_boundary_delta_C": 21.137277218470558
+        },
+        {
+          "t": 7,
+          "max_centroid_delta_C": 35.74709127698077,
+          "area_weighted_RMSE_C": 9.297903454069864,
+          "max_bar_delta_C": 12.87779732992697,
+          "max_boundary_delta_C": 19.35517486293469
+        },
+        {
+          "t": 8,
+          "max_centroid_delta_C": 32.857090752482975,
+          "area_weighted_RMSE_C": 8.940233736456761,
+          "max_bar_delta_C": 14.175314630888323,
+          "max_boundary_delta_C": 21.058078925620748
+        },
+        {
+          "t": 9,
+          "max_centroid_delta_C": 30.004967509656808,
+          "area_weighted_RMSE_C": 8.57444443467272,
+          "max_bar_delta_C": 15.146158039305561,
+          "max_boundary_delta_C": 22.015784821449188
+        },
+        {
+          "t": 10,
+          "max_centroid_delta_C": 28.370242908093246,
+          "area_weighted_RMSE_C": 8.215322824501657,
+          "max_bar_delta_C": 15.831152816509203,
+          "max_boundary_delta_C": 22.4298702773483
+        },
+        {
+          "t": 15,
+          "max_centroid_delta_C": 23.062380387714427,
+          "area_weighted_RMSE_C": 6.715977673046385,
+          "max_bar_delta_C": 16.42319842659444,
+          "max_boundary_delta_C": 20.603338427916697
+        },
+        {
+          "t": 20,
+          "max_centroid_delta_C": 18.061049401175183,
+          "area_weighted_RMSE_C": 5.720899539390323,
+          "max_bar_delta_C": 14.91086705920506,
+          "max_boundary_delta_C": 17.208406693153506
+        },
+        {
+          "t": 25,
+          "max_centroid_delta_C": 14.29381077592501,
+          "area_weighted_RMSE_C": 5.0500063076275525,
+          "max_bar_delta_C": 13.021306333055747,
+          "max_boundary_delta_C": 14.249457810482454
+        },
+        {
+          "t": 30,
+          "max_centroid_delta_C": 11.956268064916003,
+          "area_weighted_RMSE_C": 4.567828883365082,
+          "max_bar_delta_C": 11.296150460112642,
+          "max_boundary_delta_C": 11.941629449847142
+        },
+        {
+          "t": 35,
+          "max_centroid_delta_C": 10.242055898479236,
+          "area_weighted_RMSE_C": 4.201578015978452,
+          "max_bar_delta_C": 9.854365115267512,
+          "max_boundary_delta_C": 10.172312301670331
+        },
+        {
+          "t": 40,
+          "max_centroid_delta_C": 8.915528731751579,
+          "area_weighted_RMSE_C": 3.9119090508578784,
+          "max_bar_delta_C": 8.682452808050186,
+          "max_boundary_delta_C": 8.804330848405357
+        },
+        {
+          "t": 45,
+          "max_centroid_delta_C": 8.086115796667173,
+          "area_weighted_RMSE_C": 3.6760421642719865,
+          "max_bar_delta_C": 7.734220002794245,
+          "max_boundary_delta_C": 7.72951479282051
+        },
+        {
+          "t": 50,
+          "max_centroid_delta_C": 7.38642387863473,
+          "area_weighted_RMSE_C": 3.4798296549409256,
+          "max_bar_delta_C": 6.962665032049301,
+          "max_boundary_delta_C": 6.870011890309456
+        },
+        {
+          "t": 55,
+          "max_centroid_delta_C": 6.790892316946156,
+          "area_weighted_RMSE_C": 3.3139288264467828,
+          "max_bar_delta_C": 6.328508062384799,
+          "max_boundary_delta_C": 6.1709040428518165
+        },
+        {
+          "t": 60,
+          "max_centroid_delta_C": 6.281864653439129,
+          "area_weighted_RMSE_C": 3.1718323362662875,
+          "max_bar_delta_C": 5.801081946788031,
+          "max_boundary_delta_C": 5.593316021176975
+        },
+        {
+          "t": 65,
+          "max_centroid_delta_C": 5.896360247806001,
+          "area_weighted_RMSE_C": 3.0488000510048705,
+          "max_bar_delta_C": 5.357052729436873,
+          "max_boundary_delta_C": 5.109385666557159
+        },
+        {
+          "t": 70,
+          "max_centroid_delta_C": 5.57824208593388,
+          "area_weighted_RMSE_C": 2.941256213818659,
+          "max_bar_delta_C": 4.978798098660718,
+          "max_boundary_delta_C": 4.698828889387983
+        },
+        {
+          "t": 75,
+          "max_centroid_delta_C": 5.326793389363843,
+          "area_weighted_RMSE_C": 2.8464346655838,
+          "max_bar_delta_C": 4.652988570321213,
+          "max_boundary_delta_C": 4.346633450954187
+        },
+        {
+          "t": 80,
+          "max_centroid_delta_C": 5.1129323974142835,
+          "area_weighted_RMSE_C": 2.7621586633937145,
+          "max_bar_delta_C": 4.369478294665669,
+          "max_boundary_delta_C": 4.041507876456194
+        },
+        {
+          "t": 85,
+          "max_centroid_delta_C": 4.918589508607397,
+          "area_weighted_RMSE_C": 2.6866954921417876,
+          "max_bar_delta_C": 4.120476707087164,
+          "max_boundary_delta_C": 3.77482794999446
+        },
+        {
+          "t": 90,
+          "max_centroid_delta_C": 4.8095265228339485,
+          "area_weighted_RMSE_C": 2.6186545053682884,
+          "max_bar_delta_C": 3.8999416000827978,
+          "max_boundary_delta_C": 3.5399115704258293
+        }
+      ],
+      "max": {
+        "max_centroid_delta_C": 44.49924746348242,
+        "area_weighted_RMSE_C": 10.019104709603186,
+        "max_bar_delta_C": 16.42319842659444,
+        "max_boundary_delta_C": 29.67905306015433
+      },
+      "research_temperature_pass": false,
+      "thermal_time_convergence_proven": false,
+      "normative_claim": false
+    },
+    "reported_comparisons": [
+      {
+        "a": "T32_FRONT3",
+        "b": "T64_FRONT3",
+        "pass": false,
+        "maxima": {
+          "Nc_kN": 50.571611103401295,
+          "D_alg_rel": 0.2794852796183237,
+          "D_unload_rel": 0.27912502953166174,
+          "damage_abs": 0,
+          "q_abs": 0.0001210008430121525,
+          "compressed_area_abs_m2": 0.01775390625000002,
+          "thermal_inactive_area_abs_m2": 0.0007031250000000019
+        }
+      },
+      {
+        "a": "T64_FRONT3_SHORT",
+        "b": "T64_FRONT4_SHORT",
+        "pass": false,
+        "maxima": {
+          "Nc_kN": 16.25374769810142,
+          "D_alg_rel": 0.2554575808347315,
+          "D_unload_rel": 0.24515528430715622,
+          "damage_abs": 0,
+          "q_abs": 0.00003236933284114134,
+          "compressed_area_abs_m2": 0.010195312499999956,
+          "thermal_inactive_area_abs_m2": 0
+        }
+      }
+    ]
+  }
+}

@@ -44,3 +44,18 @@ class TestEvidence(unittest.TestCase):
     r=e.consolidate({})
     self.assertFalse(r["cross_stage_pass_transfer_allowed"])
     self.assertFalse(r["member_solver_admitted"]);self.assertIsNone(r["actual_t_R_minutes"])
+
+ def test_actual_r10d_archived_evidence(self):
+    import json
+    p=Path(__file__).resolve().parents[1]/"validation/sp_r10g_r10d_receipt.json"
+    d=json.loads(p.read_text())
+    r=e.consolidate({"D":d})
+    a=r["comparisons"]["D:T32_FRONT3->T64_FRONT3"]
+    b=r["comparisons"]["D:T64_FRONT3->T64_FRONT4_SHORT"]
+    self.assertEqual(a["common_checkpoints"],27)
+    self.assertEqual(b["common_checkpoints"],11)
+    self.assertFalse(a["strict_pass"]);self.assertFalse(b["strict_pass"])
+    self.assertAlmostEqual(a["maxima"]["Nc_kN"],50.571611103401295,places=7)
+    self.assertAlmostEqual(b["maxima"]["Nc_kN"],16.25374769810142,places=7)
+    self.assertFalse(r["numerical_section_admitted"])
+    print("SP_R10G_ARCHIVED_EVIDENCE",json.dumps(r,allow_nan=False))
