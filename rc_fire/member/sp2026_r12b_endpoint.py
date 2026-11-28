@@ -17,6 +17,15 @@ from rc_fire.mechanics import sp2026_r10c_quadrature as quad
 from rc_fire.mechanics.sp2026_nominal_member import prepare_sp2026_design_section
 from rc_fire.thermal.sp2026_heat import solve_sp2026_2d_heat,select_sp2026_snapshot
 
+def evidence_float(value):
+    """Native finite scalar at numerical -> evidence boundary; never coerce
+    booleans, strings, arrays, complex or nonfinite values."""
+    if isinstance(value,(bool,np.bool_)) or not isinstance(value,(int,float,np.integer,np.floating)):
+        raise ValueError("real numeric scalar required")
+    result=float(value)
+    if not math.isfinite(result):raise ValueError("nonfinite numeric evidence")
+    return result
+
 def correct(evaluate,x,lam,free,control,target,*,tol=1e-7,max_iterations=35):
     """Solve free force equilibrium with one controlled displacement.
     Carry the complete converged coordinates AND load factor forward.
@@ -41,7 +50,7 @@ def correct(evaluate,x,lam,free,control,target,*,tol=1e-7,max_iterations=35):
             else:v=cached;cached=None
             rr,J,record,K=v;err=float(np.max(np.abs(rr)))
             if err<=tol:
-                return (x,lam,record,K),{"status":"EQUILIBRATED_CONTROLLED_TRIAL",
+                return (x,evidence_float(lam),record,K),{"status":"EQUILIBRATED_CONTROLLED_TRIAL",
                     "iterations":i+1,"calls":calls,"residual_kNm":err}
             step=np.linalg.solve(J,-rr)
             for k in range(14):
@@ -85,7 +94,7 @@ def operator(anchor,column,spec,field):
         return R,K,-P,recs
     def verify(sol):
         x,lam,recs,K=sol
-        axial=max(abs(float(F[0])-lam*beam.N) for F,J,rec in recs)
+        axial=evidence_float(max(abs(float(F[0])-lam*beam.N) for F,J,rec in recs))
         if axial>1e-6:raise ValueError("axial equilibrium residual")
         for old,(_,_,(q,v)) in zip(anchor.sections,recs):
             for a,T,e in zip(old.probes,p.sp_boundary_temperature,m.sec._shape(p.sp_boundary_u,p.sp_boundary_v)@q):
@@ -103,8 +112,21 @@ def controlled(beam,ev,verify,seed,target):
     try:v=verify(sol)
     except c.ERRORS as exc:return None,{"status":"UNRESOLVED_DOMAIN_CHECK","reason":str(exc)}
     x,lam,_,_=sol
-    return sol,{**rep,**v,"lambda":lam,
-        "midspan_x_mm":float(1000*(x[control]+beam.initial[control])*beam.scale[control])}
+    try:
+        # Explicit complete evidence schema, not piecemeal conversion.
+        axial=evidence_float(v["axial_residual_kN"])
+        residual=evidence_float(rep["residual_kNm"])
+        tangent=v.get("tangent_min_scaled_kNm")
+        lam=evidence_float(lam)
+        w=evidence_float(1000*(x[control]+beam.initial[control])*beam.scale[control])
+        if not 0<=axial<=1e-6 or not 0<=residual<=1e-7 or lam<0:
+            raise ValueError("endpoint evidence outside accepted domain")
+        row={"status":rep["status"],"iterations":int(rep["iterations"]),
+             "calls":int(rep["calls"]),"residual_kNm":residual,
+             "axial_residual_kN":axial,"lambda":lam,"midspan_x_mm":w,
+             "tangent_min_scaled_kNm":None if tangent is None else evidence_float(tangent)}
+    except c.ERRORS as exc:return None,{"status":"UNRESOLVED_EVIDENCE_CONTRACT","reason":str(exc)}
+    return sol,row
 
 def thermal_homotopy(anchor,column,spec,fields):
     """Same fixed predecessor across actual snapshots; no commits.
@@ -178,7 +200,8 @@ def recover_applied(anchor,column,spec,field,beam,ev,verify,points,*,max_trials=
     return anchor,{"status":"NO_ADMITTED_APPLIED_LOAD_RECOVERY","attempts":results,
         "sampled_crossing_pairs":len(pairs)}
 
-def campaign(column,boundary):
+def campaign(column,boundary,*,emit=None,refinement=None):
+    if emit is None:emit=lambda event,payload:None
     col=copy.deepcopy(column);col["fire_minutes"]=90.
     ints=[float(i) for i in range(91)]
     # Retain exact R11E snapshot schedule; no extra thermal integration
@@ -202,6 +225,7 @@ def campaign(column,boundary):
     out={"last_accepted_minute":anchor.thermal_minutes if states else None,"original_stop":fine["stop"],
          "homotopy":None,"envelopes":[],"recovery":None,"sampled_threshold_pair":None,
          "section_admitted":False,"physical_failure_bracket_min":None,"actual_t_R_minutes":None,"normative_claim":False}
+    emit("fire_stop",{"last_accepted_minute":out["last_accepted_minute"],"original_stop":out["original_stop"]})
     if not states or not fine["stop"]:return out
     end=fine["stop"]["unresolved_minute"]
     earlier=[t for t in states if t<anchor.thermal_minutes]
@@ -210,33 +234,45 @@ def campaign(column,boundary):
     # carries temperature/load seeds, but never changes predecessor.
     base=states[max(earlier)]
     endpoint_times=[anchor.thermal_minutes,end]
-    matched=[]
+    matched=[];live=[]
     for t in endpoint_times:
         fs=[fields[v] for v in ts if base.thermal_minutes<v<=t]
         sol,hom=thermal_homotopy(base,cc,spec,fs)
         row={"t":t,"homotopy":hom}
+        emit("matched_homotopy",row)
         if sol is not None and hom["stop"] is None:
             bb,ev,verify=operator(base,cc,spec,fields[t])
             pts,scan=scan_from_seed(bb,ev,verify,sol)
             row["scan"]=scan
+            emit("matched_raw_scan",{"t":t,"anchor_minute":base.thermal_minutes,"scan":scan})
+            live.append((t,bb,ev,verify,pts,scan))
             if scan["rows"]:
-                sample=r.endpoint({"rows":scan["rows"],"stop":scan["stop"]},N=1500.,
-                                  expected_count=scan.get("expected_count",33))
-                row["sample"]=sample;matched.append((t,sample))
+                try:
+                    sample=r.endpoint({"rows":scan["rows"],"stop":scan["stop"]},N=1500.,
+                                      expected_count=scan.get("expected_count",33))
+                    row["sample"]=sample;matched.append((t,sample))
+                except ValueError as exc:
+                    row["evidence_error"]=str(exc)
+                    emit("evidence_error",{"t":t,"reason":str(exc)})
         out["envelopes"].append(row)
     if len(matched)==2:
         out["sampled_threshold_pair"]=r.sampled_threshold_pair(matched[0][1],matched[1][1],
             t0=matched[0][0],t1=matched[1][0],same_anchor_and_scan=True)
+    if refinement is not None and len(live)==2:
+        out["matched_refinement"]=refinement(live,emit=emit)
     # Recovery uses EXACT latest accepted state, not the matched
     # sensitivity predecessor. A future endpoint is a different increment.
     sol,hom=thermal_homotopy(anchor,cc,spec,[fields[v] for v in ts if anchor.thermal_minutes<v<=end])
     out["homotopy"]=hom
+    emit("recovery_homotopy",hom)
     if sol is not None and hom["stop"] is None:
         bb,ev,verify=operator(anchor,cc,spec,fields[end])
         pts,scan=scan_from_seed(bb,ev,verify,sol)
         out["recovery_scan"]=scan
+        emit("recovery_raw_scan",{"t":end,"anchor_minute":anchor.thermal_minutes,"scan":scan})
         new,recovery=recover_applied(anchor,cc,spec,fields[end],bb,ev,verify,pts)
         out["recovery"]=recovery
+        emit("recovery_result",recovery)
         if new is not anchor:
             out["last_accepted_minute"]=new.thermal_minutes
             out["original_interval_recovered"]=True

@@ -1,0 +1,42 @@
+name: SP-R12C gated endpoint reconciliation
+on:
+  push:
+    branches: [feat/sp-r12c-endpoint-reconciliation]
+concurrency:
+  group: sp-r12c-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - name: Fast endpoint contract and adaptive sampling
+        run: |
+          cd tests
+          PYTHONPATH=.. python -m unittest -v test_sp_r12b_endpoint.TestR12B.test_controlled_load_seed_and_fold test_sp_r12b_endpoint.TestR12B.test_rejection_does_not_mutate_seed test_sp_r12b_endpoint.TestR12B.test_native_numeric_endpoint_contract test_sp_r12b_endpoint.TestR12B.test_numeric_contract_rejects_nonfinite_and_nonreal test_sp_r12c_reconciliation
+  endpoint:
+    needs: contract
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -p test_sp_r12c_actual.py -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r12c-raw-endpoint-evidence
+          path: r12c_endpoint_evidence.jsonl
+          if-no-files-found: warn

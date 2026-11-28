@@ -36,14 +36,20 @@ class TestR12B(unittest.TestCase):
     seed=(np.array([.5]),.375)
     rows=[]
     for u in (.5,.58,.65):
-        sol,row=b.controlled(beam,op,lambda sol:{"axial_residual_kN":0.},seed,u)
+        sol,row=b.controlled(beam,op,lambda sol:{"axial_residual_kN":np.float64(0.),"tangent_min_scaled_kNm":np.float64(1.)},seed,u)
         self.assertIsNotNone(sol)
-        self.assertIs(type(row["midspan_x_mm"]),float)
+        for key in ("midspan_x_mm","axial_residual_kN","lambda","residual_kNm","tangent_min_scaled_kNm"):
+            self.assertIs(type(row[key]),float)
         rows.append(row);seed=sol
     sample=r.endpoint({"rows":rows,"stop":None},N=1500.,expected_count=3)
     self.assertEqual(sample["status"],"INTERIOR_SAMPLED_MAXIMUM")
     self.assertAlmostEqual(sample["sampled_peak_lambda"],.58-.58**3)
     json.dumps(sample,allow_nan=False)
+ def test_numeric_contract_rejects_nonfinite_and_nonreal(self):
+    for x in (True,np.bool_(False),"1",np.array(1.),np.float64(np.inf),np.float64(np.nan),1j):
+        with self.assertRaises(ValueError):b.evidence_float(x)
+    for x in (np.int64(1),np.float32(1.),np.float64(1.),1,1.):
+        self.assertIs(type(b.evidence_float(x)),float)
  def test_actual_coupled_endpoint(self):
     q=b.campaign(fixture(),reference_sp2026_boundary(moisture_mass_pct=1.5))
     self.assertIsNotNone(q["last_accepted_minute"])
