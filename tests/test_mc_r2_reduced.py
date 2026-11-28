@@ -6,7 +6,7 @@ from rc_fire.thermal.normative import RectangularExposure
 
 def column(b=600,h=600,d=20):
     c=case(b,h,d);c["fire_minutes"]=90.
-    c["thermal_spec"].update(dry_density_kg_m3=2400.,a_red_mode="table_K1")
+    c["thermal_spec"].update(dry_density_kg_m3=2400.,a_red_mode="table_K1",moisture_mass_pct=None)
     c["bars"]=[v for v in c["bars"] if v["y_mm"]!=h/2]
     for s in c["sections"]:s["My_kNm"]=0.
     return c
