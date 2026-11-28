@@ -39,6 +39,20 @@ class TestR11D(unittest.TestCase):
     self.assertEqual(d.classify_stop({"status":"UNRESOLVED_GLOBAL_LINE_SEARCH"}),"NUMERICAL_EQUILIBRIUM_STOP")
     self.assertEqual(d.classify_stop({"status":"UNRESOLVED_MEMBER_INPUT_OR_DOMAIN","reason":"SP Table 10 steel temperature outside supported"}),"STEEL_TEMPERATURE_DOMAIN")
     self.assertEqual(d.classify_stop({"status":"UNRESOLVED_NONPOSITIVE_GLOBAL_ALGORITHMIC_TANGENT","converged_equilibrium":True}),"EQUILIBRATED_NONPOSITIVE_TANGENT")
+ def test_localization_uses_stored_snapshots_and_preserves_history(self):
+    @dataclass(frozen=True)
+    class State:thermal_minutes:float
+    def advance(s,t):
+        if t>=84.75:return s,{"status":"UNRESOLVED_GLOBAL_LINE_SEARCH"}
+        return State(t),{"status":d.c.OK,"time_minutes":t}
+    s=State(84.)
+    stop={"status":"UNRESOLVED_GLOBAL_LINE_SEARCH","last_accepted_minute":84.,"unresolved_minute":85.}
+    n,r=d.refine_interval(s,stop,[84.,84.25,84.5,84.75,85.],advance)
+    self.assertEqual(n.thermal_minutes,84.5)
+    self.assertEqual(r["stop"]["unresolved_minute"],84.75)
+    self.assertEqual(s.thermal_minutes,84.)
+    n,r=d.refine_interval(s,stop,[84.,85.],advance)
+    self.assertIs(s,n);self.assertEqual(r["status"],"NO_DENSE_THERMAL_SNAPSHOTS")
  def test_actual_localization_and_sequential_paths(self):
     r=d.campaign(fixture(),reference_sp2026_boundary(moisture_mass_pct=1.5))
     self.assertTrue(r["accepted"]);self.assertEqual(r["accepted"][0]["t"],0.)

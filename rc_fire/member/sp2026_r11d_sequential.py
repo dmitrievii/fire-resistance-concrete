@@ -174,9 +174,36 @@ def trace_member(anchor,column,spec,field,*,steps=8,ds=.06):
             "anchor_unchanged":start.member is anchor,"rate_independent_isothermal_path":True,
             "path":r,"actual_t_R_minutes":None}
 
+def refine_interval(state,stop,available,advance,*,resolution=.25):
+    """Retry only the unresolved interval on stored, denser snapshots.
+
+    Caller supplies the exact committed predecessor from the same
+    thermal solution and fixed spatial mesh. If recovery reaches the
+    old endpoint, no later time or global limit is inferred.
+    """
+    if stop is None:return state,{"status":"NO_UNRESOLVED_INTERVAL","rows":[],"stop":None}
+    lo=float(state.thermal_minutes);hi=float(stop["unresolved_minute"])
+    if stop.get("last_accepted_minute")!=lo or hi<=lo or resolution<=0:
+        raise ValueError("invalid localization anchor")
+    ts=sorted(set(float(t) for t in available if lo<float(t)<=hi))
+    if not ts or ts[-1]!=hi or any(b-a>resolution+1e-10 for a,b in zip([lo]+ts,ts)):
+        return state,{"status":"NO_DENSE_THERMAL_SNAPSHOTS","rows":[],"stop":stop}
+    rows=[]
+    for t in ts:
+        try:n,r=advance(state,t)
+        except c.ERRORS as exc:n=state;r={"status":"UNRESOLVED_MEMBER_INPUT_OR_DOMAIN","reason":str(exc)}
+        if r["status"]!=c.OK:
+            if n is not state:raise ArithmeticError("rejected localization changed history")
+            return state,{"status":"LOCALIZED_UNRESOLVED_INTERVAL","rows":rows,
+                          "stop":{**r,"last_accepted_minute":state.thermal_minutes,"unresolved_minute":t}}
+        if n is state or n.thermal_minutes!=t:raise ArithmeticError("invalid localization commit")
+        state=n;rows.append(r)
+    return state,{"status":"OLD_ENDPOINT_RECOVERED","rows":rows,"stop":None}
+
 def campaign(column,boundary):
     col=copy.deepcopy(column);col["fire_minutes"]=90.
-    ts=[float(i) for i in range(91)]
+    integer_times=[float(i) for i in range(91)]
+    ts=sorted(set(integer_times)|{75.+i*.25 for i in range(61)})
     heat=solve_sp2026_2d_heat(col,boundary=boundary,cell_count_x=16,cell_count_y=16,
                              max_step_minutes=1.,sample_times_minutes=ts)
     fields={t:select_sp2026_snapshot(heat,t) for t in ts}
@@ -186,15 +213,22 @@ def campaign(column,boundary):
     start=m.initial(cc,spec,fields[0.],grid=8,quadrature=mesh)
     def advance(s,t):return m.advance(s,cc,spec,fields[t],max_iterations=30)
     schedule=[0.,2.,5.,10.,20.,30.,45.,60.,75.,90.]
-    last,r=c.adaptive(start,schedule,ts,advance,min_step=1.,max_attempts=65)
+    last,r=c.adaptive(start,schedule,integer_times,advance,min_step=1.,max_attempts=65)
+    original_stop=r["stop"];original_last=last.thermal_minutes if r["accepted"] else None
+    refinement={"status":"NO_ACCEPTED_ANCHOR","rows":[],"stop":original_stop}
+    if r["accepted"]:
+        last,refinement=refine_interval(last,original_stop,ts,advance)
+        r["accepted"].extend(refinement["rows"])
     a=None;f=None
     if r["accepted"]:
         a=trace_member(last,cc,spec,fields[last.thermal_minutes],steps=6,ds=.06)
         f=trace_member(last,cc,spec,fields[last.thermal_minutes],steps=12,ds=.03)
-    stop=r["stop"]
+    stop=refinement["stop"]
     return {"fixture":"SLENDER1500_PINNED","quadrature":mesh.evidence(),"last_accepted_minute":last.thermal_minutes if r["accepted"] else None,
             "accepted":[{"t":v["time_minutes"],"midspan_x_mm":1000*v["total_w_x_m"][len(v["total_w_x_m"])//2],
                          "max_axial_residual_kN":v["max_axial_residual_kN"]} for v in r["accepted"]],
-            "stop":stop,"stop_class":classify_stop(stop),"attempts":r["attempts"],"recovered_attempts":r["recovered_attempts"],
+            "stop":stop,"stop_class":("OLD_ENDPOINT_RECOVERED_LATER_TIMES_UNKNOWN" if refinement["status"]=="OLD_ENDPOINT_RECOVERED" else classify_stop(stop)),
+            "original_last_accepted_minute":original_last,"original_stop":original_stop,
+            "localization_status":refinement["status"],"localized_times":[v["time_minutes"] for v in refinement["rows"]],"attempts":r["attempts"],"recovered_attempts":r["recovered_attempts"],
             "path_coarse":a,"path_fine":f,"same_nominal_arclength_budget":.36,
             "physical_failure_proven":False,"actual_t_R_minutes":None,"normative_claim":False}
