@@ -41,6 +41,27 @@ def integrated_isotherm_area(ex,coeff,t,critical_C):
     lost=quad(lost_width,0,H,points=knots,epsabs=1e-12,epsrel=1e-10)[0]
     return 4*(H*H-lost)
 
+def k27_area_only(ex,coeff,t,critical_C):
+    """Literal K.20/K.21/K.22/K.27/K.28 area; no K.23 delta dependency.
+    An independently reported area, not a bypass of the legacy mechanical guard.
+    """
+    audit=mc4.early_heating_audit(ex,coeff,t,critical_C)
+    H=ex.h_mm/2000
+    lc,ld=audit["raw_lc_m"],audit["raw_ld_m"]
+    base={"area_m2":None,"normative_mechanical_claim":False,
+          "legacy_helper_status":audit["literal_K27"]["status"]}
+    if audit["state"]=="EARLY_HEATING_ASSUMPTIONS_NOT_APPLICABLE":
+        return {**base,"status":"OUTSIDE_NONOVERLAP_COMPARATOR_DOMAIN"}
+    if audit["state"]=="NO_CONCRETE_ABOVE_CRITICAL":
+        return {**base,"status":"COLD_DOMAIN_NOT_K27","area_m2":4*H*H}
+    if not (0<=lc<=ld<H):
+        return {**base,"status":"K27_RAW_DEPTH_DOMAIN_UNRESOLVED"}
+    psi=min(1.,(H-ld)/(H-lc)-.2)
+    if not 0<psi<=1:
+        return {**base,"status":"K28_INVALID_PSI"}
+    return {**base,"status":"K27_AREA_ONLY","area_m2":4*psi*(H-lc)**2,
+            "lc_m":lc,"ld_m":ld,"psi":psi}
+
 def matched_column(template,N,Mx,My=0.):
     c=copy.deepcopy(template)
     c.update(length_m=13.7,mu_x=.8,mu_y=1.2)
