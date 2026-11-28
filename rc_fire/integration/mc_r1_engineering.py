@@ -12,6 +12,7 @@ from rc_fire.mechanics.sp2026_nominal_member import (
     prepare_sp2026_design_section,nonuniform_sp5_nominal_axis,design_parameters)
 from rc_fire.mechanics.action_capacity import WITHIN,EXCEEDED
 from rc_fire.thermal.sp2026_heat import select_sp2026_snapshot
+from rc_fire.thermal.sp2026_annex_k_field import ANNEX_K_METHOD
 from rc_fire.materials.sp2026_r13a_normative import CHARACTERISTIC,ACCIDENTAL
 
 SOURCE_MAP=(
@@ -40,7 +41,7 @@ def finite(x,name,positive=False):
     if not math.isfinite(x) or (positive and x<=0):raise ValueError(name)
     return x
 
-def assess(column,snapshot,*,basis,creep_by_axis,action_contract,grid=12):
+def assess(column,snapshot,*,basis,creep_by_axis,action_contract,grid=12,annex_k_comparison=False):
     """Fixed-duration engineering candidate for explicit effective lengths.
 
     Each supplied section N/Mx/My is a simultaneous first-order fire action
@@ -55,7 +56,9 @@ def assess(column,snapshot,*,basis,creep_by_axis,action_contract,grid=12):
     if not all(action_contract.get(k) is True for k in required):
         raise ValueError("explicit first-order action and member idealization contract required")
     if basis not in (CHARACTERISTIC,ACCIDENTAL):raise ValueError("explicit strength basis")
-    if snapshot.get("thermal_method")!="SP2026_8.2.23_FVM":raise ValueError("current-SP FVM snapshot required")
+    if type(annex_k_comparison) is not bool:raise ValueError("explicit thermal comparison flag required")
+    expected_method=ANNEX_K_METHOD if annex_k_comparison else "SP2026_8.2.23_FVM"
+    if snapshot.get("thermal_method")!=expected_method:raise ValueError("explicit source-matched SP thermal snapshot required")
     L=finite(column["length_m"],"length",True)
     mu={a:finite(column["mu_"+a],"effective length factor",True) for a in ("x","y")}
     phi={a:finite(creep_by_axis[a],"explicit axis creep") for a in ("x","y")}
@@ -107,7 +110,7 @@ def assess(column,snapshot,*,basis,creep_by_axis,action_contract,grid=12):
             "MODEL_LIMIT_EXCEEDED" if any(r["status"]=="SECTION_MODEL_LIMIT_EXCEEDED" for r in rows) else
             "ALL_SAMPLED_SECTIONS_WITHIN_MODEL_LIMITS")
     return {"method":"MC_R1_SP_FIBRE_NOMINAL_ENGINEERING_CANDIDATE","time_minutes":float(snapshot["snapshot"]["time_minutes"]),
-        "status":status,"strength_basis":basis,"bar_temperatures_C":dict(zip(p.bar_ids,map(float,p.theta_s))),
+        "status":status,"thermal_method":expected_method,"annex_k_comparison":annex_k_comparison,"strength_basis":basis,"bar_temperatures_C":dict(zip(p.bar_ids,map(float,p.theta_s))),
         "section_count":len(rows),"sections":rows,"governing_sampled_strain_section":governing,
         "regulatory_result":"NOT_ESTABLISHED","actual_U_t":None,"actual_t_R_minutes":None,"normative_claim":False,
         "remaining_gates":["SP5_NONUNIFORM_NOMINAL_STIFFNESS_ADJUDICATION","SP_HOT_SECTION_STRAIN_ASSUMPTIONS",
