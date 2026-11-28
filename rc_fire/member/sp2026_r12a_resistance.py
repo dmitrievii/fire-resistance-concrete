@@ -113,8 +113,51 @@ def from_r11d(receipt):
         "section_admitted":False,"physical_material_admitted":False,"normative_claim":False,
         "actual_t_R_minutes":None}
 
+def from_r11e(receipt):
+    if (receipt.get("run_id"),receipt.get("head_sha"),receipt.get("status"),receipt.get("conclusion"))!=(
+      46137604180,"57520b276587861b7ca4f3a8d26f25d5bd1685a2","completed","success"):
+        raise ValueError("unexpected R11E receipt")
+    d=receipt["evidence"];a=d["eighth"];b=d["quarter"];N=1500.
+    if a is None or b is None:
+        return {"source_run":receipt["run_id"],"status":"NO_LOCALIZED_HISTORY",
+                "actual_t_R_minutes":None,"normative_claim":False}
+    t=number(a["last"]);stop=a["stop"]
+    bracket=None
+    if stop and stop["last_accepted_minute"]==t and number(stop["unresolved_minute"])>t:
+        bracket=[t,stop["unresolved_minute"]]
+    cmp=d["path_comparison"];paths=d.get("paths")
+    coarse=fine=None
+    if paths and cmp and cmp.get("comparable"):
+        if any(paths[k]["anchor_minute"]!=t for k in ("coarse","fine")):
+            raise ValueError("path anchor time mismatch")
+        if paths["coarse"]["path"]["rows"][0]["coordinates"]!=paths["fine"]["path"]["rows"][0]["coordinates"]:
+            raise ValueError("path anchor coordinate mismatch")
+        w=number(cmp["common_displacement_mm"][0])
+        coarse=sequential(paths["coarse"],w,N=N,expected_steps=12)
+        fine=sequential(paths["fine"],w,N=N,expected_steps=24)
+    envelope=None
+    env=d.get("endpoint")
+    if env and "rows" in env:
+        if env["anchor_minute"]!=t or bracket is None or env["endpoint_minute"]!=bracket[1]:
+            raise ValueError("endpoint anchor mismatch")
+        envelope=endpoint(env,N=N,expected_count=33)
+        envelope.update({"t":env["endpoint_minute"],"stop":env["stop"]})
+    return {"source_run":receipt["run_id"],"anchor_minute":t,
+            "quarter_interval_min":[b["last"],b["stop"]["unresolved_minute"]] if b["stop"] else None,
+            "computational_stop_interval_min":bracket,"coarse_path":coarse,"refined_path":fine,
+            "path_convergence":cmp,"endpoint":envelope,
+            "U_sample":fine["U_sample"] if fine else None,
+            "observed_sampled_crossing":None,"physical_failure_bracket_min":None,
+            "section_admitted":False,"physical_material_admitted":False,"normative_claim":False,
+            "actual_t_R_minutes":None}
+
+def extract(receipt):
+    if receipt.get("run_id")==46136773571:return from_r11d(receipt)
+    if receipt.get("run_id")==46137604180:return from_r11e(receipt)
+    raise ValueError("unsupported evidence source")
+
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument("receipt");p.add_argument("--output",required=True)
-    a=p.parse_args();Path(a.output).write_text(json.dumps(from_r11d(json.loads(Path(a.receipt).read_text())),indent=2,allow_nan=False)+"\n")
+    a=p.parse_args();Path(a.output).write_text(json.dumps(extract(json.loads(Path(a.receipt).read_text())),indent=2,allow_nan=False)+"\n")
 
 if __name__=="__main__":main()

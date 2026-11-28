@@ -32,3 +32,15 @@ class TestR12A(unittest.TestCase):
     self.assertIsNone(scan([1.,1.01])["U_sample"])
     with self.assertRaises(ValueError):
         r.sample([{"midspan_x_mm":0.,"lambda":1.,"residual_kNm":1.,"axial_residual_kN":0.}],family="one_thermal_increment",expected_count=3,complete=True,N=1500.)
+
+ def test_latest_archive_actual(self):
+    a=r.extract(json.loads((root/"validation/sp_r12a_r11e_receipt.json").read_text()))
+    self.assertEqual(a["quarter_interval_min"],[83.75,84.])
+    self.assertEqual(a["computational_stop_interval_min"],[83.75,83.875])
+    self.assertAlmostEqual(a["U_sample"],1/1.0023617861460141)
+    self.assertFalse(a["path_convergence"]["research_pass"])
+    self.assertEqual(a["endpoint"]["sample_count"],0)
+    self.assertIsNone(a["endpoint"]["U_sample"])
+    self.assertIsNone(a["observed_sampled_crossing"])
+    self.assertIsNone(a["actual_t_R_minutes"])
+    print("SP_R12A_LATEST_ARCHIVED_EVIDENCE",json.dumps(a,allow_nan=False))
