@@ -80,6 +80,8 @@ def reconcile(live,*,emit=lambda event,payload:None,levels=2):
             if failed:break
         if failed:break
         previous=[a,z];grids=staged
+    if out["stop"] is not None or len(out["levels"])!=levels+1:
+        out["refined_sampled_threshold_supported"]=False
     # A finite set of samples cannot exclude an unobserved peak or branch.
     out["continuous_capacity_upper_bound"]=None
     out["physical_failure_proven"]=False

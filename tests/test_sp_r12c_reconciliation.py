@@ -16,7 +16,7 @@ def fixture(peak,center):
 
 class TestR12C(unittest.TestCase):
  def test_matched_sample_crossing_and_adaptive_peak(self):
-    a=fixture(1.002,10.125);z=fixture(.998,10.125)
+    a=fixture(1.002,10.12);z=fixture(.998,10.12)
     r=c.reconcile([(83.75,*a),(83.875,*z)],levels=2)
     self.assertIsNone(r["stop"])
     self.assertEqual(len(r["levels"]),3)
@@ -25,14 +25,14 @@ class TestR12C(unittest.TestCase):
     self.assertAlmostEqual(r["levels"][-1]["samples"][0]["sampled_peak_lambda"],1.002)
     self.assertIsNone(r["actual_t_R_minutes"])
  def test_incomplete_base_does_not_promote(self):
-    a=fixture(1.002,10.125);z=fixture(.998,10.125)
+    a=fixture(1.002,10.12);z=fixture(.998,10.12)
     z[-1]["complete"]=False
     r=c.reconcile([(83.75,*a),(83.875,*z)])
     self.assertEqual(r["stop"],"INCOMPLETE_BASE_SCAN")
     self.assertIsNone(r["sampled_threshold_pair"])
     self.assertFalse(r["refined_sampled_threshold_supported"])
  def test_nonmatching_grid_does_not_promote(self):
-    a=fixture(1.002,10.125);z=fixture(.998,10.125)
+    a=fixture(1.002,10.12);z=fixture(.998,10.12)
     z[3][0][0][0][0]-=.0001
     r=c.reconcile([(83.75,*a),(83.875,*z)])
     self.assertEqual(r["stop"],"NONMATCHING_CONTROL_GRID")
