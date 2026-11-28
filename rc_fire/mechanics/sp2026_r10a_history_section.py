@@ -86,9 +86,10 @@ class SectionState:
     steel_states:tuple
     steel_mode:str
     steel_strain_limit:float
+    quadrature:object=None
 
 def make_initial(column,field,*,grid,mode,length_mm,Gwork_N_mm,yield_fraction,
-                 strength_basis,steel_mode=steel_history.ELASTIC,steel_strain_limit=.02):
+                 strength_basis,steel_mode=steel_history.ELASTIC,steel_strain_limit=.02,quadrature=None):
     if steel_mode not in (steel_history.ELASTIC,steel_history.PLASTIC):raise SectionHistoryError("explicit steel mode required")
     if not math.isfinite(steel_strain_limit) or steel_strain_limit<=0:raise SectionHistoryError("positive steel research domain guard required")
     p=prepare_sp2026_design_section(column,field,grid=grid)
@@ -102,19 +103,25 @@ def make_initial(column,field,*,grid,mode,length_mm,Gwork_N_mm,yield_fraction,
     pars=material.Parameters(p.aggregate,fc,1000*norm["E_cm_GPa"],
             norm["eps_c1_permille"]/1000.,yield_fraction,Gwork_N_mm,length_mm,2.35,None,
             "R10A research: "+strength_basis+"; unqualified peak scaling and softening")
-    A=net_areas(p,grid)
+    if quadrature is None:A=net_areas(p,grid)
+    else:
+        from rc_fire.mechanics.sp2026_r10c_quadrature import apply_quadrature
+        A=apply_quadrature(p,field,quadrature)
     states=tuple(hot.initial_state(pars,mode) for _ in A)
     probes=tuple(hot.initial_state(pars,mode) for _ in p.sp_boundary_u)
     return SectionState(_geometry(p,A),grid,field["thermal_method"],0.,0.,
                         (0.,0.,0.),states,probes,tuple(p.theta_s),
-                        tuple(steel_history.SteelState() for _ in p.theta_s),steel_mode,steel_strain_limit)
+                        tuple(steel_history.SteelState() for _ in p.theta_s),steel_mode,steel_strain_limit,quadrature)
 
 def _shape(u,v):
     return np.column_stack((np.ones(len(u)),v,u))
 
 def _prepare(s,column,field):
     p=prepare_sp2026_design_section(column,field,grid=s.grid)
-    A=net_areas(p,s.grid)
+    if s.quadrature is None:A=net_areas(p,s.grid)
+    else:
+        from rc_fire.mechanics.sp2026_r10c_quadrature import apply_quadrature
+        A=apply_quadrature(p,field,s.quadrature)
     if _geometry(p,A)!=s.geometry or field["thermal_method"]!=s.thermal_method:
         raise SectionHistoryError("section geometry/material/thermal route changed")
     if np.any(np.asarray(p.theta_s)<np.asarray(s.steel_temperatures)-1e-8):
@@ -196,7 +203,7 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
     except (ValueError,ArithmeticError) as exc:
         return s,{"status":"UNRESOLVED_BOUNDARY_HISTORY","reason":str(exc)}
     new=SectionState(s.geometry,s.grid,s.thermal_method,t,minute,tuple(q),
-                     tuple(cs),tuple(probes),tuple(p.theta_s),steel_states,s.steel_mode,s.steel_strain_limit)
+                     tuple(cs),tuple(probes),tuple(p.theta_s),steel_states,s.steel_mode,s.steel_strain_limit,s.quadrature)
     concrete_damage=np.array([a.active.damage for a in cs])
     inactive=np.array([a.thermal_cutoff for a in cs])
     D=J[1:,1:]-np.outer(J[1:,0],J[0,1:])/J[0,0]
@@ -220,6 +227,9 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
         "steel_max_accumulated_plastic_strain":max(a.accumulated_plastic_strain for a in steel_states),
         "steel_yielded_bar_count":sum(a.accumulated_plastic_strain>0. for a in steel_states),
         "concrete_net_area_m2":float(A.sum()),"steel_area_m2":float(p.bar_area.sum()),
+        "concrete_integration_points":len(A),
+        "compressed_net_area_m2":float(A[sc>0.].sum()),
+        "stress_inactive_noncutoff_area_m2":float(A[(sc<=0.)&(~inactive)].sum()),
         "area_weighted_damage":float(A@concrete_damage/A.sum()),
         "max_cell_damage":float(concrete_damage.max()),
         "max_boundary_damage":max(a.active.damage for a in probes),
@@ -237,10 +247,10 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
 
 def run_history(column,fields,actions,*,grid,mode,length_mm=50.,Gwork_N_mm=5.,
                 yield_fraction=.4,strength_basis="SP5_ACCIDENTAL_FCD",
-                steel_mode=steel_history.ELASTIC,steel_strain_limit=.02):
+                steel_mode=steel_history.ELASTIC,steel_strain_limit=.02,quadrature=None):
     s=make_initial(column,fields[0],grid=grid,mode=mode,length_mm=length_mm,
                    Gwork_N_mm=Gwork_N_mm,yield_fraction=yield_fraction,strength_basis=strength_basis,
-                   steel_mode=steel_mode,steel_strain_limit=steel_strain_limit)
+                   steel_mode=steel_mode,steel_strain_limit=steel_strain_limit,quadrature=quadrature)
     rows=[]
     for field in fields:
         minute=float(field["snapshot"]["time_minutes"])
