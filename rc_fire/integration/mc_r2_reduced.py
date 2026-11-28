@@ -27,7 +27,7 @@ def _base():
         "regulatory_result":"NOT_ESTABLISHED","actual_U_t":None}
 def _guard(condition,reason):
     if not condition:raise ValueError(reason)
-def _geometry(ex,coeff,t,critical,axis,bars,strips):
+def _geometry(ex,coeff,t,critical,axis,bars,strips,*,area_method='contour'):
     """Inner rectangular strips; full strip corner must be below critical.
     Integrate concrete width minus actual circular bar intersections.
     Coordinates centred; z is bending coordinate, u transverse.
@@ -47,15 +47,35 @@ def _geometry(ex,coeff,t,critical,axis,bars,strips):
         _guard(not bool(meta["outside_approximation_C"]),"ANNEX_K_TEMPERATURE_DOMAIN")
         return float(v)
     _guard(temp(0,0)<critical,"NO_POSITIVE_RETAINED_CONCRETE")
+    if area_method=="k27_cross":
+        _guard(abs(H-W)<=1e-10,"K27_REQUIRES_SQUARE_SECTION")
+        if temp(W,H)<=critical:
+            segments=[(-H,H,W)]
+        else:
+            k27=square_four_face_reduced_section(ex,coeff,t,critical)
+            _guard(k27["status"]=="evaluated","K27_DOMAIN: "+str(k27.get("reason")))
+            a=H-k27["lc_m"]
+            target=k27["remaining_area_m2"]
+            # The area of a cross cut from a 2a square by four
+            # identical corner squares is 4a²-4(a-c)².
+            c=a-math.sqrt(max(0.,a*a-target/4))
+            _guard(0<c<=a<=H,"INVALID_K27_CROSS")
+            _guard(max(temp(c,a),temp(a,c))<=critical+1e-7,
+                   "K27_CROSS_NOT_INSIDE_CRITICAL_CONTOUR")
+            segments=[(-a,-c,c),(-c,c,a),(c,a,c)]
+    elif area_method=="contour":
+        segments=None
+    else:raise ValueError("UNKNOWN_AREA_METHOD")
     # Boundary of the retained domain along the symmetry axis.
-    zmax=H if temp(0,H)<=critical else brentq(lambda z:temp(0,z)-critical,0,H,xtol=1e-13)
-    # Equal strips, mirrored, evaluate the outer (hotter) edge. No
-    # centre threshold or interpolation of a thermal field.
-    segments=[]
-    for lo,hi in zip(np.linspace(0,zmax,strips+1)[:-1],np.linspace(0,zmax,strips+1)[1:]):
-        if temp(0,float(hi))>=critical-1e-9:continue
-        w=W if temp(W,float(hi))<=critical else brentq(lambda u:temp(u,float(hi))-critical,0,W,xtol=1e-13)
-        if w>0:segments.extend([(-float(hi),-float(lo),w),(float(lo),float(hi),w)])
+    if segments is None:
+        zmax=H if temp(0,H)<=critical else brentq(lambda z:temp(0,z)-critical,0,H,xtol=1e-13)
+        # Equal strips, mirrored, evaluate the outer (hotter) edge. No
+        # centre threshold or interpolation of a thermal field.
+        segments=[]
+        for lo,hi in zip(np.linspace(0,zmax,strips+1)[:-1],np.linspace(0,zmax,strips+1)[1:]):
+            if temp(0,float(hi))>=critical-1e-9:continue
+            w=W if temp(W,float(hi))<=critical else brentq(lambda u:temp(u,float(hi))-critical,0,W,xtol=1e-13)
+            if w>0:segments.extend([(-float(hi),-float(lo),w),(float(lo),float(hi),w)])
     _guard(bool(segments),"EMPTY_STRIP_CORE")
     outer=max(hi for lo,hi,w in segments)
     # Integrate the circular hole chords at Gauss nodes, split at all
@@ -66,7 +86,8 @@ def _geometry(ex,coeff,t,critical,axis,bars,strips):
         gross+=2*w*(hi-lo)
         Igx+=2*w*(hi**3-lo**3)/3
         Igy+=2*w**3*(hi-lo)/3
-        split={lo,hi}
+        # Even the analytic cross has a distributed stress field.
+        split=set(float(v) for v in np.linspace(lo,hi,max(2,math.ceil((hi-lo)/(depth/(2*strips)))+1)))
         for bar in bars:
             u,z,r=bar["u"],bar["z"],bar["r"]
             for v in (z-r,z+r):
@@ -92,7 +113,7 @@ def _geometry(ex,coeff,t,critical,axis,bars,strips):
                 Ix.append(max(0.,width_net)*dw*z*z);Iy.append(max(0.,iu)*dw)
     area=sum(A)
     _guard(area>0,"EMPTY_NET_CORE")
-    return {"z":np.array(Z),"A":np.array(A),"zmax":outer,
+    return {"z":np.array(Z),"A":np.array(A),"zmax":outer,"area_method":area_method,
         "area":area,"gross_area":gross,"Ix":sum(Ix),"Iy":sum(Iy),
         "gross_Ix":Igx,"gross_Iy":Igy,"segments":len(segments)}
 
@@ -144,7 +165,7 @@ def capacity(g,bars,N,fc,eps2,epsu,n):
         "governing_limit":"concrete" if abs(e+k*zmax-epsu)<=1e-9 else "steel_tension"}
 
 def assess(column,time_minutes,*,selected=False,action_contract,creep_by_axis,strips=48,
-           bar_distance_convention="clear"):
+           bar_distance_convention="clear",area_method="contour"):
     out={**_base(),"time_minutes":float(time_minutes)}
     try:
         _guard(selected is True,"EXPLICIT_REDUCED_SECTION_COMPARATOR_SELECTION_REQUIRED")
@@ -176,7 +197,7 @@ def assess(column,time_minutes,*,selected=False,action_contract,creep_by_axis,st
             bars.append({"id":str(bar["id"]),"u":u,"z":z,"r":r,"A":math.pi*r*r,
                 "T_C":T,"fy":hot.strength_MPa,"E":hot.elastic_modulus_MPa})
         _guard(len({v["id"] for v in bars})==len(bars),"DUPLICATE_BAR_IDS")
-        g=_geometry(ex,field["annex_k_coefficients"],float(time_minutes),critical,axis,bars,strips)
+        g=_geometry(ex,field["annex_k_coefficients"],float(time_minutes),critical,axis,bars,strips,area_method=area_method)
         k27=square_four_face_reduced_section(ex,field["annex_k_coefficients"],time_minutes,critical)
         L=finite(column["length_m"],"L",True)
         rows=[]
@@ -207,7 +228,7 @@ def assess(column,time_minutes,*,selected=False,action_contract,creep_by_axis,st
         _guard(len({r["id"] for r in rows})==len(rows),"DUPLICATE_SECTION_IDS")
         status="ALL_MODEL_CHECKS_WITHIN" if all(r["status"]=="MODEL_WITHIN" for r in rows) else "MODEL_LIMIT_OR_UNRESOLVED"
         return {**out,"status":status,"axis":axis,"critical_C":critical,
-            "geometry":{"gross_area_m2":g["gross_area"],"net_area_m2":g["area"],"I_bending_m4":g["Ix"],
+            "geometry":{"area_method":area_method,"gross_area_m2":g["gross_area"],"net_area_m2":g["area"],"I_bending_m4":g["Ix"],
                 "I_other_m4":g["Iy"],"strips":g["segments"],"K27":k27},
             "bars":bars,"sections":rows,"thermal_provenance":field["annex_k_provenance"],
             "remaining_gates":["EXPLICIT_COMPARATOR_NOT_DEFAULT","ANNEX_K_K5_K11_INTERPRETATION",

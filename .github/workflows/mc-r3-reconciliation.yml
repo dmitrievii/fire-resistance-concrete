@@ -1,0 +1,18 @@
+name: MC-R3 area and whole-minute reconciliation
+on:
+  push:
+    branches: [feat/mc-r3-area-reconciliation]
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -p test_mc_r3_reconciliation.py -v
+      - run: python -m unittest discover -s tests -p test_mc_r2_reduced.py -v
