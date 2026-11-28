@@ -133,10 +133,11 @@ def _prepare(s,column,field):
         fy.append(p.sp5_design_parameters["fyd_20_MPa"]*m.strength_factor)
     return p,A,_shape(p.u,p.v),_shape(p.bar_u,p.bar_v),np.asarray(E),np.asarray(fy)
 
-def _trial(s,p,A,C,B,E,fy,t,q):
+def _trial(s,p,A,C,B,E,fy,t,q,*,counts=None):
     ep=C@q
     cs=[];stress=[];tangent=[];rows=[]
     for old,T,e in zip(s.concrete,p.theta_c,ep):
+        if counts is not None:counts['concrete_trials']+=1
         new,r=hot.trial_step(old,time_s=t,temperature_C=float(T),total_compression=float(e))
         cs.append(new);stress.append(r["stress_MPa"]);tangent.append(r["effective_tangent_MPa"]);rows.append(r)
     sc=np.asarray(stress);tc=np.asarray(tangent)
@@ -150,7 +151,7 @@ def _trial(s,p,A,C,B,E,fy,t,q):
     J=1000*((C.T*(A*tc))@C+(B.T*(p.bar_area*ts))@B)
     return Fc+Fs,J,cs,rows,sc,ss,Fc,Fs,es,steel_states,predictor_ratios
 
-def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35):
+def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35,reuse_line_search=False):
     """Solve force control on locally positive tangent branch; atomic commit.
 
     q=[e0,kx,ky] normalized curvature; conjugate target [N,Mx/(h/2),My/(b/2)]
@@ -167,10 +168,17 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
     target=np.asarray(actions,dtype=float)/scale
     if target.shape!=(3,) or not np.all(np.isfinite(target)):raise SectionHistoryError("finite N/Mx/My required")
     q=np.asarray(s.q,dtype=float)
-    def ev(q):return _trial(s,p,A,C,B,E,fy,t,q)
+    counts={'section_trials':0,'concrete_trials':0,'reused_trials':0}
+    cached=None
+    def ev(q):
+        counts['section_trials']+=1
+        return _trial(s,p,A,C,B,E,fy,t,q,counts=counts)
     def residual(F):return float(np.max(np.abs(F-target)))
     for iteration in range(1,max_iterations+1):
-        try:out=ev(q)
+        try:
+            if cached is None:out=ev(q)
+            else:
+                out=cached;cached=None;counts['reused_trials']+=1
         except (ValueError,ArithmeticError) as exc:
             return s,{"status":"UNRESOLVED_MATERIAL_TRIAL","reason":str(exc)}
         F,J,cs,rows,sc,ss,Fc,Fs,es,steel_states,predictor_ratios=out
@@ -185,7 +193,9 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
             try:trial=ev(candidate)
             except (ValueError,ArithmeticError):continue
             if residual(trial[0])<err:
-                q=candidate;break
+                q=candidate
+                if reuse_line_search:cached=trial
+                break
         else:return s,{"status":"UNRESOLVED_LINE_SEARCH","residual_kN":err}
     else:return s,{"status":"UNRESOLVED_ITERATION_LIMIT"}
     eig=np.linalg.eigvalsh(J)
@@ -220,6 +230,7 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
         "q":q.tolist(),"actions_kN_kNm":(F*scale).tolist(),
         "concrete_actions_kN_kNm":(Fc*scale).tolist(),"steel_actions_kN_kNm":(Fs*scale).tolist(),
         "max_conjugate_residual_kN":err,"iterations":iteration,
+        "trial_counts":dict(counts),
         "section_tangent_eigenvalues_kN":eig.tolist(),"condensed_D_kNm2":D.tolist(),
         "frozen_elastic_unloading_D_kNm2":Du.tolist(),"steel_mode":s.steel_mode,
         "steel_predictor_yield_ratio":float(np.max(predictor_ratios)),
@@ -247,7 +258,7 @@ def advance(s,column,field,actions,*,time_s,tolerance_kN=1e-6,max_iterations=35)
 
 def run_history(column,fields,actions,*,grid,mode,length_mm=50.,Gwork_N_mm=5.,
                 yield_fraction=.4,strength_basis="SP5_ACCIDENTAL_FCD",
-                steel_mode=steel_history.ELASTIC,steel_strain_limit=.02,quadrature=None):
+                steel_mode=steel_history.ELASTIC,steel_strain_limit=.02,quadrature=None,reuse_line_search=False):
     s=make_initial(column,fields[0],grid=grid,mode=mode,length_mm=length_mm,
                    Gwork_N_mm=Gwork_N_mm,yield_fraction=yield_fraction,strength_basis=strength_basis,
                    steel_mode=steel_mode,steel_strain_limit=steel_strain_limit,quadrature=quadrature)
@@ -255,7 +266,7 @@ def run_history(column,fields,actions,*,grid,mode,length_mm=50.,Gwork_N_mm=5.,
     for field in fields:
         minute=float(field["snapshot"]["time_minutes"])
         # Explicit ambient preload at 1 s with no conventional creep.
-        try:new,r=advance(s,column,field,actions,time_s=1.+60*minute)
+        try:new,r=advance(s,column,field,actions,time_s=1.+60*minute,reuse_line_search=reuse_line_search)
         except (ValueError,ArithmeticError,np.linalg.LinAlgError) as exc:
             new=s;r={"status":"UNRESOLVED_INPUT_OR_MATERIAL_DOMAIN","reason":str(exc)}
         rows.append({**r,"requested_time_minutes":minute})
