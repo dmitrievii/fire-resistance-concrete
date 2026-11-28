@@ -1,5 +1,10 @@
 import unittest
-from rc_fire.mechanics import sp2026_r10g_evidence as e
+import importlib.util
+from pathlib import Path
+# Load the evidence-only module without the mechanics facade (NumPy).
+spec=importlib.util.spec_from_file_location("r10g_evidence",Path(__file__).resolve().parents[1]/"rc_fire/mechanics/sp2026_r10g_evidence.py")
+e=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(e)
 
 def row(t):
     return {"time_minutes":t,"status":"EQUILIBRATED_RESEARCH_SECTION","max_conjugate_residual_kN":0.,
